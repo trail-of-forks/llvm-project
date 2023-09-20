@@ -61,6 +61,7 @@
 
 namespace clang {
 
+class Attr;
 class BTFTypeTagAttr;
 class ExtQuals;
 class QualType;
@@ -6158,6 +6159,8 @@ public:
     return static_cast<Kind>(AttributedTypeBits.AttrKind);
   }
 
+  // PASTA PATCH: preserve hasAttr() accessor; LLVM 20 already provides getAttr().
+  bool hasAttr() const { return Attribute != nullptr; }
   const Attr *getAttr() const { return Attribute; }
 
   QualType getModifiedType() const { return ModifiedType; }
