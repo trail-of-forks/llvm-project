@@ -8567,7 +8567,7 @@ static void HandleUnkownTypeAttrAsAnnotateTypeAttr(TypeProcessingState &State,
     } else if (PA.isArgIdent(Idx)) {
       IdentifierLoc *Parm = PA.getArgAsIdent(Idx);
 
-      auto Name = Parm->getIdentifier()->Ident;
+      auto Name = Parm->Ident->getName();
       auto &Ctx = S.getASTContext();
       auto StrTy = Ctx.getStringLiteralArrayType(Ctx.CharTy, Name.size());
       Args.push_back(clang::StringLiteral::Create(

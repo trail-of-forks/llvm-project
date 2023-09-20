@@ -4422,9 +4422,9 @@ bool Parser::ParseCXX11AttributeArgs(
   // arguments. Unless we are treating unknown attributes as annotation
   // attributes.
   if (!getLangOpts().UnknownAttrAnnotate) {
-    if (Syntax != ParsedAttr::AS_Microsoft &&
+    if (Form.getSyntax() != ParsedAttr::AS_Microsoft &&
         !hasAttribute(LO.CPlusPlus ? AttributeCommonInfo::Syntax::AS_CXX11
-                                  : AttributeCommonInfo::Syntax::AS_C2x,
+                                  : AttributeCommonInfo::Syntax::AS_C23,
                       ScopeName, AttrName, getTargetInfo(), getLangOpts())) {
       if (getLangOpts().MicrosoftExt || getLangOpts().HLSL) {
       }
