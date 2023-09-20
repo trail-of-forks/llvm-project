@@ -263,6 +263,10 @@ bool Expr::isFlexibleArrayMemberLike(
       TypeSourceInfo *TInfo = FD->getTypeSourceInfo();
       while (TInfo) {
         TypeLoc TL = TInfo->getTypeLoc();
+        if (TL.getSourceRange().isInvalid()) {
+          break;
+        }
+
         // Look through typedefs.
         if (TypedefTypeLoc TTL = TL.getAsAdjusted<TypedefTypeLoc>()) {
           const TypedefNameDecl *TDL = TTL.getTypedefNameDecl();
