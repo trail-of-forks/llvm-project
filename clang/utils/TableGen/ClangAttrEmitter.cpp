@@ -1241,6 +1241,18 @@ namespace {
     }
 
     void writeHasChildren(raw_ostream &OS) const override { OS << "true"; }
+
+    // PASTA PATCH: Check the optionality of an attribute.
+    std::string getIsOmitted() const override {
+      if (!isOptional()) {
+        return this->SimpleArgument::getIsOmitted();
+      }
+
+      std::string output;
+      llvm::raw_string_ostream OS(output);
+      OS << "(get" << getUpperName() << "() == nullptr)";
+      return output;
+    }
   };
 
   class VariadicExprArgument : public VariadicArgument {
