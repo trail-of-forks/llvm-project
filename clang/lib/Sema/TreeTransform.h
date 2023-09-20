@@ -5390,6 +5390,10 @@ TreeTransform<Derived>::TransformConstantArrayType(TypeLocBuilder &TLB,
       return QualType();
   }
 
+  // We might be dealing with an adjusted type due to Multiplier issue #130.
+  if (auto AT = dyn_cast<AdjustedType>(Result.getTypePtr()))
+    Result = AT->getAdjustedType();
+
   // We might have either a ConstantArrayType or a VariableArrayType now:
   // a ConstantArrayType is allowed to have an element type which is a
   // VariableArrayType if the type is dependent.  Fortunately, all array
@@ -5421,6 +5425,10 @@ QualType TreeTransform<Derived>::TransformIncompleteArrayType(
     if (Result.isNull())
       return QualType();
   }
+
+  // We might be dealing with an adjusted type due to Multiplier issue #130.
+  if (auto AT = dyn_cast<AdjustedType>(Result.getTypePtr()))
+    Result = AT->getAdjustedType();
 
   IncompleteArrayTypeLoc NewTL = TLB.push<IncompleteArrayTypeLoc>(Result);
   NewTL.setLBracketLoc(TL.getLBracketLoc());
@@ -5466,6 +5474,10 @@ TreeTransform<Derived>::TransformVariableArrayType(TypeLocBuilder &TLB,
     if (Result.isNull())
       return QualType();
   }
+
+  // We might be dealing with an adjusted type due to Multiplier issue #130.
+  if (auto AT = dyn_cast<AdjustedType>(Result.getTypePtr()))
+    Result = AT->getAdjustedType();
 
   // We might have constant size array now, but fortunately it has the same
   // location layout.
@@ -5514,6 +5526,10 @@ TreeTransform<Derived>::TransformDependentSizedArrayType(TypeLocBuilder &TLB,
     if (Result.isNull())
       return QualType();
   }
+
+  // We might be dealing with an adjusted type due to Multiplier issue #130.
+  if (auto AT = dyn_cast<AdjustedType>(Result.getTypePtr()))
+    Result = AT->getAdjustedType();
 
   // We might have any sort of array type now, but fortunately they
   // all have the same location layout.

@@ -865,7 +865,8 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
 /// local one.
 FileID SourceManager::getFileIDLoaded(SourceLocation::UIntTy SLocOffset) const {
   if (SLocOffset < CurrentLoadedOffset) {
-    assert(0 && "Invalid SLocOffset or bad function choice");
+    // XREF(pag): https://github.com/trailofbits/pasta/issues/57.
+    // assert(0 && "Invalid SLocOffset or bad function choice");
     return FileID();
   }
 
