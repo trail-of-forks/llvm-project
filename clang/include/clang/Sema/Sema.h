@@ -506,6 +506,25 @@ class Sema final : public SemaBase {
   /// Implementations are in Sema.cpp
   ///@{
 
+  FunctionDecl *createMemberSpecializationForDefinition(
+      FunctionDecl *Function, SourceLocation PointOfInstantiation);
+
+  FunctionDecl *createFunctionTemplateSpecializationForDefinition(
+      FunctionDecl *Function, SourceLocation PointOfInstantiation);
+
+  FunctionDecl *createFriendFunctionTemplateSpecializationForDefinition(
+      FunctionDecl *Function, SourceLocation PointOfInstantiation);
+
+  ClassTemplateSpecializationDecl *
+  createClassTemplateSpecializationForDefinition(
+      ClassTemplateSpecializationDecl *ClassTemplateSpec,
+      SourceLocation PointOfInstantiation, CXXRecordDecl *Pattern);
+
+  ClassTemplateSpecializationDecl *
+  createFriendClassTemplateSpecializationForDefinition(
+      ClassTemplateSpecializationDecl *ClassTemplateSpec,
+      SourceLocation PointOfInstantiation, CXXRecordDecl *Pattern);
+
 public:
   Sema(Preprocessor &pp, ASTContext &ctxt, ASTConsumer &consumer,
        TranslationUnitKind TUKind = TU_Complete,
