@@ -5570,6 +5570,17 @@ def working_directory_EQ : Joined<["-"], "working-directory=">,
   Visibility<[ClangOption, CC1Option]>,
   Alias<working_directory>;
 
+// PASTA patches.
+def fattr_types_have_attrs : Flag<["-"], "fattr-types-have-attrs">,
+  Visibility<[CC1Option]>,
+  HelpText<"Store attributes in attributed types">,
+  MarshallingInfoFlag<LangOpts<"AttrTypesHaveAttrs">>;
+
+def funknown_attrs_as_annotate : Flag<["-"], "funknown-attrs-as-annotate">,
+  Visibility<[CC1Option]>,
+  HelpText<"Treat unknown attributes as annotation or annotation type attributes in semantic analysis">,
+  MarshallingInfoFlag<LangOpts<"UnknownAttrAnnotate">>;
+
 // Double dash options, which are usually an alias for one of the previous
 // options.
 

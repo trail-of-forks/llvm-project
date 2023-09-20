@@ -1180,7 +1180,7 @@ public:
       return QualType(T, 0);
 
     return Ctx.getAttributedType(T->getAttrKind(), modifiedType,
-                                 equivalentType);
+                                 equivalentType, T->getAttr());
   }
 
   QualType VisitSubstTemplateTypeParmType(const SubstTemplateTypeParmType *T) {
@@ -1483,7 +1483,8 @@ struct SubstObjCTypeArgsVisitor
 
     // Rebuild the attributed type.
     return Ctx.getAttributedType(newAttrType->getAttrKind(),
-                                 newAttrType->getModifiedType(), newEquivType);
+                                 newAttrType->getModifiedType(), newEquivType,
+                                 newAttrType->getAttr());
   }
 };
 

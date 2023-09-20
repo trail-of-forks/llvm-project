@@ -268,8 +268,8 @@ namespace {
     /// object so that we can attach it to the AttributedTypeLoc.
     QualType getAttributedType(Attr *A, QualType ModifiedType,
                                QualType EquivType) {
-      QualType T =
-          sema.Context.getAttributedType(A->getKind(), ModifiedType, EquivType);
+      QualType T = sema.Context.getAttributedType(
+          A->getKind(), ModifiedType, EquivType, A);
       AttrsForTypes.push_back({cast<AttributedType>(T.getTypePtr()), A});
       AttrsForTypesSorted = false;
       return T;
@@ -8749,6 +8749,34 @@ static void HandleMatrixTypeAttr(QualType &CurType, const ParsedAttr &Attr,
     CurType = T;
 }
 
+static void HandleUnkownTypeAttrAsAnnotateTypeAttr(TypeProcessingState &State,
+                                   QualType &CurType, const ParsedAttr &PA) {
+  Sema &S = State.getSema();
+  StringRef Str = PA.getAttrName()->getName();
+
+  llvm::SmallVector<Expr *, 4> Args;
+  Args.reserve(PA.getNumArgs());
+  for (unsigned Idx = 0; Idx < PA.getNumArgs(); Idx++) {
+    if (PA.isArgExpr(Idx)) {
+      Args.push_back(PA.getArgAsExpr(Idx));
+    } else if (PA.isArgIdent(Idx)) {
+      IdentifierLoc *Parm = PA.getArgAsIdent(Idx);
+
+      auto Name = Parm->Ident->getName();
+      auto &Ctx = S.getASTContext();
+      auto StrTy = Ctx.getStringLiteralArrayType(Ctx.CharTy, Name.size());
+      Args.push_back(clang::StringLiteral::Create(
+          Ctx, Name, clang::StringLiteralKind::Ordinary,
+          /*Pascal=*/false, StrTy, Parm->Loc));
+    }
+  }
+  if (!S.ConstantFoldAttrArgs(PA, Args))
+    return;
+  auto *AnnotateTypeAttr =
+      AnnotateTypeAttr::Create(S.Context, Str, Args.data(), Args.size(), PA);
+  CurType = State.getAttributedType(AnnotateTypeAttr, CurType, CurType);
+}
+
 static void HandleAnnotateTypeAttr(TypeProcessingState &State,
                                    QualType &CurType, const ParsedAttr &PA) {
   Sema &S = State.getSema();
@@ -8866,7 +8894,10 @@ static void processTypeAttrs(TypeProcessingState &state, QualType &type,
       break;
 
     case ParsedAttr::UnknownAttribute:
-      if (attr.isStandardAttributeSyntax()) {
+      if (state.getSema().getLangOpts().UnknownAttrAnnotate) {
+        HandleUnkownTypeAttrAsAnnotateTypeAttr(state, type, attr);
+        attr.setUsedAsTypeAttr();
+      } else if (attr.isStandardAttributeSyntax()) {
         state.getSema().Diag(attr.getLoc(),
                              diag::warn_unknown_attribute_ignored)
             << attr << attr.getRange();
