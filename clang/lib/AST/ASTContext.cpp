@@ -4086,7 +4086,22 @@ QualType ASTContext::getConstantArrayType(QualType EltTy,
   // Convert the array size into a canonical width matching the pointer size for
   // the target.
   llvm::APInt ArySize(ArySizeIn);
+  llvm::APSInt ArySizeInt(ArySizeIn, !ArySizeIn.isNegative());
   ArySize = ArySize.zextOrTrunc(Target->getMaxPointerWidth());
+
+  // Normalize `SizeExpr` for type deduplication: leave bare `IntegerLiteral`s
+  // alone (so they are not re-wrapped, which would defeat dedup), and fill in
+  // a missing stored result on an existing `ConstantExpr` so downstream
+  // consumers can see the size without losing token provenance.
+  //
+  // XREF(pag): Multiplier issue #427.
+  if (SizeExpr && !SizeExpr->isInstantiationDependent()) {
+    if (auto *CE = dyn_cast<ConstantExpr>(const_cast<Expr *>(SizeExpr))) {
+      if (CE->getResultStorageKind() == ConstantResultStorageKind::None) {
+        CE->SetResult(APValue(ArySizeInt), *this);
+      }
+    }
+  }
 
   llvm::FoldingSetNodeID ID;
   ConstantArrayType::Profile(ID, *this, EltTy, ArySize.getZExtValue(), SizeExpr,
