@@ -384,6 +384,25 @@ class Sema final {
                                       QualType ResultTy,
                                       ArrayRef<QualType> Args);
 
+  FunctionDecl *createMemberSpecializationForDefinition(
+      FunctionDecl *Function, SourceLocation PointOfInstantiation);
+
+  FunctionDecl *createFunctionTemplateSpecializationForDefinition(
+      FunctionDecl *Function, SourceLocation PointOfInstantiation);
+
+  FunctionDecl *createFriendFunctionTemplateSpecializationForDefinition(
+      FunctionDecl *Function, SourceLocation PointOfInstantiation);
+
+  ClassTemplateSpecializationDecl *
+  createClassTemplateSpecializationForDefinition(
+      ClassTemplateSpecializationDecl *ClassTemplateSpec,
+      SourceLocation PointOfInstantiation, CXXRecordDecl *Pattern);
+
+  ClassTemplateSpecializationDecl *
+  createFriendClassTemplateSpecializationForDefinition(
+      ClassTemplateSpecializationDecl *ClassTemplateSpec,
+      SourceLocation PointOfInstantiation, CXXRecordDecl *Pattern);
+
 public:
   /// The maximum alignment, same as in llvm::Value. We duplicate them here
   /// because that allows us not to duplicate the constants in clang code,
