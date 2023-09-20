@@ -3558,16 +3558,39 @@ QualType ASTContext::getConstantArrayType(QualType EltTy,
   // Convert the array size into a canonical width matching the pointer size for
   // the target.
   llvm::APInt ArySize(ArySizeIn);
+  llvm::APSInt ArySizeInt(ArySizeIn, !ArySizeIn.isNegative());
   ArySize = ArySize.zextOrTrunc(Target->getMaxPointerWidth());
 
   // Make it always retain `SizeExpr` so that we can see token provenance for
   // arrays whose types are the result of some expression.
   const Expr *OrigSizeExpr = SizeExpr;
-  if (SizeExpr && !SizeExpr->isInstantiationDependent() &&
-      !isa<ConstantExpr>(SizeExpr) && !isa<IntegerLiteral>(SizeExpr)) {
-    llvm::APSInt ArySizeInt(ArySizeIn, !ArySizeIn.isNegative());
-    OrigSizeExpr = ConstantExpr::Create(
-        *this, const_cast<Expr *>(SizeExpr), clang::APValue(ArySizeInt));
+  if (SizeExpr && !SizeExpr->isInstantiationDependent()) {
+
+    // Drill down through multiply-wrapped `ConstantExpr`s, if any. Ideally we
+    // want to discover an `IntegerLiteral` in there somewhere.
+    while (auto CE = dyn_cast<ConstantExpr>(PrevSizeExpr)) {
+      SizeExpr = CE->getSubExpr();
+      OrigSizeExpr = SizeExpr;
+    }
+
+    // If it's an integer literal, then don't include it in deduplication.
+    //
+    // XREF(pag): Multiplier issue #427.
+    if (isa<IntegerLiteral>(SizeExpr)) {
+      OrigSizeExpr = nullptr;
+
+    // If it's missing a size, then store the size.
+    } else if (auto CE = dyn_cast<ConstantExpr>(SizeExpr)) {
+      if (CE->getResultStorageKind() == ConstantExpr::RSK_None) {
+        CE->SetResult(APValue(ArySizeInt), *this);
+      }
+
+    // Wrap the thing in a constant expression containing a size.
+    } else {
+      llvm::APSInt ArySizeInt(ArySizeIn, !ArySizeIn.isNegative());
+      OrigSizeExpr = ConstantExpr::Create(
+          *this, const_cast<Expr *>(SizeExpr), APValue(ArySizeInt));
+    }
   }
 
   // We only need the size as part of the type if it's instantiation-dependent.
