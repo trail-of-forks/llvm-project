@@ -3568,7 +3568,7 @@ QualType ASTContext::getConstantArrayType(QualType EltTy,
 
     // Drill down through multiply-wrapped `ConstantExpr`s, if any. Ideally we
     // want to discover an `IntegerLiteral` in there somewhere.
-    while (auto CE = dyn_cast<ConstantExpr>(PrevSizeExpr)) {
+    while (auto CE = dyn_cast<ConstantExpr>(OrigSizeExpr)) {
       SizeExpr = CE->getSubExpr();
       OrigSizeExpr = SizeExpr;
     }
@@ -3582,11 +3582,13 @@ QualType ASTContext::getConstantArrayType(QualType EltTy,
     // If it's missing a size, then store the size.
     } else if (auto CE = dyn_cast<ConstantExpr>(SizeExpr)) {
       if (CE->getResultStorageKind() == ConstantExpr::RSK_None) {
-        CE->SetResult(APValue(ArySizeInt), *this);
+        OrigSizeExpr = CE->getSubExpr();
+        goto wrap_ce;
       }
 
     // Wrap the thing in a constant expression containing a size.
     } else {
+    wrap_ce:
       llvm::APSInt ArySizeInt(ArySizeIn, !ArySizeIn.isNegative());
       OrigSizeExpr = ConstantExpr::Create(
           *this, const_cast<Expr *>(SizeExpr), APValue(ArySizeInt));

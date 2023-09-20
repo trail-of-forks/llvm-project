@@ -1313,7 +1313,7 @@ void Preprocessor::HandleDirective(Token &Result) {
                                   : diag::ext_pp_warning_directive)
             << /*C2x*/ 0;
 
-      return HandleUserDiagnosticDirective(Result, true);
+      return HandleUserDiagnosticDirective(SavedHash, Result, true);
     case tok::pp_ident:
       return HandleIdentSCCSDirective(SavedHash, Result);
     case tok::pp_sccs:

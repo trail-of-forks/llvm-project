@@ -4316,7 +4316,7 @@ handleUnknownAttrAsAnnotateAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
     } else if (AL.isArgIdent(Idx)) {
       IdentifierLoc *Parm = AL.getArgAsIdent(Idx);
 
-      auto Name = Parm->getIdentifier()->Ident;
+      auto Name = Parm->Ident->getName();
       auto &Ctx = S.getASTContext();
       auto StrTy = Ctx.getStringLiteralArrayType(Ctx.CharTy, Name.size());
       Args.push_back(clang::StringLiteral::Create(

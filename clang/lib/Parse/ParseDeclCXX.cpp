@@ -4409,7 +4409,7 @@ bool Parser::ParseCXX11AttributeArgs(
   if (!getLangOpts().UnknownAttrAnnotate) {
     if (Form.getSyntax() != ParsedAttr::AS_Microsoft &&
         !hasAttribute(LO.CPlusPlus ? AttributeCommonInfo::Syntax::AS_CXX11
-                                  : AttributeCommonInfo::Syntax::AS_C2x,
+                                  : AttributeCommonInfo::Syntax::AS_C23,
                       ScopeName, AttrName, getTargetInfo(), getLangOpts())) {
       if (getLangOpts().MicrosoftExt || getLangOpts().HLSL) {
       }
