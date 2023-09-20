@@ -874,9 +874,7 @@ bool Preprocessor::HandleIdentifier(Token &Identifier) {
 void Preprocessor::Lex(Token &Result) {
   ++LexLevel;
 
-  auto InputRawLoc = Result.getLocation().getRawEncoding();
   auto ReturnedToken = true;
-
   // We loop here until a lex function returns a token; this avoids recursion.
   do {
     ReturnedToken = CurLexerCallback(*this, Result);
