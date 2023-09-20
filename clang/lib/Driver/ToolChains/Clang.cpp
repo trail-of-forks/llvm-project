@@ -4760,6 +4760,17 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
     }
   }
 
+  // PASTA patches.
+  if (const Arg *A = Args.getLastArg(options::OPT_funknown_attrs_as_annotate)) {
+    CmdArgs.push_back("-funknown-attrs-as-annotate");
+    A->claim();
+  }
+
+  if (const Arg *A = Args.getLastArg(options::OPT_fattr_types_have_attrs)) {
+    CmdArgs.push_back("-fattr-types-have-attrs");
+    A->claim();
+  }
+
   if (IsOpenMPDevice) {
     // We have to pass the triple of the host if compiling for an OpenMP device.
     std::string NormalizedTriple =

@@ -56,6 +56,7 @@
 
 namespace clang {
 
+class Attr;
 class BTFTypeTagAttr;
 class ExtQuals;
 class QualType;
@@ -4931,11 +4932,12 @@ private:
 
   QualType ModifiedType;
   QualType EquivalentType;
+  const Attr *TypeAttr;
 
   AttributedType(QualType canon, attr::Kind attrKind, QualType modified,
-                 QualType equivalent)
+                 QualType equivalent, const Attr *typeAttr = nullptr)
       : Type(Attributed, canon, equivalent->getDependence()),
-        ModifiedType(modified), EquivalentType(equivalent) {
+        ModifiedType(modified), EquivalentType(equivalent), TypeAttr(typeAttr) {
     AttributedTypeBits.AttrKind = attrKind;
   }
 
@@ -4946,6 +4948,9 @@ public:
 
   QualType getModifiedType() const { return ModifiedType; }
   QualType getEquivalentType() const { return EquivalentType; }
+
+  bool hasAttr() const { return TypeAttr != nullptr; }
+  const Attr *getAttr() const { return TypeAttr; }
 
   bool isSugared() const { return true; }
   QualType desugar() const { return getEquivalentType(); }
@@ -5012,6 +5017,13 @@ public:
   static void Profile(llvm::FoldingSetNodeID &ID, Kind attrKind,
                       QualType modified, QualType equivalent) {
     ID.AddInteger(attrKind);
+    ID.AddPointer(modified.getAsOpaquePtr());
+    ID.AddPointer(equivalent.getAsOpaquePtr());
+  }
+
+  static void Profile(llvm::FoldingSetNodeID &ID, const Attr *typeAttr,
+                      QualType modified, QualType equivalent) {
+    ID.AddPointer(typeAttr);
     ID.AddPointer(modified.getAsOpaquePtr());
     ID.AddPointer(equivalent.getAsOpaquePtr());
   }

@@ -4404,17 +4404,20 @@ bool Parser::ParseCXX11AttributeArgs(
   }
 
   // If the attribute isn't known, we will not attempt to parse any
-  // arguments.
-  if (Form.getSyntax() != ParsedAttr::AS_Microsoft &&
-      !hasAttribute(LO.CPlusPlus ? AttributeCommonInfo::Syntax::AS_CXX11
-                                 : AttributeCommonInfo::Syntax::AS_C2x,
-                    ScopeName, AttrName, getTargetInfo(), getLangOpts())) {
-    if (getLangOpts().MicrosoftExt || getLangOpts().HLSL) {
+  // arguments. Unless we are treating unknown attributes as annotation
+  // attributes.
+  if (!getLangOpts().UnknownAttrAnnotate) {
+    if (Form.getSyntax() != ParsedAttr::AS_Microsoft &&
+        !hasAttribute(LO.CPlusPlus ? AttributeCommonInfo::Syntax::AS_CXX11
+                                  : AttributeCommonInfo::Syntax::AS_C2x,
+                      ScopeName, AttrName, getTargetInfo(), getLangOpts())) {
+      if (getLangOpts().MicrosoftExt || getLangOpts().HLSL) {
+      }
+      // Eat the left paren, then skip to the ending right paren.
+      ConsumeParen();
+      SkipUntil(tok::r_paren);
+      return false;
     }
-    // Eat the left paren, then skip to the ending right paren.
-    ConsumeParen();
-    SkipUntil(tok::r_paren);
-    return false;
   }
 
   if (ScopeName && (ScopeName->isStr("gnu") || ScopeName->isStr("__gnu__"))) {

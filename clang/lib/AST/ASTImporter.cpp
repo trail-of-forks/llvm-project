@@ -1506,7 +1506,7 @@ ExpectedType ASTNodeImporter::VisitAttributedType(const AttributedType *T) {
     return ToEquivalentTypeOrErr.takeError();
 
   return Importer.getToContext().getAttributedType(T->getAttrKind(),
-      *ToModifiedTypeOrErr, *ToEquivalentTypeOrErr);
+      *ToModifiedTypeOrErr, *ToEquivalentTypeOrErr, T->getAttr());
 }
 
 ExpectedType ASTNodeImporter::VisitTemplateTypeParmType(

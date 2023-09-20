@@ -1590,7 +1590,8 @@ public:
   QualType getInjectedClassNameType(CXXRecordDecl *Decl, QualType TST) const;
 
   QualType getAttributedType(attr::Kind attrKind, QualType modifiedType,
-                             QualType equivalentType) const;
+                             QualType equivalentType,
+                             const Attr *typeAttr = nullptr) const;
 
   QualType getBTFTagAttributedType(const BTFTypeTagAttr *BTFAttr,
                                    QualType Wrapped);

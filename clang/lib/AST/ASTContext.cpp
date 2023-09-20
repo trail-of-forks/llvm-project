@@ -3214,7 +3214,8 @@ QualType ASTContext::getFunctionTypeWithExceptionSpec(
     return getAttributedType(
         AT->getAttrKind(),
         getFunctionTypeWithExceptionSpec(AT->getModifiedType(), ESI),
-        getFunctionTypeWithExceptionSpec(AT->getEquivalentType(), ESI));
+        getFunctionTypeWithExceptionSpec(AT->getEquivalentType(), ESI),
+        AT->getAttr());  // PASTA PATCH.
 
   // Anything else must be a function type. Rebuild it with the new exception
   // specification.
@@ -4793,9 +4794,15 @@ QualType ASTContext::getUnresolvedUsingType(
 
 QualType ASTContext::getAttributedType(attr::Kind attrKind,
                                        QualType modifiedType,
-                                       QualType equivalentType) const {
+                                       QualType equivalentType,
+                                       const Attr *typeAttr) const {
   llvm::FoldingSetNodeID id;
-  AttributedType::Profile(id, attrKind, modifiedType, equivalentType);
+  if (typeAttr && getLangOpts().AttrTypesHaveAttrs)
+    AttributedType::Profile(id, typeAttr, modifiedType, equivalentType);
+  else {
+    typeAttr = nullptr;
+    AttributedType::Profile(id, attrKind, modifiedType, equivalentType);
+  }
 
   void *insertPos = nullptr;
   AttributedType *type = AttributedTypes.FindNodeOrInsertPos(id, insertPos);
@@ -4803,7 +4810,7 @@ QualType ASTContext::getAttributedType(attr::Kind attrKind,
 
   QualType canon = getCanonicalType(equivalentType);
   type = new (*this, TypeAlignment)
-      AttributedType(canon, attrKind, modifiedType, equivalentType);
+      AttributedType(canon, attrKind, modifiedType, equivalentType, typeAttr);
 
   Types.push_back(type);
   AttributedTypes.InsertNode(type, insertPos);
