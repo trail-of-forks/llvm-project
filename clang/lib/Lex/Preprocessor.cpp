@@ -44,6 +44,7 @@
 #include "clang/Lex/MacroArgs.h"
 #include "clang/Lex/MacroInfo.h"
 #include "clang/Lex/ModuleLoader.h"
+#include "clang/Lex/PPCallbacksEventKind.h"
 #include "clang/Lex/Pragma.h"
 #include "clang/Lex/PreprocessingRecord.h"
 #include "clang/Lex/PreprocessorLexer.h"
@@ -92,6 +93,7 @@ Preprocessor::Preprocessor(std::shared_ptr<PreprocessorOptions> PPOpts,
       Identifiers(IILookup), PragmaHandlers(new PragmaNamespace(StringRef())),
       TUKind(TUKind), SkipMainFilePreamble(0, true),
       CurSubmoduleState(&NullSubmoduleState) {
+  PostLexAction = [] (const Token &) {};
   OwnsHeaderSearch = OwnsHeaders;
 
   // Default to discarding comments.
@@ -682,9 +684,16 @@ void Preprocessor::replayPreambleConditionalStack() {
            "CurPPLexer is null when calling replayPreambleConditionalStack.");
     CurPPLexer->setConditionalLevels(PreambleConditionalStack.getStack());
     PreambleConditionalStack.doneReplaying();
+
+    Token HashToken;
+    HashToken.startToken();
+    HashToken.setKind(tok::hash);
+    HashToken.setLocation(PreambleConditionalStack.SkipInfo->HashTokenLoc);
+    HashToken.setLength(1u);
+
     if (PreambleConditionalStack.reachedEOFWhileSkipping())
       SkipExcludedConditionalBlock(
-          PreambleConditionalStack.SkipInfo->HashTokenLoc,
+          HashToken,
           PreambleConditionalStack.SkipInfo->IfTokenLoc,
           PreambleConditionalStack.SkipInfo->FoundNonSkipPortion,
           PreambleConditionalStack.SkipInfo->FoundElse,
@@ -878,27 +887,55 @@ bool Preprocessor::HandleIdentifier(Token &Identifier) {
 void Preprocessor::Lex(Token &Result) {
   ++LexLevel;
 
+  auto InputRawLoc = Result.getLocation().getRawEncoding();
+
   // We loop here until a lex function returns a token; this avoids recursion.
   bool ReturnedToken;
   do {
     switch (CurLexerKind) {
     case CLK_Lexer:
       ReturnedToken = CurLexer->Lex(Result);
+
+      // Visibility into all tokens.
+      if (ReturnedToken && Callbacks)
+        Callbacks->Event(Result, PPCallbacks::TokenFromLexer, InputRawLoc);
       break;
     case CLK_TokenLexer:
       ReturnedToken = CurTokenLexer->Lex(Result);
+
+      // Visibility into all tokens.
+      if (ReturnedToken && Callbacks)
+        Callbacks->Event(Result, PPCallbacks::TokenFromTokenLexer, InputRawLoc);
       break;
     case CLK_CachingLexer:
       CachingLex(Result);
       ReturnedToken = true;
+
+      // Visibility into all tokens.
+      if (ReturnedToken && Callbacks)
+        Callbacks->Event(Result, PPCallbacks::TokenFromCachingLexer,
+                         InputRawLoc);
       break;
     case CLK_DependencyDirectivesLexer:
       ReturnedToken = CurLexer->LexDependencyDirectiveToken(Result);
       break;
     case CLK_LexAfterModuleImport:
       ReturnedToken = LexAfterModuleImport(Result);
+
+      // Visibility into all tokens.
+      if (ReturnedToken && Callbacks)
+        Callbacks->Event(Result, PPCallbacks::TokenFromAfterModuleImportLexer,
+                         InputRawLoc);
       break;
     }
+
+    if (ReturnedToken && Callbacks && Result.is(tok::eod))
+      Callbacks->Event(Result, PPCallbacks::EndDirective, 0);
+
+    // This might trigger the end of macros.
+    PostLexAction(Result);
+    PostLexAction = [] (const Token &) {};
+
   } while (!ReturnedToken);
 
   if (Result.is(tok::unknown) && TheModuleLoader.HadFatalFailure)

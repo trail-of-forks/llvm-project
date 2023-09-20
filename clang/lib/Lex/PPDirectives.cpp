@@ -27,6 +27,7 @@
 #include "clang/Lex/ModuleLoader.h"
 #include "clang/Lex/ModuleMap.h"
 #include "clang/Lex/PPCallbacks.h"
+#include "clang/Lex/PPCallbacksEventKind.h"
 #include "clang/Lex/Pragma.h"
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Lex/PreprocessorOptions.h"
@@ -473,7 +474,7 @@ void Preprocessor::SuggestTypoedDirective(const Token &Tok,
 /// If ElseOk is true, then \#else directives are ok, if not, then we have
 /// already seen one so a \#else directive is a duplicate.  When this returns,
 /// the caller can lex the first valid token.
-void Preprocessor::SkipExcludedConditionalBlock(SourceLocation HashTokenLoc,
+void Preprocessor::SkipExcludedConditionalBlock(const Token &HashToken,
                                                 SourceLocation IfTokenLoc,
                                                 bool FoundNonSkipPortion,
                                                 bool FoundElse,
@@ -498,6 +499,9 @@ void Preprocessor::SkipExcludedConditionalBlock(SourceLocation HashTokenLoc,
   else
     CurPPLexer->pushConditionalLevel(IfTokenLoc, /*isSkipping*/ false,
                                      FoundNonSkipPortion, FoundElse);
+
+  SourceLocation HashTokenLoc = HashToken.getLocation();
+  if (Callbacks) Callbacks->Event(HashToken, PPCallbacks::BeginSkippedArea, 0);
 
   // Enter raw mode to disable identifier lookup (and thus macro expansion),
   // disabling warnings, etc.
@@ -646,6 +650,9 @@ void Preprocessor::SkipExcludedConditionalBlock(SourceLocation HashTokenLoc,
       if (Sub.empty() ||   // "if"
           Sub == "def" ||   // "ifdef"
           Sub == "ndef") {  // "ifndef"
+
+        if (Callbacks) Callbacks->Event(Tok, PPCallbacks::BeginSkippedArea, 0);
+
         // We know the entire #if/#ifdef/#ifndef block will be skipped, don't
         // bother parsing the condition.
         DiscardUntilEndOfDirective();
@@ -656,6 +663,7 @@ void Preprocessor::SkipExcludedConditionalBlock(SourceLocation HashTokenLoc,
         SuggestTypoedDirective(Tok, Directive);
       }
     } else if (Directive[0] == 'e') {
+      if (Callbacks) Callbacks->Event(Tok, PPCallbacks::BeginSkippedArea, 0);
       StringRef Sub = Directive.substr(1);
       if (Sub == "ndif") {  // "endif"
         PPConditionalInfo CondInfo;
@@ -1105,15 +1113,15 @@ private:
 /// #pragma (to check for pragma hdrstop).
 /// All other directives are completely discarded.
 void Preprocessor::HandleSkippedDirectiveWhileUsingPCH(Token &Result,
-                                                       SourceLocation HashLoc) {
+                                                       const Token &SavedHash) {
   if (const IdentifierInfo *II = Result.getIdentifierInfo()) {
     if (II->getPPKeywordID() == tok::pp_define) {
-      return HandleDefineDirective(Result,
+      return HandleDefineDirective(SavedHash, Result,
                                    /*ImmediatelyAfterHeaderGuard=*/false);
     }
     if (SkippingUntilPCHThroughHeader &&
         II->getPPKeywordID() == tok::pp_include) {
-      return HandleIncludeDirective(HashLoc, Result);
+      return HandleIncludeDirective(SavedHash, Result);
     }
     if (SkippingUntilPragmaHdrStop && II->getPPKeywordID() == tok::pp_pragma) {
       Lex(Result);
@@ -1152,9 +1160,32 @@ void Preprocessor::HandleDirective(Token &Result) {
   // Save the '#' token in case we need to return it later.
   Token SavedHash = Result;
 
+  if (Callbacks) Callbacks->Event(SavedHash, PPCallbacks::BeginDirective, 0);
+
   // Read the next token, the directive flavor.  This isn't expanded due to
   // C99 6.10.3p8.
   LexUnexpandedToken(Result);
+
+  // Tell us when we're about to start a directive.
+  if (Callbacks) {
+    switch (Result.getKind()) {
+      case tok::identifier:
+      case tok::raw_identifier:
+      case tok::kw_if:
+      case tok::kw_else:
+        Callbacks->Event(SavedHash, PPCallbacks::SetNamedDirective,
+                         reinterpret_cast<uintptr_t>(&Result));
+        break;
+      case tok::eod:
+      case tok::code_completion:
+      case tok::numeric_constant:
+      case tok::string_literal:
+      default:
+        Callbacks->Event(SavedHash, PPCallbacks::SetUnnamedDirective,
+                         reinterpret_cast<uintptr_t>(&Result));
+        break;
+    }
+  }
 
   // C99 6.10.3p11: Is this preprocessor directive in macro invocation?  e.g.:
   //   #define A(x) #x
@@ -1189,7 +1220,7 @@ void Preprocessor::HandleDirective(Token &Result) {
   ResetMacroExpansionHelper helper(this);
 
   if (SkippingUntilPCHThroughHeader || SkippingUntilPragmaHdrStop)
-    return HandleSkippedDirectiveWhileUsingPCH(Result, SavedHash.getLocation());
+    return HandleSkippedDirectiveWhileUsingPCH(Result, SavedHash);
 
   switch (Result.getKind()) {
   case tok::eod:
@@ -1211,7 +1242,7 @@ void Preprocessor::HandleDirective(Token &Result) {
     if (getLangOpts().AsmPreprocessor &&
         SourceMgr.getFileID(SavedHash.getLocation()) != getPredefinesFileID())
       break;
-    return HandleDigitDirective(Result);
+    return HandleDigitDirective(SavedHash, Result);
   default:
     IdentifierInfo *II = Result.getIdentifierInfo();
     if (!II) break; // Not an identifier.
@@ -1241,24 +1272,25 @@ void Preprocessor::HandleDirective(Token &Result) {
     // C99 6.10.2 - Source File Inclusion.
     case tok::pp_include:
       // Handle #include.
-      return HandleIncludeDirective(SavedHash.getLocation(), Result);
+      return HandleIncludeDirective(SavedHash, Result);
     case tok::pp___include_macros:
       // Handle -imacros.
-      return HandleIncludeMacrosDirective(SavedHash.getLocation(), Result);
+      return HandleIncludeMacrosDirective(SavedHash, Result);
 
     // C99 6.10.3 - Macro Replacement.
     case tok::pp_define:
-      return HandleDefineDirective(Result, ImmediatelyAfterTopLevelIfndef);
+      return HandleDefineDirective(SavedHash, Result,
+                                   ImmediatelyAfterTopLevelIfndef);
     case tok::pp_undef:
-      return HandleUndefDirective();
+      return HandleUndefDirective(SavedHash);
 
     // C99 6.10.4 - Line Control.
     case tok::pp_line:
-      return HandleLineDirective();
+      return HandleLineDirective(SavedHash);
 
     // C99 6.10.5 - Error Directive.
     case tok::pp_error:
-      return HandleUserDiagnosticDirective(Result, false);
+      return HandleUserDiagnosticDirective(SavedHash, Result, false);
 
     // C99 6.10.6 - Pragma Directive.
     case tok::pp_pragma:
@@ -1266,9 +1298,9 @@ void Preprocessor::HandleDirective(Token &Result) {
 
     // GNU Extensions.
     case tok::pp_import:
-      return HandleImportDirective(SavedHash.getLocation(), Result);
+      return HandleImportDirective(SavedHash, Result);
     case tok::pp_include_next:
-      return HandleIncludeNextDirective(SavedHash.getLocation(), Result);
+      return HandleIncludeNextDirective(SavedHash, Result);
 
     case tok::pp_warning:
       if (LangOpts.CPlusPlus)
@@ -1283,9 +1315,9 @@ void Preprocessor::HandleDirective(Token &Result) {
 
       return HandleUserDiagnosticDirective(Result, true);
     case tok::pp_ident:
-      return HandleIdentSCCSDirective(Result);
+      return HandleIdentSCCSDirective(SavedHash, Result);
     case tok::pp_sccs:
-      return HandleIdentSCCSDirective(Result);
+      return HandleIdentSCCSDirective(SavedHash, Result);
     case tok::pp_assert:
       //isExtension = true;  // FIXME: implement #assert
       break;
@@ -1295,12 +1327,12 @@ void Preprocessor::HandleDirective(Token &Result) {
 
     case tok::pp___public_macro:
       if (getLangOpts().Modules || getLangOpts().ModulesLocalVisibility)
-        return HandleMacroPublicDirective(Result);
+        return HandleMacroPublicDirective(SavedHash, Result);
       break;
 
     case tok::pp___private_macro:
       if (getLangOpts().Modules || getLangOpts().ModulesLocalVisibility)
-        return HandleMacroPrivateDirective();
+        return HandleMacroPrivateDirective(SavedHash);
       break;
     }
     break;
@@ -1311,6 +1343,10 @@ void Preprocessor::HandleDirective(Token &Result) {
   // various pseudo-ops.  Just return the # token and push back the following
   // token to be lexed next time.
   if (getLangOpts().AsmPreprocessor) {
+
+    // End of a macro.
+    if (Callbacks) Callbacks->Event(SavedHash, PPCallbacks::EndNonDirective, 0);
+
     auto Toks = std::make_unique<Token[]>(2);
     // Return the # and the token after it.
     Toks[0] = SavedHash;
@@ -1399,7 +1435,7 @@ static bool GetLineValue(Token &DigitTok, unsigned &Val,
 ///   # line digit-sequence
 ///   # line digit-sequence "s-char-sequence"
 /// \endverbatim
-void Preprocessor::HandleLineDirective() {
+void Preprocessor::HandleLineDirective(const Token &SavedHash) {
   // Read the line # and string argument.  Per C99 6.10.4p5, these tokens are
   // expanded.
   Token DigitTok;
@@ -1561,7 +1597,8 @@ static bool ReadLineMarkerFlags(bool &IsFileEntry, bool &IsFileExit,
 ///     # 42 "file" ('1' | '2')?
 ///     # 42 "file" ('1' | '2')? '3' '4'?
 ///
-void Preprocessor::HandleDigitDirective(Token &DigitTok) {
+void Preprocessor::HandleDigitDirective(const Token &SavedHash,
+                                        Token &DigitTok) {
   // Validate the number and convert it to an unsigned.  GNU does not have a
   // line # limit other than it fit in 32-bits.
   unsigned LineNo;
@@ -1637,7 +1674,8 @@ void Preprocessor::HandleDigitDirective(Token &DigitTok) {
 
 /// HandleUserDiagnosticDirective - Handle a #warning or #error directive.
 ///
-void Preprocessor::HandleUserDiagnosticDirective(Token &Tok,
+void Preprocessor::HandleUserDiagnosticDirective(const Token &SavedHash,
+                                                 Token &Tok,
                                                  bool isWarning) {
   // Read the rest of the line raw.  We do this because we don't want macros
   // to be expanded and we don't require that the tokens be valid preprocessing
@@ -1659,7 +1697,8 @@ void Preprocessor::HandleUserDiagnosticDirective(Token &Tok,
 
 /// HandleIdentSCCSDirective - Handle a #ident/#sccs directive.
 ///
-void Preprocessor::HandleIdentSCCSDirective(Token &Tok) {
+void Preprocessor::HandleIdentSCCSDirective(const Token &SavedHash,
+                                            Token &Tok) {
   // Yes, this directive is an extension.
   Diag(Tok, diag::ext_pp_ident_directive);
 
@@ -1694,7 +1733,8 @@ void Preprocessor::HandleIdentSCCSDirective(Token &Tok) {
 }
 
 /// Handle a #public directive.
-void Preprocessor::HandleMacroPublicDirective(Token &Tok) {
+void Preprocessor::HandleMacroPublicDirective(const Token &SavedHash,
+                                              Token &Tok) {
   Token MacroNameTok;
   ReadMacroName(MacroNameTok, MU_Undef);
 
@@ -1721,7 +1761,7 @@ void Preprocessor::HandleMacroPublicDirective(Token &Tok) {
 }
 
 /// Handle a #private directive.
-void Preprocessor::HandleMacroPrivateDirective() {
+void Preprocessor::HandleMacroPrivateDirective(const Token &SavedHash) {
   Token MacroNameTok;
   ReadMacroName(MacroNameTok, MU_Undef);
 
@@ -1958,7 +1998,7 @@ Preprocessor::getIncludeNextStart(const Token &IncludeNextTok) const {
 /// routine with functionality shared between \#include, \#include_next and
 /// \#import.  LookupFrom is set when this is a \#include_next directive, it
 /// specifies the file to start searching from.
-void Preprocessor::HandleIncludeDirective(SourceLocation HashLoc,
+void Preprocessor::HandleIncludeDirective(const Token &HashTok,
                                           Token &IncludeTok,
                                           ConstSearchDirIterator LookupFrom,
                                           const FileEntry *LookupFromFile) {
@@ -1972,6 +2012,8 @@ void Preprocessor::HandleIncludeDirective(SourceLocation HashLoc,
       DiscardUntilEndOfDirective();
     return;
   }
+
+  SourceLocation HashLoc = HashTok.getLocation();
 
   // Verify that there is nothing after the filename, other than EOD.  Note
   // that we allow macros that expand to nothing after the filename, because
@@ -2586,7 +2628,7 @@ Preprocessor::ImportAction Preprocessor::HandleHeaderIncludeOrImport(
 
 /// HandleIncludeNextDirective - Implements \#include_next.
 ///
-void Preprocessor::HandleIncludeNextDirective(SourceLocation HashLoc,
+void Preprocessor::HandleIncludeNextDirective(const Token &HashTok,
                                               Token &IncludeNextTok) {
   Diag(IncludeNextTok, diag::ext_pp_include_next_directive);
 
@@ -2594,7 +2636,7 @@ void Preprocessor::HandleIncludeNextDirective(SourceLocation HashLoc,
   const FileEntry *LookupFromFile;
   std::tie(Lookup, LookupFromFile) = getIncludeNextStart(IncludeNextTok);
 
-  return HandleIncludeDirective(HashLoc, IncludeNextTok, Lookup,
+  return HandleIncludeDirective(HashTok, IncludeNextTok, Lookup,
                                 LookupFromFile);
 }
 
@@ -2614,21 +2656,21 @@ void Preprocessor::HandleMicrosoftImportDirective(Token &Tok) {
 
 /// HandleImportDirective - Implements \#import.
 ///
-void Preprocessor::HandleImportDirective(SourceLocation HashLoc,
+void Preprocessor::HandleImportDirective(const Token &HashTok,
                                          Token &ImportTok) {
   if (!LangOpts.ObjC) {  // #import is standard for ObjC.
     if (LangOpts.MSVCCompat)
       return HandleMicrosoftImportDirective(ImportTok);
     Diag(ImportTok, diag::ext_pp_import_directive);
   }
-  return HandleIncludeDirective(HashLoc, ImportTok);
+  return HandleIncludeDirective(HashTok, ImportTok);
 }
 
 /// HandleIncludeMacrosDirective - The -imacros command line option turns into a
 /// pseudo directive in the predefines buffer.  This handles it by sucking all
 /// tokens through the preprocessor and discarding them (only keeping the side
 /// effects on the preprocessor).
-void Preprocessor::HandleIncludeMacrosDirective(SourceLocation HashLoc,
+void Preprocessor::HandleIncludeMacrosDirective(const Token &HashTok,
                                                 Token &IncludeMacrosTok) {
   // This directive should only occur in the predefines buffer.  If not, emit an
   // error and reject it.
@@ -2642,7 +2684,7 @@ void Preprocessor::HandleIncludeMacrosDirective(SourceLocation HashLoc,
 
   // Treat this as a normal #include for checking purposes.  If this is
   // successful, it will push a new lexer onto the include stack.
-  HandleIncludeDirective(HashLoc, IncludeMacrosTok);
+  HandleIncludeDirective(HashTok, IncludeMacrosTok);
 
   Token TmpTok;
   do {
@@ -3037,7 +3079,8 @@ static bool isObjCProtectedMacro(const IdentifierInfo *II) {
 /// HandleDefineDirective - Implements \#define.  This consumes the entire macro
 /// line then lets the caller lex the next real token.
 void Preprocessor::HandleDefineDirective(
-    Token &DefineTok, const bool ImmediatelyAfterHeaderGuard) {
+    const Token &HashTok, Token &DefineTok,
+    const bool ImmediatelyAfterHeaderGuard) {
   ++NumDefined;
 
   Token MacroNameTok;
@@ -3185,7 +3228,7 @@ void Preprocessor::HandleDefineDirective(
 
 /// HandleUndefDirective - Implements \#undef.
 ///
-void Preprocessor::HandleUndefDirective() {
+void Preprocessor::HandleUndefDirective(const Token &HashTok) {
   ++NumUndefined;
 
   Token MacroNameTok;
@@ -3254,7 +3297,7 @@ void Preprocessor::HandleIfdefDirective(Token &Result,
   if (MacroNameTok.is(tok::eod)) {
     // Skip code until we get to #endif.  This helps with recovery by not
     // emitting an error when the #endif is reached.
-    SkipExcludedConditionalBlock(HashToken.getLocation(),
+    SkipExcludedConditionalBlock(HashToken,
                                  DirectiveTok.getLocation(),
                                  /*Foundnonskip*/ false, /*FoundElse*/ false);
     return;
@@ -3309,7 +3352,7 @@ void Preprocessor::HandleIfdefDirective(Token &Result,
                                      /*foundelse*/false);
   } else {
     // No, skip the contents of this block.
-    SkipExcludedConditionalBlock(HashToken.getLocation(),
+    SkipExcludedConditionalBlock(HashToken,
                                  DirectiveTok.getLocation(),
                                  /*Foundnonskip*/ false,
                                  /*FoundElse*/ false);
@@ -3362,7 +3405,7 @@ void Preprocessor::HandleIfDirective(Token &IfToken,
                                    /*foundnonskip*/true, /*foundelse*/false);
   } else {
     // No, skip the contents of this block.
-    SkipExcludedConditionalBlock(HashToken.getLocation(), IfToken.getLocation(),
+    SkipExcludedConditionalBlock(HashToken, IfToken.getLocation(),
                                  /*Foundnonskip*/ false,
                                  /*FoundElse*/ false);
   }
@@ -3430,7 +3473,7 @@ void Preprocessor::HandleElseDirective(Token &Result, const Token &HashToken) {
   }
 
   // Finally, skip the rest of the contents of this block.
-  SkipExcludedConditionalBlock(HashToken.getLocation(), CI.IfLoc,
+  SkipExcludedConditionalBlock(HashToken, CI.IfLoc,
                                /*Foundnonskip*/ true,
                                /*FoundElse*/ true, Result.getLocation());
 }
@@ -3511,6 +3554,6 @@ void Preprocessor::HandleElifFamilyDirective(Token &ElifToken,
 
   // Finally, skip the rest of the contents of this block.
   SkipExcludedConditionalBlock(
-      HashToken.getLocation(), CI.IfLoc, /*Foundnonskip*/ true,
+      HashToken, CI.IfLoc, /*Foundnonskip*/ true,
       /*FoundElse*/ CI.FoundElse, ElifToken.getLocation());
 }

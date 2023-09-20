@@ -312,7 +312,7 @@ BENIGN_LANGOPT(CLNoSignedZero , 1, 0, "Permit Floating Point optimization withou
 COMPATIBLE_LANGOPT(CLUnsafeMath , 1, 0, "Unsafe Floating Point Math")
 COMPATIBLE_LANGOPT(CLFiniteMathOnly , 1, 0, "__FINITE_MATH_ONLY__ predefined macro")
 
-// PASTA PATCHES.
+// PASTA-specific options.
 LANGOPT(AttrTypesHaveAttrs, 1, 0, "Should attribute types store attributes?")
 LANGOPT(UnknownAttrAnnotate, 1, 0, "Unknown attributes are treated as annotation or annotation type attributes during semantic analysis")
 

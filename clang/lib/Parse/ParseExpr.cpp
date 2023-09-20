@@ -1441,6 +1441,13 @@ ExprResult Parser::ParseCastExpression(CastParseKind ParseKind,
   case tok::kw_sizeof:     // unary-expression: 'sizeof' unary-expression
                            // unary-expression: 'sizeof' '(' type-name ')'
   case tok::kw_vec_step:   // unary-expression: OpenCL 'vec_step' expression
+
+  // PASTA fakes support for XNU-specific UETTs.
+  case tok::kw___builtin_ptrauth_type_discriminator:
+  case tok::kw___builtin_xnu_type_signature:
+  case tok::kw___builtin_xnu_type_summary:
+  case tok::kw___builtin_tmo_type_get_metadata:
+
   // unary-expression: '__builtin_omp_required_simd_align' '(' type-name ')'
   case tok::kw___builtin_omp_required_simd_align:
     if (NotPrimaryExpression)
@@ -2316,7 +2323,12 @@ Parser::ParseExprAfterUnaryExprOrTypeTrait(const Token &OpTok,
   assert(OpTok.isOneOf(tok::kw_typeof, tok::kw_typeof_unqual, tok::kw_sizeof,
                        tok::kw___alignof, tok::kw_alignof, tok::kw__Alignof,
                        tok::kw_vec_step,
-                       tok::kw___builtin_omp_required_simd_align) &&
+                       tok::kw___builtin_omp_required_simd_align,
+                       // PASTA fakes support for XNU-specific UETTs.
+                       tok::kw___builtin_ptrauth_type_discriminator,
+                       tok::kw___builtin_xnu_type_signature,
+                       tok::kw___builtin_xnu_type_summary,
+                       tok::kw___builtin_tmo_type_get_metadata) &&
          "Not a typeof/sizeof/alignof/vec_step expression!");
 
   ExprResult Operand;
@@ -2437,7 +2449,13 @@ ExprResult Parser::ParseSYCLUniqueStableNameExpression() {
 ExprResult Parser::ParseUnaryExprOrTypeTraitExpression() {
   assert(Tok.isOneOf(tok::kw_sizeof, tok::kw___alignof, tok::kw_alignof,
                      tok::kw__Alignof, tok::kw_vec_step,
-                     tok::kw___builtin_omp_required_simd_align) &&
+                     tok::kw___builtin_omp_required_simd_align,
+
+                     // PASTA fakes support for XNU-specific UETTs.
+                     tok::kw___builtin_ptrauth_type_discriminator,
+                     tok::kw___builtin_xnu_type_signature,
+                     tok::kw___builtin_xnu_type_summary,
+                     tok::kw___builtin_tmo_type_get_metadata) &&
          "Not a sizeof/alignof/vec_step expression!");
   Token OpTok = Tok;
   ConsumeToken();
@@ -2516,6 +2534,16 @@ ExprResult Parser::ParseUnaryExprOrTypeTraitExpression() {
     ExprKind = UETT_VecStep;
   else if (OpTok.is(tok::kw___builtin_omp_required_simd_align))
     ExprKind = UETT_OpenMPRequiredSimdAlign;
+
+  // Fake support for XNU-specific things with PASTA.
+  else if (OpTok.is(tok::kw___builtin_ptrauth_type_discriminator))
+    ExprKind = UETT_PtrAuthTypeDiscriminator;
+  else if (OpTok.is(tok::kw___builtin_xnu_type_signature))
+    ExprKind = UETT_XNUTypeSignature;
+  else if (OpTok.is(tok::kw___builtin_xnu_type_summary))
+    ExprKind = UETT_XNUTypeSummary;
+  else if (OpTok.is(tok::kw___builtin_tmo_type_get_metadata))
+    ExprKind = UETT_TMOTypeGetMetadata;
 
   if (isCastExpr)
     return Actions.ActOnUnaryExprOrTypeTraitExpr(OpTok.getLocation(),

@@ -3215,7 +3215,7 @@ QualType ASTContext::getFunctionTypeWithExceptionSpec(
         AT->getAttrKind(),
         getFunctionTypeWithExceptionSpec(AT->getModifiedType(), ESI),
         getFunctionTypeWithExceptionSpec(AT->getEquivalentType(), ESI),
-        AT->getAttr());  // PASTA PATCH.
+        AT->getAttr());
 
   // Anything else must be a function type. Rebuild it with the new exception
   // specification.
@@ -3555,49 +3555,96 @@ QualType ASTContext::getConstantArrayType(QualType EltTy,
           EltTy->isIncompleteType() || EltTy->isConstantSizeType()) &&
          "Constant array of VLAs is illegal!");
 
-  // We only need the size as part of the type if it's instantiation-dependent.
-  if (SizeExpr && !SizeExpr->isInstantiationDependent())
-    SizeExpr = nullptr;
-
   // Convert the array size into a canonical width matching the pointer size for
   // the target.
   llvm::APInt ArySize(ArySizeIn);
   ArySize = ArySize.zextOrTrunc(Target->getMaxPointerWidth());
+
+  // Make it always retain `SizeExpr` so that we can see token provenance for
+  // arrays whose types are the result of some expression.
+  const Expr *OrigSizeExpr = SizeExpr;
+  if (SizeExpr && !SizeExpr->isInstantiationDependent() &&
+      !isa<ConstantExpr>(SizeExpr) && !isa<IntegerLiteral>(SizeExpr)) {
+    llvm::APSInt ArySizeInt(ArySizeIn, !ArySizeIn.isNegative());
+    OrigSizeExpr = ConstantExpr::Create(
+        *this, const_cast<Expr *>(SizeExpr), clang::APValue(ArySizeInt));
+  }
+
+  // We only need the size as part of the type if it's instantiation-dependent.
+  if (SizeExpr && !SizeExpr->isInstantiationDependent())
+    SizeExpr = nullptr;
 
   llvm::FoldingSetNodeID ID;
   ConstantArrayType::Profile(ID, *this, EltTy, ArySize, SizeExpr, ASM,
                              IndexTypeQuals);
 
   void *InsertPos = nullptr;
-  if (ConstantArrayType *ATP =
-      ConstantArrayTypes.FindNodeOrInsertPos(ID, InsertPos))
-    return QualType(ATP, 0);
-
-  // If the element type isn't canonical or has qualifiers, or the array bound
-  // is instantiation-dependent, this won't be a canonical type either, so fill
-  // in the canonical type field.
-  QualType Canon;
-  // FIXME: Check below should look for qualifiers behind sugar.
-  if (!EltTy.isCanonical() || EltTy.hasLocalQualifiers() || SizeExpr) {
-    SplitQualType canonSplit = getCanonicalType(EltTy).split();
-    Canon = getConstantArrayType(QualType(canonSplit.Ty, 0), ArySize, nullptr,
-                                 ASM, IndexTypeQuals);
-    Canon = getQualifiedType(Canon, canonSplit.Quals);
-
-    // Get the new insert position for the node we care about.
-    ConstantArrayType *NewIP =
+  ConstantArrayType *ATP =
       ConstantArrayTypes.FindNodeOrInsertPos(ID, InsertPos);
-    assert(!NewIP && "Shouldn't be in the map!"); (void)NewIP;
+
+  // Profile the original one. In practice, we should probably never have a
+  // cache hit.
+  llvm::FoldingSetNodeID OrigID;
+  void *OrigInsertPos = nullptr;
+  ConstantArrayType *OrigATP = nullptr;
+  if (OrigSizeExpr) {
+    OrigID.AddPointer(OrigSizeExpr);  // Want uniqueness.
+    OrigATP = ConstantArrayTypes.FindNodeOrInsertPos(OrigID, OrigInsertPos);
   }
 
-  void *Mem = Allocate(
-      ConstantArrayType::totalSizeToAlloc<const Expr *>(SizeExpr ? 1 : 0),
-      TypeAlignment);
-  auto *New = new (Mem)
-    ConstantArrayType(EltTy, Canon, ArySize, SizeExpr, ASM, IndexTypeQuals);
-  ConstantArrayTypes.InsertNode(New, InsertPos);
-  Types.push_back(New);
-  return QualType(New, 0);
+  if (ATP && OrigATP)
+    return getAdjustedType(QualType(OrigATP, 0), QualType(ATP, 0));
+
+  if (!OrigSizeExpr && ATP)
+    return QualType(ATP, 0);
+
+  if (!ATP) {
+    // If the element type isn't canonical or has qualifiers, or the array bound
+    // is instantiation-dependent, this won't be a canonical type either, so fill
+    // in the canonical type field.
+    QualType Canon;
+    // FIXME: Check below should look for qualifiers behind sugar.
+    if (!EltTy.isCanonical() || EltTy.hasLocalQualifiers() || SizeExpr) {
+      SplitQualType canonSplit = getCanonicalType(EltTy).split();
+      Canon = getConstantArrayType(QualType(canonSplit.Ty, 0), ArySize, nullptr,
+                                   ASM, IndexTypeQuals);
+      Canon = getQualifiedType(Canon, canonSplit.Quals);
+
+      // Get the new insert position for the node we care about.
+      ConstantArrayType *NewIP =
+        ConstantArrayTypes.FindNodeOrInsertPos(ID, InsertPos);
+      assert(!NewIP && "Shouldn't be in the map!"); (void)NewIP;
+
+      // TODO(pag): Calculate a new insert position for orig expressions?
+    }
+
+    void *Mem = Allocate(
+        ConstantArrayType::totalSizeToAlloc<const Expr *>(SizeExpr ? 1 : 0),
+        TypeAlignment);
+    ATP = new (Mem)
+      ConstantArrayType(EltTy, Canon, ArySize, SizeExpr, ASM, IndexTypeQuals);
+    ConstantArrayTypes.InsertNode(ATP, InsertPos);
+    Types.push_back(ATP);
+  }
+
+  // Go get the original type. We need to re-calculate the `OrigInsertPos`
+  // because the buckets in `ConstantArrayTypes` may have changed.
+  OrigATP = ConstantArrayTypes.FindNodeOrInsertPos(OrigID, OrigInsertPos);
+  if (OrigSizeExpr && !OrigATP) {
+    void *OrigMem = Allocate(
+        ConstantArrayType::totalSizeToAlloc<const Expr *>(OrigSizeExpr ? 1 : 0),
+        TypeAlignment);
+    OrigATP = new (OrigMem)
+      ConstantArrayType(EltTy, ATP->getCanonicalTypeInternal(),
+                        ArySize, OrigSizeExpr, ASM, IndexTypeQuals);
+    ConstantArrayTypes.InsertNode(OrigATP, OrigInsertPos);
+    Types.push_back(OrigATP);
+  }
+
+  if (ATP && OrigATP)
+    return getAdjustedType(QualType(OrigATP, 0), QualType(ATP, 0));
+
+  return QualType(ATP, 0);
 }
 
 /// getVariableArrayDecayedType - Turns the given type, which may be
@@ -3698,6 +3745,12 @@ QualType ASTContext::getVariableArrayDecayedType(QualType type) const {
                                   cat->getSizeExpr(),
                                   cat->getSizeModifier(),
                                   cat->getIndexTypeCVRQualifiers());
+
+    // If we returned an adjusted type above, then we want to desugar it to the
+    // internal type.
+    if (auto AT = dyn_cast<AdjustedType>(result.getTypePtr())) {
+      result = AT->getAdjustedType();
+    }
     break;
   }
 
@@ -6915,11 +6968,23 @@ const ArrayType *ASTContext::getAsArrayType(QualType T) const {
   // qualifiers into the array element type and return a new array type.
   QualType NewEltTy = getQualifiedType(ATy->getElementType(), qs);
 
-  if (const auto *CAT = dyn_cast<ConstantArrayType>(ATy))
-    return cast<ArrayType>(getConstantArrayType(NewEltTy, CAT->getSize(),
+  if (const auto *CAT = dyn_cast<ConstantArrayType>(ATy)) {
+
+    // `getConstantArrayType` might return an adjusted type.
+    QualType result = getConstantArrayType(NewEltTy, CAT->getSize(),
                                                 CAT->getSizeExpr(),
                                                 CAT->getSizeModifier(),
-                                           CAT->getIndexTypeCVRQualifiers()));
+                                           CAT->getIndexTypeCVRQualifiers());
+
+    // If we returned an adjusted type above, then we want to desugar it to the
+    // internal type.
+    if (auto AT = dyn_cast<AdjustedType>(result.getTypePtr())) {
+      result = AT->getAdjustedType();
+    }
+
+    return cast<ArrayType>(result);
+  }
+
   if (const auto *IAT = dyn_cast<IncompleteArrayType>(ATy))
     return cast<ArrayType>(getIncompleteArrayType(NewEltTy,
                                                   IAT->getSizeModifier(),

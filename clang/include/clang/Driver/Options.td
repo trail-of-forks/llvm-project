@@ -4653,7 +4653,7 @@ def working_directory : Separate<["-"], "working-directory">, Flags<[CC1Option]>
 def working_directory_EQ : Joined<["-"], "working-directory=">, Flags<[CC1Option]>,
   Alias<working_directory>;
 
-// PASTA patches.
+// PASTA options.
 def fattr_types_have_attrs : Flag<["-"], "fattr-types-have-attrs">,
   Flags<[CC1Option]>,
   HelpText<"Store attributes in attributed types">,

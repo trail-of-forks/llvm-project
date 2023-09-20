@@ -23,6 +23,7 @@
 #include "clang/Lex/LexDiagnostic.h"
 #include "clang/Lex/LiteralSupport.h"
 #include "clang/Lex/MultipleIncludeOpt.h"
+#include "clang/Lex/PPCallbacksEventKind.h"
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Lex/PreprocessorOptions.h"
 #include "clang/Lex/Token.h"
@@ -2981,6 +2982,12 @@ void Lexer::ReadToEndOfLine(SmallVectorImpl<char> *Result) {
         Lex(Tmp);
       }
       assert(Tmp.is(tok::eod) && "Unexpected token!");
+
+      // Visibility into all tokens.
+      if (auto Callbacks = PP->getPPCallbacks(); Callbacks && PP) {
+        Callbacks->Event(Tmp, PPCallbacks::TokenFromTokenLexer, 0u);
+        Callbacks->Event(Tmp, PPCallbacks::EndDirective, 0);
+      }
 
       // Finally, we're done;
       return;

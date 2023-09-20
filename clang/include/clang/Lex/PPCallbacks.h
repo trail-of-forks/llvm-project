@@ -40,6 +40,12 @@ public:
     EnterFile, ExitFile, SystemHeaderPragma, RenameFile
   };
 
+  // Add in an event that lets us get better visibility into the
+  // behavior of the preprocessor, as things are happening.
+#define LLVM_CLANG_HAS_PASTA_EVENTS 20230920L
+  enum EventKind : int;
+  virtual void Event(const Token &Tok, EventKind Kind, uintptr_t Data) {}
+
   /// Callback invoked whenever a source file is entered or exited.
   ///
   /// \param Loc Indicates the new location.
@@ -440,6 +446,11 @@ public:
     : First(std::move(_First)), Second(std::move(_Second)) {}
 
   ~PPChainedCallbacks() override;
+
+  void Event(const Token &Tok, EventKind Kind, uintptr_t Data) override {
+    First->Event(Tok, Kind, Data);
+    Second->Event(Tok, Kind, Data);
+  }
 
   void FileChanged(SourceLocation Loc, FileChangeReason Reason,
                    SrcMgr::CharacteristicKind FileType,

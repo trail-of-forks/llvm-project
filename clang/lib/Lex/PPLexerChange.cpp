@@ -16,6 +16,7 @@
 #include "clang/Lex/HeaderSearch.h"
 #include "clang/Lex/LexDiagnostic.h"
 #include "clang/Lex/MacroInfo.h"
+#include "clang/Lex/PPCallbacksEventKind.h"
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Lex/PreprocessorOptions.h"
 #include "llvm/ADT/StringSwitch.h"
@@ -29,6 +30,35 @@ using namespace clang;
 //===----------------------------------------------------------------------===//
 // Miscellaneous Methods.
 //===----------------------------------------------------------------------===//
+
+void Preprocessor::PopIncludeMacroStack() {
+
+  // Tell us about the end of macro expansions.
+  if (Callbacks && CurTokenLexer && CurTokenLexer->Macro)
+    Callbacks->Event(CurTokenLexer->MacroNameTok,
+                     PPCallbacks::EndMacroExpansion,
+                     reinterpret_cast<uintptr_t>(CurTokenLexer->Macro));
+
+  // Make us aware of the end of `_Pragma` handling.
+  if (Callbacks && CurPPLexer && CurLexer.get() == CurPPLexer &&
+      CurLexer->isPragmaLexer()) {
+    Token PragmaTok;
+    PragmaTok.setKind(tok::raw_identifier);
+    PragmaTok.setLocation(SourceMgr.getExpansionLoc(CurLexer->getFileLoc()));
+    PragmaTok.setLength(7u);
+    PragmaTok.setRawIdentifierData(
+        SourceMgr.getCharacterData(PragmaTok.getLocation(), nullptr));
+    Callbacks->Event(PragmaTok, PPCallbacks::EndMacroExpansion, 0);
+  }
+
+  CurLexer = std::move(IncludeMacroStack.back().TheLexer);
+  CurPPLexer = IncludeMacroStack.back().ThePPLexer;
+  CurTokenLexer = std::move(IncludeMacroStack.back().TheTokenLexer);
+  CurDirLookup  = IncludeMacroStack.back().TheDirLookup;
+  CurLexerSubmodule = IncludeMacroStack.back().TheSubmodule;
+  CurLexerKind = IncludeMacroStack.back().CurLexerKind;
+  IncludeMacroStack.pop_back();
+}
 
 /// isInPrimaryFile - Return true if we're in the top-level file, not in a
 /// \#include.  This looks through macro expansions and active _Pragma lexers.
@@ -602,6 +632,14 @@ bool Preprocessor::HandleEndOfFile(Token &Result, bool isEndOfMacro) {
 bool Preprocessor::HandleEndOfTokenLexer(Token &Result) {
   assert(CurTokenLexer && !CurPPLexer &&
          "Ending a macro when currently in a #include file!");
+
+  // Tell us about the end of macro expansions.
+  if (CurTokenLexer && CurTokenLexer->Macro) {
+    Callbacks->Event(CurTokenLexer->MacroNameTok,
+                     PPCallbacks::EndMacroExpansion,
+                     reinterpret_cast<uintptr_t>(CurTokenLexer->Macro));
+    CurTokenLexer->Macro = nullptr;
+  }
 
   if (!MacroExpandingLexersStack.empty() &&
       MacroExpandingLexersStack.back().first == CurTokenLexer.get())

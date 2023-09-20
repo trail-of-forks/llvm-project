@@ -572,6 +572,13 @@ ALIAS("__is_same_as", __is_same, KEYCXX)
 KEYWORD(__private_extern__          , KEYALL)
 KEYWORD(__module_private__          , KEYALL)
 
+// Apple-specific XNU extensions.
+UNARY_EXPR_OR_TYPE_TRAIT(__builtin_ptrauth_type_discriminator, PtrAuthTypeDiscriminator, KEYALL)
+UNARY_EXPR_OR_TYPE_TRAIT(__builtin_xnu_type_signature, XNUTypeSignature, KEYALL)
+UNARY_EXPR_OR_TYPE_TRAIT(__builtin_xnu_type_summary, XNUTypeSummary, KEYALL)
+UNARY_EXPR_OR_TYPE_TRAIT(__builtin_tmo_type_get_metadata, TMOTypeGetMetadata, KEYALL)
+TYPE_TRAIT_2(__builtin_xnu_types_compatible, XNUTypeCompatible, KEYALL)
+
 // Extension that will be enabled for Microsoft, Borland and PS4, but can be
 // disabled via '-fno-declspec'.
 KEYWORD(__declspec                  , 0)

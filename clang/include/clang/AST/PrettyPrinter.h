@@ -304,6 +304,12 @@ struct PrintingPolicy {
   /// enumerator name or via cast of an integer.
   unsigned UseEnumerators : 1;
 
+  /// Should we print the adjusted array type, or the original array type?
+  unsigned PrintAdjustedArrayType : 1;
+
+  /// Should we print substituted template parameters?
+  unsigned PrintSubstitutedTemplateParameters : 1;
+
   /// Callbacks to use to allow the behavior of printing to be customized.
   const PrintingCallbacks *Callbacks = nullptr;
 };

@@ -29,6 +29,7 @@
 #include "clang/Lex/MacroInfo.h"
 #include "clang/Lex/ModuleLoader.h"
 #include "clang/Lex/PPCallbacks.h"
+#include "clang/Lex/PPCallbacksEventKind.h"
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Lex/PreprocessorLexer.h"
 #include "clang/Lex/PreprocessorOptions.h"
@@ -207,10 +208,25 @@ void Preprocessor::Handle_Pragma(Token &Tok) {
   // In Case #2, we check the syntax now, but then put the tokens back into the
   // token stream for later consumption.
 
+  // If we're expanding a macro argument, let the checking and subsequent lexing
+  // happen, but tell the listener that we're going to be cancelling this.
+  Token SavedIdentifier = Tok;
+  MacroDefinition MD = getMacroDefinition(Tok.getIdentifierInfo());
+  MacroInfo *MI = MD.getMacroInfo();
+  if (Callbacks) {
+    if (InMacroArgPreExpansion)
+      Callbacks->Event(SavedIdentifier, PPCallbacks::PrepareToCancelExpansion,
+                       reinterpret_cast<uintptr_t>(MI));
+    else
+      Callbacks->Event(SavedIdentifier, PPCallbacks::BeginMacroCallArgumentList,
+                       reinterpret_cast<uintptr_t>(MI));
+  }
+
   TokenCollector Toks = {*this, InMacroArgPreExpansion, {}, Tok};
 
   // Remember the pragma token location.
   SourceLocation PragmaLoc = Tok.getLocation();
+  SourceLocation PragmaEndLoc = Tok.getEndLoc();
 
   // Read the '('.
   Toks.lex();
@@ -218,6 +234,11 @@ void Preprocessor::Handle_Pragma(Token &Tok) {
     Diag(PragmaLoc, diag::err__Pragma_malformed);
     return;
   }
+
+  Token LParenTok = Tok;
+  if (Callbacks && !InMacroArgPreExpansion)
+    Callbacks->Event(LParenTok, PPCallbacks::BeginMacroCallArgument,
+                     reinterpret_cast<uintptr_t>(&SavedIdentifier));
 
   // Read the '"..."'.
   Toks.lex();
@@ -254,8 +275,38 @@ void Preprocessor::Handle_Pragma(Token &Tok) {
     return;
   }
 
+  // Go and simulate the directive events that would have happened if this had
+  // been an actual `#pragma` directive.
+  Token HashTok;
+  Token PragmaDirectiveTok;
+  if (Callbacks && !InMacroArgPreExpansion) {
+    Callbacks->Event(LParenTok, PPCallbacks::EndMacroCallArgument,
+                     reinterpret_cast<uintptr_t>(&Tok));
+    Callbacks->Event(LParenTok, PPCallbacks::EndMacroCallArgumentList, 0);
+    Callbacks->Event(SavedIdentifier, PPCallbacks::SwitchToExpansion,
+                     reinterpret_cast<uintptr_t>(MI));
+
+    HashTok.startToken();
+    HashTok.setKind(tok::hash);
+    CreateString("#", HashTok, PragmaLoc,
+                 PragmaLoc.getLocWithOffset(1));
+    HashTok.setLength(1u);
+    Callbacks->Event(HashTok, PPCallbacks::BeginDirective, 0);
+
+    PragmaDirectiveTok.startToken();
+    PragmaDirectiveTok.setKind(tok::raw_identifier);
+    CreateString("pragma", PragmaDirectiveTok, PragmaLoc.getLocWithOffset(1),
+                 PragmaEndLoc);
+    Callbacks->Event(PragmaDirectiveTok, PPCallbacks::TokenFromLexer, 0);
+    Callbacks->Event(HashTok, PPCallbacks::SetNamedDirective,
+                     reinterpret_cast<uintptr_t>(&PragmaDirectiveTok));
+  }
+
   // If we're expanding a macro argument, put the tokens back.
   if (InMacroArgPreExpansion) {
+    if (Callbacks)
+      Callbacks->Event(SavedIdentifier, PPCallbacks::CancelExpansion,
+                       reinterpret_cast<uintptr_t>(MI));
     Toks.revert();
     return;
   }
@@ -2021,11 +2072,6 @@ static IdentifierInfo *HandleMacroAnnotationPragma(Preprocessor &PP, Token &Tok,
   }
   IdentifierInfo *II = Tok.getIdentifierInfo();
 
-  if (!II->hasMacroDefinition()) {
-    PP.Diag(Tok, diag::err_pp_visibility_non_macro) << II;
-    return nullptr;
-  }
-
   PP.Lex(Tok);
   if (Tok.is(tok::comma)) {
     PP.Lex(Tok);
@@ -2038,6 +2084,10 @@ static IdentifierInfo *HandleMacroAnnotationPragma(Preprocessor &PP, Token &Tok,
     PP.Diag(Tok, diag::err_expected) << ")";
     return nullptr;
   }
+
+  if (!II->hasMacroDefinition())
+    return nullptr;
+
   return II;
 }
 

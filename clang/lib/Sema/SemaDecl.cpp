@@ -6363,6 +6363,10 @@ NamedDecl *Sema::HandleDeclarator(Scope *S, Declarator &D,
       Previous.setRedeclarationKind(ForExternalRedeclaration);
     }
 
+    // Disable auto-creation of builtins from things like `atoi`; it ends up
+    // leading to a lot of source location information being dropped.
+    CreateBuiltins = false && CreateBuiltins;
+
     LookupName(Previous, S, CreateBuiltins);
   } else { // Something like "int foo::x;"
     LookupQualifiedName(Previous, DC);
@@ -6553,6 +6557,13 @@ FixInvalidVariablyModifiedTypeLoc(TypeLoc SrcTL, TypeLoc DstTL) {
     DstPTL.setRParenLoc(SrcPTL.getRParenLoc());
     return;
   }
+
+  // Might have an AdjustedTypeLoc for DstTL due to PASTA patches for
+  // Multiplier issue #130.
+  if (AdjustedTypeLoc AdjTL = DstTL.getAs<AdjustedTypeLoc>()) {
+    DstTL = AdjTL.getOriginalLoc();
+  }
+
   ArrayTypeLoc SrcATL = SrcTL.castAs<ArrayTypeLoc>();
   ArrayTypeLoc DstATL = DstTL.castAs<ArrayTypeLoc>();
   TypeLoc SrcElemTL = SrcATL.getElementLoc();

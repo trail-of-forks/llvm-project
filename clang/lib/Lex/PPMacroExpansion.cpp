@@ -29,6 +29,7 @@
 #include "clang/Lex/LiteralSupport.h"
 #include "clang/Lex/MacroArgs.h"
 #include "clang/Lex/MacroInfo.h"
+#include "clang/Lex/PPCallbacksEventKind.h"
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Lex/PreprocessorLexer.h"
 #include "clang/Lex/PreprocessorOptions.h"
@@ -58,6 +59,57 @@
 #include <utility>
 
 using namespace clang;
+
+namespace {
+
+// Tell us about the end of macro expansions. We have to add this as a post-lex
+// action, so that we can observe what is actually lexed into `Identifier`.
+struct DeferExpansionEnd {
+  std::function<void(const Token &)> &PostLexAction;
+  PPCallbacks * const Callbacks;
+  Token Identifier;
+  MacroInfo * const MI;
+
+  DeferExpansionEnd(std::function<void(const Token &)> &PostLexAction_,
+                    PPCallbacks *Callbacks_, Token Identifier_, MacroInfo *MI_)
+      : PostLexAction(PostLexAction_),
+        Callbacks(Callbacks_),
+        Identifier(std::move(Identifier_)),
+        MI(MI_) {}
+
+  ~DeferExpansionEnd(void) {
+    if (Callbacks) {
+      PostLexAction = [CB = Callbacks, Ident = std::move(Identifier), Info = MI,
+                       PrevPostLexAction = std::move(PostLexAction)]
+                      (const Token &Tok) {
+        CB->Event(Ident, PPCallbacks::EndMacroExpansion,
+                  reinterpret_cast<uintptr_t>(Info));
+        PrevPostLexAction(Tok);
+      };
+    }
+  }
+};
+
+struct DeferExpansionCancellation {
+  std::function<void(void)> Action;
+  bool DoCancel{true};
+
+  template <typename CB>
+  DeferExpansionCancellation(CB Action_)
+      : Action(std::move(Action_)) {}
+
+  ~DeferExpansionCancellation(void) {
+    if (DoCancel) {
+      Action();
+    }
+  }
+
+  void DisableCancellation(void) {
+    DoCancel = false;
+  }
+};
+
+}  // namespace
 
 MacroDirective *
 Preprocessor::getLocalMacroDirectiveHistory(const IdentifierInfo *II) const {
@@ -480,6 +532,18 @@ bool Preprocessor::HandleMacroExpandedIdentifier(Token &Identifier,
 
   MacroInfo *MI = M.getMacroInfo();
 
+  // Visibility into macro expansion.
+  Token SavedIdentifier = Identifier;
+  if (Callbacks)
+    Callbacks->Event(SavedIdentifier, PPCallbacks::BeginMacroExpansion,
+                     reinterpret_cast<uintptr_t>(MI));
+
+  DeferExpansionCancellation CancelExpansion([&, this] (void) {
+    if (Callbacks)
+      Callbacks->Event(SavedIdentifier, PPCallbacks::CancelExpansion,
+                       reinterpret_cast<uintptr_t>(MI));
+  });
+
   // If this is a macro expansion in the "#if !defined(x)" line for the file,
   // then the macro could expand to different things in other contexts, we need
   // to disable the optimization in this case.
@@ -490,6 +554,8 @@ bool Preprocessor::HandleMacroExpandedIdentifier(Token &Identifier,
     if (Callbacks)
       Callbacks->MacroExpands(Identifier, M, Identifier.getLocation(),
                               /*Args=*/nullptr);
+
+    CancelExpansion.DisableCancellation();
     ExpandBuiltinMacro(Identifier);
     return true;
   }
@@ -511,7 +577,20 @@ bool Preprocessor::HandleMacroExpandedIdentifier(Token &Identifier,
     InMacroArgs = true;
     ArgMacro = &Identifier;
 
-    Args = ReadMacroCallArgumentList(Identifier, MI, ExpansionEnd);
+    // Visibility into macro expansion.
+    if (Callbacks)
+      Callbacks->Event(SavedIdentifier, PPCallbacks::BeginMacroCallArgumentList,
+                       reinterpret_cast<uintptr_t>(MI));
+
+    // Visibility to last token in argument list.
+    Token ExpansionEndTok;
+    Args = ReadMacroCallArgumentList(Identifier, MI, ExpansionEndTok);
+    ExpansionEnd = ExpansionEndTok.getLocation();
+
+    // Visibility into macro expansion.
+    if (Callbacks)
+      Callbacks->Event(ExpansionEndTok, PPCallbacks::EndMacroCallArgumentList,
+                       reinterpret_cast<uintptr_t>(Args));
 
     // Finished parsing args.
     InMacroArgs = false;
@@ -568,65 +647,11 @@ bool Preprocessor::HandleMacroExpandedIdentifier(Token &Identifier,
 
   // If we started lexing a macro, enter the macro expansion body.
 
-  // If this macro expands to no tokens, don't bother to push it onto the
-  // expansion stack, only to take it right back off.
-  if (MI->getNumTokens() == 0) {
-    // No need for arg info.
-    if (Args) Args->destroy(*this);
-
-    // Propagate whitespace info as if we had pushed, then popped,
-    // a macro context.
-    Identifier.setFlag(Token::LeadingEmptyMacro);
-    PropagateLineStartLeadingSpaceInfo(Identifier);
-    ++NumFastMacroExpanded;
-    return false;
-  } else if (MI->getNumTokens() == 1 &&
-             isTrivialSingleTokenExpansion(MI, Identifier.getIdentifierInfo(),
-                                           *this)) {
-    // Otherwise, if this macro expands into a single trivially-expanded
-    // token: expand it now.  This handles common cases like
-    // "#define VAL 42".
-
-    // No need for arg info.
-    if (Args) Args->destroy(*this);
-
-    // Propagate the isAtStartOfLine/hasLeadingSpace markers of the macro
-    // identifier to the expanded token.
-    bool isAtStartOfLine = Identifier.isAtStartOfLine();
-    bool hasLeadingSpace = Identifier.hasLeadingSpace();
-
-    // Replace the result token.
-    Identifier = MI->getReplacementToken(0);
-
-    // Restore the StartOfLine/LeadingSpace markers.
-    Identifier.setFlagValue(Token::StartOfLine , isAtStartOfLine);
-    Identifier.setFlagValue(Token::LeadingSpace, hasLeadingSpace);
-
-    // Update the tokens location to include both its expansion and physical
-    // locations.
-    SourceLocation Loc =
-      SourceMgr.createExpansionLoc(Identifier.getLocation(), ExpandLoc,
-                                   ExpansionEnd,Identifier.getLength());
-    Identifier.setLocation(Loc);
-
-    // If this is a disabled macro or #define X X, we must mark the result as
-    // unexpandable.
-    if (IdentifierInfo *NewII = Identifier.getIdentifierInfo()) {
-      if (MacroInfo *NewMI = getMacroInfo(NewII))
-        if (!NewMI->isEnabled() || NewMI == MI) {
-          Identifier.setFlag(Token::DisableExpand);
-          // Don't warn for "#define X X" like "#define bool bool" from
-          // stdbool.h.
-          if (NewMI != MI || MI->isFunctionLike())
-            Diag(Identifier, diag::pp_disabled_macro_expansion);
-        }
-    }
-
-    // Since this is not an identifier token, it can't be macro expanded, so
-    // we're done.
-    ++NumFastMacroExpanded;
-    return true;
-  }
+  // Switch state to now start expanding.
+  CancelExpansion.DisableCancellation();
+  if (Callbacks)
+    Callbacks->Event(SavedIdentifier, PPCallbacks::SwitchToExpansion,
+                     reinterpret_cast<uintptr_t>(MI));
 
   // Start expanding the macro.
   EnterMacro(Identifier, ExpansionEnd, MI, Args);
@@ -766,14 +791,12 @@ static bool GenerateNewArgTokens(Preprocessor &PP,
 /// actual arguments specified for the macro invocation.  This returns null on
 /// error.
 MacroArgs *Preprocessor::ReadMacroCallArgumentList(Token &MacroName,
-                                                   MacroInfo *MI,
-                                                   SourceLocation &MacroEnd) {
+                                                   MacroInfo *MI, Token &Tok) {
   // The number of fixed arguments to parse.
   unsigned NumFixedArgsLeft = MI->getNumParams();
   bool isVariadic = MI->isVariadic();
 
   // Outer loop, while there are more arguments, keep reading them.
-  Token Tok;
 
   // Read arguments as unexpanded tokens.  This avoids issues, e.g., where
   // an argument value in a macro could expand to ',' or '(' or ')'.
@@ -786,6 +809,9 @@ MacroArgs *Preprocessor::ReadMacroCallArgumentList(Token &MacroName,
   SmallVector<Token, 64> ArgTokens;
   bool ContainsCodeCompletionTok = false;
   bool FoundElidedComma = false;
+  bool InVariadicSection = false;
+  bool InArgument = false;
+  Token ArgStartTok;
 
   SourceLocation TooManyArgsLoc;
 
@@ -799,6 +825,21 @@ MacroArgs *Preprocessor::ReadMacroCallArgumentList(Token &MacroName,
 
     size_t ArgTokenStart = ArgTokens.size();
     SourceLocation ArgStartLoc = Tok.getLocation();
+
+    // Visibility into macro expansion.
+    ArgStartTok = Tok;
+    if (Callbacks) {
+      if (isVariadic && !NumFixedArgsLeft) {
+        Callbacks->Event(ArgStartTok, PPCallbacks::BeginVariadicCallArgumentList,
+                         reinterpret_cast<uintptr_t>(&MacroName));
+        InVariadicSection = true;
+      }
+      if (NumFixedArgsLeft) {
+        Callbacks->Event(ArgStartTok, PPCallbacks::BeginMacroCallArgument,
+                         reinterpret_cast<uintptr_t>(&MacroName));
+        InArgument = true;
+      }
+    }
 
     // C99 6.10.3p11: Keep track of the number of l_parens we have seen.  Note
     // that we already consumed the first one.
@@ -826,7 +867,6 @@ MacroArgs *Preprocessor::ReadMacroCallArgumentList(Token &MacroName,
       } else if (Tok.is(tok::r_paren)) {
         // If we found the ) token, the macro arg list is done.
         if (NumParens-- == 0) {
-          MacroEnd = Tok.getLocation();
           if (!ArgTokens.empty() &&
               ArgTokens.back().commaAfterElided()) {
             FoundElidedComma = true;
@@ -854,6 +894,27 @@ MacroArgs *Preprocessor::ReadMacroCallArgumentList(Token &MacroName,
             break;
           if (NumFixedArgsLeft > 1)
             break;
+
+          // Visibility into variadic macro expansion.
+          if (Callbacks) {
+            if (InArgument) {
+              Callbacks->Event(ArgStartTok, PPCallbacks::EndMacroCallArgument,
+                               reinterpret_cast<uintptr_t>(&Tok));
+              InArgument = false;
+            }
+            ArgStartTok = Tok;
+
+            if (!InVariadicSection) {
+              Callbacks->Event(
+                  ArgStartTok, PPCallbacks::BeginVariadicCallArgumentList,
+                  reinterpret_cast<uintptr_t>(&MacroName));
+              InVariadicSection = true;
+            }
+
+            Callbacks->Event(ArgStartTok, PPCallbacks::BeginMacroCallArgument,
+                             reinterpret_cast<uintptr_t>(&MacroName));
+            InArgument = true;
+          }
         }
       } else if (Tok.is(tok::comment) && !KeepMacroComments) {
         // If this is a comment token in the argument list and we're just in
@@ -903,6 +964,13 @@ MacroArgs *Preprocessor::ReadMacroCallArgumentList(Token &MacroName,
                     ? diag::warn_cxx98_compat_empty_fnmacro_arg
                     : diag::ext_empty_fnmacro_arg);
 
+    if (Callbacks)
+      if (InArgument) {
+        InArgument = false;
+        Callbacks->Event(ArgStartTok, PPCallbacks::EndMacroCallArgument,
+                         reinterpret_cast<uintptr_t>(&Tok));
+      }
+
     // Add a marker EOF token to the end of the token list for this argument.
     Token EOFTok;
     EOFTok.startToken();
@@ -913,6 +981,17 @@ MacroArgs *Preprocessor::ReadMacroCallArgumentList(Token &MacroName,
     ++NumActuals;
     if (!ContainsCodeCompletionTok && NumFixedArgsLeft != 0)
       --NumFixedArgsLeft;
+  }
+
+  if (Callbacks) {
+    if (InArgument) {
+      InArgument = false;
+      Callbacks->Event(ArgStartTok, PPCallbacks::EndMacroCallArgument,
+                       reinterpret_cast<uintptr_t>(&Tok));
+    }
+    if (InVariadicSection)
+      Callbacks->Event(ArgStartTok, PPCallbacks::EndVariadicCallArgumentList,
+                       reinterpret_cast<uintptr_t>(&Tok));
   }
 
   // Okay, we either found the r_paren.  Check to see if we parsed too few
@@ -1182,6 +1261,16 @@ static bool EvaluateHasIncludeCommon(Token &Tok, IdentifierInfo *II,
                                      Preprocessor &PP,
                                      ConstSearchDirIterator LookupFrom,
                                      const FileEntry *LookupFromFile) {
+  // Visibility into macro expansion.
+  PPCallbacks *Callbacks = PP.getPPCallbacks();
+  Token SavedIdentifier = Tok;
+  SavedIdentifier.setIdentifierInfo(II);
+  MacroDefinition MD = PP.getMacroDefinition(II);
+  MacroInfo *MI = MD.getMacroInfo();
+  if (Callbacks)
+    Callbacks->Event(SavedIdentifier, PPCallbacks::BeginMacroCallArgumentList,
+                     reinterpret_cast<uintptr_t>(MI));
+
   // Save the location of the current token.  If a '(' is later found, use
   // that location.  If not, use the end of this location instead.
   SourceLocation LParenLoc = Tok.getLocation();
@@ -1201,6 +1290,8 @@ static bool EvaluateHasIncludeCommon(Token &Tok, IdentifierInfo *II,
       return false;
   } while (Tok.getKind() == tok::comment);
 
+  Token LParenTok = Tok;
+
   // Ensure we have a '('.
   if (Tok.isNot(tok::l_paren)) {
     // No '(', use end of last token.
@@ -1211,6 +1302,10 @@ static bool EvaluateHasIncludeCommon(Token &Tok, IdentifierInfo *II,
     if (Tok.isNot(tok::header_name))
       return false;
   } else {
+    if (Callbacks)
+      Callbacks->Event(LParenTok, PPCallbacks::BeginMacroCallArgument,
+                       reinterpret_cast<uintptr_t>(&SavedIdentifier));
+
     // Save '(' location for possible missing ')' message.
     LParenLoc = Tok.getLocation();
     if (PP.LexHeaderName(Tok))
@@ -1240,6 +1335,15 @@ static bool EvaluateHasIncludeCommon(Token &Tok, IdentifierInfo *II,
         << II << tok::r_paren;
     PP.Diag(LParenLoc, diag::note_matching) << tok::l_paren;
     return false;
+  }
+
+  if (Callbacks) {
+    Callbacks->Event(LParenTok, PPCallbacks::EndMacroCallArgument,
+                     reinterpret_cast<uintptr_t>(&Tok));
+    Callbacks->Event(LParenTok, PPCallbacks::EndMacroCallArgumentList,
+                     0);
+    Callbacks->Event(SavedIdentifier, PPCallbacks::SwitchToExpansion,
+                     reinterpret_cast<uintptr_t>(MI));
   }
 
   bool isAngled = PP.GetIncludeFilenameSpelling(Tok.getLocation(), Filename);
@@ -1285,6 +1389,13 @@ static void EvaluateFeatureLikeBuiltinMacro(llvm::raw_svector_ostream& OS,
                                             llvm::function_ref<
                                               int(Token &Tok,
                                                   bool &HasLexedNextTok)> Op) {
+  // Visibility into macro expansion.
+  PPCallbacks *Callbacks = PP.getPPCallbacks();
+  Token SavedIdentifier = Tok;
+  SavedIdentifier.setIdentifierInfo(II);
+  MacroDefinition MD = PP.getMacroDefinition(II);
+  MacroInfo *MI = MD.getMacroInfo();
+
   // Parse the initial '('.
   PP.LexUnexpandedToken(Tok);
   if (Tok.isNot(tok::l_paren)) {
@@ -1302,6 +1413,14 @@ static void EvaluateFeatureLikeBuiltinMacro(llvm::raw_svector_ostream& OS,
   unsigned ParenDepth = 1;
   SourceLocation LParenLoc = Tok.getLocation();
   std::optional<int> Result;
+
+  clang::Token ArgSepTok = Tok;
+  if (Callbacks) {
+    Callbacks->Event(SavedIdentifier, PPCallbacks::BeginMacroCallArgumentList,
+                     reinterpret_cast<uintptr_t>(MI));
+    Callbacks->Event(ArgSepTok, PPCallbacks::BeginMacroCallArgument,
+                     reinterpret_cast<uintptr_t>(&SavedIdentifier));
+  }
 
   Token ResultTok;
   bool SuppressDiagnostic = false;
@@ -1322,6 +1441,14 @@ already_lexed:
         return;
 
       case tok::comma:
+        if (ParenDepth == 1 && Callbacks) {
+          Callbacks->Event(ArgSepTok, PPCallbacks::EndMacroCallArgument,
+                           reinterpret_cast<uintptr_t>(&Tok));
+          ArgSepTok = Tok;
+          Callbacks->Event(ArgSepTok, PPCallbacks::BeginMacroCallArgument,
+                           reinterpret_cast<uintptr_t>(&SavedIdentifier));
+        }
+
         if (!SuppressDiagnostic) {
           PP.Diag(Tok.getLocation(), diag::err_too_many_args_in_macro_invoc);
           SuppressDiagnostic = true;
@@ -1341,6 +1468,14 @@ already_lexed:
       case tok::r_paren:
         if (--ParenDepth > 0)
           continue;
+
+        if (Callbacks) {
+          Callbacks->Event(ArgSepTok, PPCallbacks::EndMacroCallArgument,
+                           reinterpret_cast<uintptr_t>(&Tok));
+          Callbacks->Event(ArgSepTok, PPCallbacks::EndMacroCallArgumentList, 0);
+          Callbacks->Event(SavedIdentifier, PPCallbacks::SwitchToExpansion,
+                           reinterpret_cast<uintptr_t>(MI));
+        }
 
         // The last ')' has been reached; return the value if one found or
         // a diagnostic and a dummy value.
@@ -1513,7 +1648,20 @@ void Preprocessor::ExpandBuiltinMacro(Token &Tok) {
   bool IsAtStartOfLine = Tok.isAtStartOfLine();
   bool HasLeadingSpace = Tok.hasLeadingSpace();
 
+  Token SavedIdentifier = Tok;
+  SavedIdentifier.setIdentifierInfo(II);
+  MacroDefinition MD = getMacroDefinition(II);
+  MacroInfo *MI = MD.getMacroInfo();
+  DeferExpansionEnd NotifyMacroEnd(PostLexAction, Callbacks.get(),
+                                   SavedIdentifier, MI);
+  auto SwitchToExpansion = [&] (void) {
+    if (Callbacks)
+      Callbacks->Event(SavedIdentifier, PPCallbacks::SwitchToExpansion,
+                       reinterpret_cast<uintptr_t>(MI));
+  };
+
   if (II == Ident__LINE__) {
+    SwitchToExpansion();
     // C99 6.10.8: "__LINE__: The presumed line number (within the current
     // source file) of the current source line (an integer constant)".  This can
     // be affected by #line.
@@ -1536,6 +1684,7 @@ void Preprocessor::ExpandBuiltinMacro(Token &Tok) {
     Tok.setKind(tok::numeric_constant);
   } else if (II == Ident__FILE__ || II == Ident__BASE_FILE__ ||
              II == Ident__FILE_NAME__) {
+    SwitchToExpansion();
     // C99 6.10.8: "__FILE__: The presumed name of the current source file (a
     // character string literal)". This can be affected by #line.
     PresumedLoc PLoc = SourceMgr.getPresumedLoc(Tok.getLocation());
@@ -1569,6 +1718,7 @@ void Preprocessor::ExpandBuiltinMacro(Token &Tok) {
     }
     Tok.setKind(tok::string_literal);
   } else if (II == Ident__DATE__) {
+    SwitchToExpansion();
     Diag(Tok.getLocation(), diag::warn_pp_date_time);
     if (!DATELoc.isValid())
       ComputeDATE_TIME(DATELoc, TIMELoc, *this);
@@ -1579,6 +1729,7 @@ void Preprocessor::ExpandBuiltinMacro(Token &Tok) {
                                                  Tok.getLength()));
     return;
   } else if (II == Ident__TIME__) {
+    SwitchToExpansion();
     Diag(Tok.getLocation(), diag::warn_pp_date_time);
     if (!TIMELoc.isValid())
       ComputeDATE_TIME(DATELoc, TIMELoc, *this);
@@ -1589,6 +1740,7 @@ void Preprocessor::ExpandBuiltinMacro(Token &Tok) {
                                                  Tok.getLength()));
     return;
   } else if (II == Ident__INCLUDE_LEVEL__) {
+    SwitchToExpansion();
     // Compute the presumed include depth of this token.  This can be affected
     // by GNU line markers.
     unsigned Depth = 0;
@@ -1604,6 +1756,7 @@ void Preprocessor::ExpandBuiltinMacro(Token &Tok) {
     OS << Depth;
     Tok.setKind(tok::numeric_constant);
   } else if (II == Ident__TIMESTAMP__) {
+    SwitchToExpansion();
     Diag(Tok.getLocation(), diag::warn_pp_date_time);
     // MSVC, ICC, GCC, VisualAge C++ extension.  The generated string should be
     // of the form "Ddd Mmm dd hh::mm::ss yyyy", which is returned by asctime.
@@ -1630,6 +1783,7 @@ void Preprocessor::ExpandBuiltinMacro(Token &Tok) {
     OS << '"' << StringRef(Result).drop_back() << '"';
     Tok.setKind(tok::string_literal);
   } else if (II == Ident__FLT_EVAL_METHOD__) {
+    SwitchToExpansion();
     // __FLT_EVAL_METHOD__ is set to the default value.
     OS << getTUFPEvalMethod();
     // __FLT_EVAL_METHOD__ expands to a simple numeric value.
@@ -1641,6 +1795,7 @@ void Preprocessor::ExpandBuiltinMacro(Token &Tok) {
       Diag(getLastFPEvalPragmaLocation(), diag::note_pragma_entered_here);
     }
   } else if (II == Ident__COUNTER__) {
+    SwitchToExpansion();
     // __COUNTER__ expands to a simple numeric value.
     OS << CounterValue++;
     Tok.setKind(tok::numeric_constant);
@@ -1842,6 +1997,7 @@ void Preprocessor::ExpandBuiltinMacro(Token &Tok) {
                (II->getName() == getLangOpts().CurrentModule);
       });
   } else if (II == Ident__MODULE__) {
+    SwitchToExpansion();
     // The current module as an identifier.
     OS << getLangOpts().CurrentModule;
     IdentifierInfo *ModuleII = getIdentifierInfo(getLangOpts().CurrentModule);
@@ -1849,6 +2005,10 @@ void Preprocessor::ExpandBuiltinMacro(Token &Tok) {
     Tok.setKind(ModuleII->getTokenID());
   } else if (II == Ident__identifier) {
     SourceLocation Loc = Tok.getLocation();
+
+    if (Callbacks)
+      Callbacks->Event(SavedIdentifier, PPCallbacks::BeginMacroCallArgumentList,
+                       0);
 
     // We're expecting '__identifier' '(' identifier ')'. Try to recover
     // if the parens are missing.
@@ -1862,6 +2022,11 @@ void Preprocessor::ExpandBuiltinMacro(Token &Tok) {
         Tok.setKind(tok::identifier);
       return;
     }
+
+    Token LParenTok = Tok;
+    if (Callbacks)
+      Callbacks->Event(LParenTok, PPCallbacks::BeginMacroCallArgument,
+                       reinterpret_cast<uintptr_t>(&SavedIdentifier));
 
     SourceLocation LParenLoc = Tok.getLocation();
     LexNonComment(Tok);
@@ -1892,6 +2057,14 @@ void Preprocessor::ExpandBuiltinMacro(Token &Tok) {
         << Tok.getKind() << tok::r_paren;
       Diag(LParenLoc, diag::note_matching) << tok::l_paren;
     }
+
+    if (Callbacks) {
+      Callbacks->Event(LParenTok, PPCallbacks::EndMacroCallArgument,
+                       reinterpret_cast<uintptr_t>(&Tok));
+      Callbacks->Event(Tok, PPCallbacks::EndMacroCallArgumentList, 0);
+    }
+    SwitchToExpansion();
+
     return;
   } else if (II == Ident__is_target_arch) {
     EvaluateFeatureLikeBuiltinMacro(
