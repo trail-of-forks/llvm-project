@@ -3988,6 +3988,9 @@ bool Sema::MergeFunctionDecl(FunctionDecl *New, NamedDecl *&OldD, Scope *S,
           return true;
         }
 
+        if (getLangOpts().LexicalTemplateInstantiation)
+          return true;
+
         // C++ [class.mem]p1:
         //   [...] A member shall not be declared twice in the
         //   member-specification, except that a nested class or member

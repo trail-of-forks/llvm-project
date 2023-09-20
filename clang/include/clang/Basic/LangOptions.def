@@ -313,8 +313,9 @@ COMPATIBLE_LANGOPT(CLUnsafeMath , 1, 0, "Unsafe Floating Point Math")
 COMPATIBLE_LANGOPT(CLFiniteMathOnly , 1, 0, "__FINITE_MATH_ONLY__ predefined macro")
 
 // PASTA-specific options.
-LANGOPT(AttrTypesHaveAttrs, 1, 0, "Should attribute types store attributes?")
-LANGOPT(UnknownAttrAnnotate, 1, 0, "Unknown attributes are treated as annotation or annotation type attributes during semantic analysis")
+LANGOPT(LexicalTemplateInstantiation , 1, 0, "Try to maintain the lexical provenance of decls during template instantiation")
+LANGOPT(AttrTypesHaveAttrs, 1, 0, "Embed attributes into attribute types")
+LANGOPT(UnknownAttrAnnotate, 1, 0, "Treat unknown/unrecognized attributes as annotation attributes")
 
 /// FP_CONTRACT mode (on/off/fast).
 BENIGN_ENUM_LANGOPT(DefaultFPContractMode, FPModeKind, 2, FPM_Off, "FP contraction type")

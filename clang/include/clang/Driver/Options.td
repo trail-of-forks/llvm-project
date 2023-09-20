@@ -4654,6 +4654,12 @@ def working_directory_EQ : Joined<["-"], "working-directory=">, Flags<[CC1Option
   Alias<working_directory>;
 
 // PASTA options.
+
+def flexical_template_instantiation : Flag<["-"], "flexical-template-instantiation">,
+  Flags<[CC1Option]>,
+  HelpText<"Maintain lexical provenance of template instantiations">,
+  MarshallingInfoFlag<LangOpts<"LexicalTemplateInstantiation">>;
+
 def fattr_types_have_attrs : Flag<["-"], "fattr-types-have-attrs">,
   Flags<[CC1Option]>,
   HelpText<"Store attributes in attributed types">,

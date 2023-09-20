@@ -642,6 +642,11 @@ enum class TemplateSubstitutionKind : char {
     Decl *VisitBaseUsingDecls(BaseUsingDecl *D, BaseUsingDecl *Inst,
                               LookupResult *Lookup);
 
+    Decl *CreateFunctionTemplateInstantiation(
+        CXXMethodDecl *D, TemplateParameterList *TemplateParams,
+        std::optional<const ASTTemplateArgumentListInfo *>
+          ClassScopeSpecializationArgs = std::nullopt);
+
     // Enable late instantiation of attributes.  Late instantiated attributes
     // will be stored in LA.
     void enableLateAttributeInstantiation(Sema::LateInstantiatedAttrVec *LA) {

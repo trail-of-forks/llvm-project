@@ -3755,9 +3755,50 @@ bool Sema::InstantiateClassTemplateSpecialization(
   if (!Pattern.isUsable())
     return Pattern.isInvalid();
 
+  auto TemplateArgs = getTemplateInstantiationArgs(ClassTemplateSpec);
+
+  if (!getLangOpts().LexicalTemplateInstantiation) {
+    ClassTemplateSpecializationDecl *PrevClassTemplateSpec = ClassTemplateSpec;
+
+    // PASTA patches for template instantiation
+    CXXRecordDecl *PatternDecl = dyn_cast<CXXRecordDecl>(Pattern.get());
+    assert(PatternDecl && "instantiating a non-template");
+
+    CXXRecordDecl *PatternDef = nullptr;
+    if (PatternDecl && PatternDecl->hasDefinition()) {
+      PatternDef = PatternDecl->getDefinition();
+    }
+
+    // NOTE(kumarak): If the PatternDef is an instance of ClassTemplatePartialSpecializationDecl
+    //                ClassTemplate will be null. How to handle such case.
+    if (PatternDef) {
+      auto ClassTemplate = PatternDef->getDescribedClassTemplate();
+      if (ClassTemplate) {
+        auto CanClassTemplate = ClassTemplate->getCanonicalDecl();
+        if (ClassTemplate->isOutOfLine() || CanClassTemplate->isOutOfLine()) {
+          auto isFriend = (CanClassTemplate->getFriendObjectKind() != Decl::FOK_None);
+          if (isFriend) {
+              //if (auto NewClassTemplateSpec = createFriendClassTemplateSpecializationForDefinition(
+              //    ClassTemplateSpec, PointOfInstantiation, Pattern.get())) {
+               // ClassTemplateSpec = NewClassTemplateSpec;
+              //}
+          } else {
+            if (auto NewClassTemplateSpec = createClassTemplateSpecializationForDefinition(
+                ClassTemplateSpec, PointOfInstantiation, Pattern.get())) {
+              ClassTemplateSpec = NewClassTemplateSpec;
+            }
+          }
+        }
+      }
+
+      assert((ClassTemplateSpec->getDeclContext() == PrevClassTemplateSpec->getDeclContext()) &&
+             "Class template declaration and definition context mismatch");
+    }
+  }
+
   return InstantiateClass(
       PointOfInstantiation, ClassTemplateSpec, Pattern.get(),
-      getTemplateInstantiationArgs(ClassTemplateSpec), TSK, Complain);
+      TemplateArgs, TSK, Complain);
 }
 
 /// Instantiates the definitions of all of the member

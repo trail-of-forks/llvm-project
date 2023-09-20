@@ -4761,14 +4761,19 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
   }
 
   // PASTA-specific command-line arguments.
-  if (const Arg *A = Args.getLastArg(options::OPT_funknown_attrs_as_annotate)) {
-    CmdArgs.push_back("-funknown-attrs-as-annotate");
-    A->claim();
+  if (const Arg *LTI = Args.getLastArg(options::OPT_flexical_template_instantiation)) {
+    CmdArgs.push_back("-flexical-template-instantiation");
+    LTI->claim();
   }
 
-  if (const Arg *A = Args.getLastArg(options::OPT_fattr_types_have_attrs)) {
+  if (const Arg *UAA = Args.getLastArg(options::OPT_funknown_attrs_as_annotate)) {
+    CmdArgs.push_back("-funknown-attrs-as-annotate");
+    UAA->claim();
+  }
+
+  if (const Arg *ATA = Args.getLastArg(options::OPT_fattr_types_have_attrs)) {
     CmdArgs.push_back("-fattr-types-have-attrs");
-    A->claim();
+    ATA->claim();
   }
 
   if (IsOpenMPDevice) {
