@@ -4095,6 +4095,13 @@ QualType ASTContext::getConstantArrayType(QualType EltTy,
   // consumers can see the size without losing token provenance.
   //
   // XREF(pag): Multiplier issue #427.
+  //
+  // PORT NOTE (PASTA, llvmorg-18.1.4 -> llvmorg-20.1.4): the original form of
+  // this logic from ff860c14f274 has been superseded by the consolidated fix
+  // from commit 1cee1b66c77b ("[PASTA] Multiplier issue 427"). The incoming
+  // patch's intent here is dead code (its OrigSizeExpr was never threaded
+  // into ConstantArrayType::Create); the HEAD version preserves the same
+  // observable behavior with the refined idiom, so we keep HEAD.
   if (SizeExpr && !SizeExpr->isInstantiationDependent()) {
     if (auto *CE = dyn_cast<ConstantExpr>(const_cast<Expr *>(SizeExpr))) {
       if (CE->getResultStorageKind() == ConstantResultStorageKind::None) {
