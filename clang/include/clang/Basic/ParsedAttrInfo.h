@@ -54,6 +54,8 @@ struct ParsedAttrInfo {
   unsigned IsKnownToGCC : 1;
   /// True if this attribute is supported by #pragma clang attribute.
   unsigned IsSupportedByPragmaAttribute : 1;
+  /// True if we handled this as unknown.
+  mutable unsigned IsAnnotateFromUnknown : 1;
   /// The syntaxes supported by this attribute and how they're spelled.
   struct Spelling {
     AttributeCommonInfo::Syntax Syntax;
@@ -68,7 +70,8 @@ protected:
                                AttributeCommonInfo::NoSemaHandlerAttribute)
       : AttrKind(AttrKind), NumArgs(0), OptArgs(0), NumArgMembers(0),
         HasCustomParsing(0), AcceptsExprPack(0), IsTargetSpecific(0), IsType(0),
-        IsStmt(0), IsKnownToGCC(0), IsSupportedByPragmaAttribute(0) {}
+        IsStmt(0), IsKnownToGCC(0), IsSupportedByPragmaAttribute(0),
+        IsAnnotateFromUnknown(0) {}
 
   constexpr ParsedAttrInfo(AttributeCommonInfo::Kind AttrKind, unsigned NumArgs,
                            unsigned OptArgs, unsigned NumArgMembers,
@@ -83,6 +86,7 @@ protected:
         AcceptsExprPack(AcceptsExprPack), IsTargetSpecific(IsTargetSpecific),
         IsType(IsType), IsStmt(IsStmt), IsKnownToGCC(IsKnownToGCC),
         IsSupportedByPragmaAttribute(IsSupportedByPragmaAttribute),
+        IsAnnotateFromUnknown(0),
         Spellings(Spellings), ArgNames(ArgNames) {}
 
 public:

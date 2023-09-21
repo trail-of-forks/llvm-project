@@ -8469,31 +8469,43 @@ static void HandleMatrixTypeAttr(QualType &CurType, const ParsedAttr &Attr,
     CurType = T;
 }
 
+static Expr *identifierToStringLiteral(ASTContext &Ctx,
+                                       const IdentifierInfo *II,
+                                       clang::SourceLocation Loc) {
+  auto Name = II->getName();
+  auto StrTy = Ctx.getStringLiteralArrayType(Ctx.CharTy, Name.size());
+  return clang::StringLiteral::Create(
+      Ctx, Name, clang::StringLiteral::StringKind::Ordinary,
+      /*Pascal=*/false, StrTy, Loc);
+}
+
 static void HandleUnkownTypeAttrAsAnnotateTypeAttr(TypeProcessingState &State,
-                                   QualType &CurType, const ParsedAttr &PA) {
+                                   QualType &CurType, const ParsedAttr &AL) {
   Sema &S = State.getSema();
-  StringRef Str = PA.getAttrName()->getName();
-
   llvm::SmallVector<Expr *, 4> Args;
-  Args.reserve(PA.getNumArgs());
-  for (unsigned Idx = 0; Idx < PA.getNumArgs(); Idx++) {
-    if (PA.isArgExpr(Idx)) {
-      Args.push_back(PA.getArgAsExpr(Idx));
-    } else if (PA.isArgIdent(Idx)) {
-      IdentifierLoc *Parm = PA.getArgAsIdent(Idx);
+  Args.reserve(AL.getNumArgs());
 
-      auto Name = Parm->Ident->getName();
-      auto &Ctx = S.getASTContext();
-      auto StrTy = Ctx.getStringLiteralArrayType(Ctx.CharTy, Name.size());
-      Args.push_back(clang::StringLiteral::Create(
-          Ctx, Name, clang::StringLiteral::StringKind::Ordinary,
-          /*Pascal=*/false, StrTy, Parm->Loc));
+  for (unsigned Idx = 0; Idx < AL.getNumArgs(); Idx++) {
+    if (AL.isArgExpr(Idx)) {
+      Args.push_back(AL.getArgAsExpr(Idx));
+
+    // Its an identifier; convert it to a string literal.
+    } else if (AL.isArgIdent(Idx)) {
+      IdentifierLoc *Parm = AL.getArgAsIdent(Idx);
+      Args.push_back(identifierToStringLiteral(
+          S.getASTContext(), Parm->Ident, Parm->Loc));
     }
   }
-  if (!S.ConstantFoldAttrArgs(PA, Args))
+
+  auto &Info = const_cast<ParsedAttrInfo &>(AL.getInfo());
+  Info.IsAnnotateFromUnknown = 1;
+  Info.IsType = 1;
+  Info.AttrKind = ParsedAttr::AT_AnnotateType;
+
+  if (!S.ConstantFoldAttrArgs(AL, Args))
     return;
-  auto *AnnotateTypeAttr =
-      AnnotateTypeAttr::Create(S.Context, Str, Args.data(), Args.size(), PA);
+  auto *AnnotateTypeAttr = AnnotateTypeAttr::Create(
+      S.Context, AL.getAttrName()->getName(), Args.data(), Args.size(), AL);
   CurType = State.getAttributedType(AnnotateTypeAttr, CurType, CurType);
 }
 
@@ -8602,7 +8614,12 @@ static void processTypeAttrs(TypeProcessingState &state, QualType &type,
       break;
 
     case ParsedAttr::UnknownAttribute:
-      if (state.getSema().getLangOpts().UnknownAttrAnnotate) {
+      // TODO(pag): We're not able to do a good job of figuring out if an
+      // unknown attribute should apply to a type of a declaration. Ideally,
+      // we'd want to know "does it appear after a type token", but we don't
+      // seem to have that granularity of information.
+      if (false && state.getSema().getLangOpts().UnknownAttrAnnotate &&
+          TAL == TAL_DeclChunk) {
         HandleUnkownTypeAttrAsAnnotateTypeAttr(state, type, attr);
         attr.setUsedAsTypeAttr();
       } else if (attr.isStandardAttributeSyntax()) {

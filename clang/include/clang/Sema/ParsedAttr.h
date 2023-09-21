@@ -143,9 +143,12 @@ private:
   SourceLocation MacroExpansionLoc;
   SourceLocation EllipsisLoc;
 
+public:
   /// The number of expression arguments this attribute has.
   /// The expressions themselves are stored after the object.
-  unsigned NumArgs : 16;
+  mutable unsigned NumArgs : 16;
+
+private:
 
   /// True if already diagnosed as invalid.
   mutable unsigned Invalid : 1;
@@ -503,6 +506,7 @@ public:
   bool isTargetSpecificAttr() const;
   bool isTypeAttr() const;
   bool isStmtAttr() const;
+  bool isAnnotateFromUnknownAttr() const;
 
   bool hasCustomParsing() const;
   bool acceptsExprPack() const;
