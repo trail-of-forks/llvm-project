@@ -188,6 +188,10 @@ bool ParsedAttr::isTargetSpecificAttr() const {
   return getInfo().IsTargetSpecific;
 }
 
+bool ParsedAttr::isAnnotateFromUnknownAttr() const {
+ return getInfo().IsAnnotateFromUnknown;
+}
+
 bool ParsedAttr::isTypeAttr() const { return getInfo().IsType; }
 
 bool ParsedAttr::isStmtAttr() const { return getInfo().IsStmt; }

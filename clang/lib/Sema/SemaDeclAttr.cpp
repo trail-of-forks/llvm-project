@@ -369,6 +369,9 @@ bool Sema::checkStringLiteralArgumentAttr(const ParsedAttr &AL, unsigned ArgNum,
                                           SourceLocation *ArgLocation) {
   // Look for identifiers. If we have one emit a hint to fix it to a literal.
   if (AL.isArgIdent(ArgNum)) {
+    if (AL.isAnnotateFromUnknownAttr()) {
+      return true;
+    }
     IdentifierLoc *Loc = AL.getArgAsIdent(ArgNum);
     Diag(Loc->Loc, diag::err_attribute_argument_type)
         << AL << AANT_ArgumentString
@@ -4338,13 +4341,21 @@ static void handleAnnotateAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
   S.AddAnnotationAttr(D, AL, Str, Args);
 }
 
+static Expr *identifierToStringLiteral(ASTContext &Ctx,
+                                       const IdentifierInfo *II,
+                                       clang::SourceLocation Loc) {
+  auto Name = II->getName();
+  auto StrTy = Ctx.getStringLiteralArrayType(Ctx.CharTy, Name.size());
+  return clang::StringLiteral::Create(
+      Ctx, Name, clang::StringLiteralKind::Ordinary,
+      /*Pascal=*/false, StrTy, Loc);
+}
+
 static void
 handleUnknownAttrAsAnnotateAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
-  // Get name of unknown attribute:
-  StringRef Str = AL.getAttrName()->getName();
-
   llvm::SmallVector<Expr *, 4> Args;
   Args.reserve(AL.getNumArgs());
+
   for (unsigned Idx = 0; Idx < AL.getNumArgs(); Idx++) {
     if (AL.isArgExpr(Idx)) {
       Args.push_back(AL.getArgAsExpr(Idx));
@@ -4352,17 +4363,17 @@ handleUnknownAttrAsAnnotateAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
     // Its an identifier; convert it to a string literal.
     } else if (AL.isArgIdent(Idx)) {
       IdentifierLoc *Parm = AL.getArgAsIdent(Idx);
-
-      auto Name = Parm->Ident->getName();
-      auto &Ctx = S.getASTContext();
-      auto StrTy = Ctx.getStringLiteralArrayType(Ctx.CharTy, Name.size());
-      Args.push_back(clang::StringLiteral::Create(
-          Ctx, Name, clang::StringLiteralKind::Ordinary,
-          /*Pascal=*/false, StrTy, Parm->Loc));
+      Args.push_back(identifierToStringLiteral(
+          S.getASTContext(), Parm->Ident, Parm->Loc));
     }
   }
 
-  S.AddAnnotationAttr(D, AL, Str, Args);
+  auto &Info = const_cast<ParsedAttrInfo &>(AL.getInfo());
+  Info.IsAnnotateFromUnknown = 1;
+  Info.IsType = 0;
+  Info.IsStmt = 0;
+  Info.AttrKind = ParsedAttr::AT_Annotate;
+  S.AddAnnotationAttr(D, AL, AL.getAttrName()->getName(), Args);
 }
 
 static void handleAlignValueAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
@@ -9079,9 +9090,7 @@ ProcessDeclAttribute(Sema &S, Scope *scope, Decl *D, const ParsedAttr &AL,
   // though they were unknown attributes.
   if (AL.getKind() == ParsedAttr::UnknownAttribute ||
       !AL.existsInTarget(S.Context.getTargetInfo())) {  
-    if (S.getLangOpts().UnknownAttrAnnotate) {
-      handleUnknownAttrAsAnnotateAttr(S, D, AL);
-    } else {
+    if (!S.getLangOpts().UnknownAttrAnnotate) {
       S.Diag(AL.getLoc(),
              AL.isRegularKeywordAttribute()
                  ? (unsigned)diag::err_keyword_not_supported_on_target
@@ -9106,6 +9115,13 @@ ProcessDeclAttribute(Sema &S, Scope *scope, Decl *D, const ParsedAttr &AL,
   }
 
   switch (AL.getKind()) {
+  case ParsedAttr::UnknownAttribute:
+    if (S.getLangOpts().UnknownAttrAnnotate) {
+      handleUnknownAttrAsAnnotateAttr(S, D, AL);
+      break;
+    }
+    [[fallthrough]];
+
   default:
     if (AL.getInfo().handleDeclAttribute(S, D, AL) != ParsedAttrInfo::NotHandled)
       break;

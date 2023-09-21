@@ -3700,8 +3700,9 @@ void EmitClangAttrSpellingListIndex(RecordKeeper &Records, raw_ostream &OS) {
                        OS, Records);
 
   OS << "  switch (getParsedKind()) {\n";
-  OS << "    case IgnoredAttribute:\n";
   OS << "    case UnknownAttribute:\n";
+  OS << "      break;\n";
+  OS << "    case IgnoredAttribute:\n";
   OS << "    case NoSemaHandlerAttribute:\n";
   OS << "      llvm_unreachable(\"Ignored/unknown shouldn't get here\");\n";
 

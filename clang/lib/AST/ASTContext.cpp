@@ -3517,10 +3517,11 @@ QualType ASTContext::getConstantArrayType(QualType EltTy,
   llvm::APSInt ArySizeInt(ArySizeIn, !ArySizeIn.isNegative());
   ArySize = ArySize.zextOrTrunc(Target->getMaxPointerWidth());
 
-  // Make it always retain `SizeExpr` so that we can see token provenance for
-  // arrays whose types are the result of some expression.
+  // Figure out if we should retain `SizeExpr` for deduplication. If we don't
+  // retain it, then also decide if we want to retain `OrigSizeExpr` as a way
+  // of retaining the original `SizeExpr`.
   const Expr *OrigSizeExpr = SizeExpr;
-  if (SizeExpr && !SizeExpr->isInstantiationDependent()) {
+  if (SizeExpr) {
 
     // Drill down through multiply-wrapped `ConstantExpr`s, if any. Ideally we
     // want to discover an `IntegerLiteral` in there somewhere.
@@ -3533,6 +3534,10 @@ QualType ASTContext::getConstantArrayType(QualType EltTy,
     //
     // XREF(pag): Multiplier issue #427.
     if (isa<IntegerLiteral>(SizeExpr)) {
+      OrigSizeExpr = SizeExpr;
+      SizeExpr = nullptr;
+
+    } else if (SizeExpr->isInstantiationDependent()) {
       OrigSizeExpr = nullptr;
 
     // If it's missing a size, then store the size.
@@ -3548,12 +3553,9 @@ QualType ASTContext::getConstantArrayType(QualType EltTy,
       llvm::APSInt ArySizeInt(ArySizeIn, !ArySizeIn.isNegative());
       OrigSizeExpr = ConstantExpr::Create(
           *this, const_cast<Expr *>(SizeExpr), APValue(ArySizeInt));
+      SizeExpr = nullptr;
     }
   }
-
-  // We only need the size as part of the type if it's instantiation-dependent.
-  if (SizeExpr && !SizeExpr->isInstantiationDependent())
-    SizeExpr = nullptr;
 
   llvm::FoldingSetNodeID ID;
   ConstantArrayType::Profile(ID, *this, EltTy, ArySize, SizeExpr, ASM,
