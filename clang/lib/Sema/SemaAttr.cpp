@@ -1420,7 +1420,7 @@ static bool checkCommonAttributeFeatures(Sema &S, const Ty *Node,
     if (A.getMinArgs() == A.getMaxArgs()) {
       // If there are no optional arguments, then checking for the argument
       // count is trivial.
-      if (!A.checkExactlyNumArgs(S, A.getMinArgs()))
+      if (!A.isAnnotateFromUnknownAttr() && !A.checkExactlyNumArgs(S, A.getMinArgs()))
         return true;
     } else {
       // There are optional arguments, so checking is slightly more involved.
