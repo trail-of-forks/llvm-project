@@ -3489,6 +3489,10 @@ getNoteDiagForInvalidRedeclaration(const T *Old, const T *New) {
 /// GNU89 mode.
 static bool canRedefineFunction(const FunctionDecl *FD,
                                 const LangOptions& LangOpts) {
+  if (auto ID = FD->getBuiltinID())
+    if (FD->getASTContext().BuiltinInfo.isPredefinedPASTAFunction(ID))
+      return true;
+
   return ((FD->hasAttr<GNUInlineAttr>() || LangOpts.GNUInline) &&
           !LangOpts.CPlusPlus &&
           FD->isInlineSpecified() &&
