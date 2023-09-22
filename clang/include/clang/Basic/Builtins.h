@@ -161,6 +161,10 @@ public:
     return strchr(getRecord(ID).Attributes, 'f') != nullptr;
   }
 
+  bool isPredefinedPASTAFunction(unsigned ID) const {
+    return strchr(getRecord(ID).Attributes, '~') != nullptr;
+  }
+
   /// Returns true if this builtin requires appropriate header in other
   /// compilers. In Clang it will work even without including it, but we can emit
   /// a warning about missing header.
