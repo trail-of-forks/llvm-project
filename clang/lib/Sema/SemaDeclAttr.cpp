@@ -8760,6 +8760,11 @@ static void handleArmNewZaAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
 static void
 ProcessDeclAttribute(Sema &S, Scope *scope, Decl *D, const ParsedAttr &AL,
                      const Sema::ProcessDeclAttributeOptions &Options) {
+  if (AL.isInvalid() && S.getLangOpts().UnknownAttrAnnotate) {
+    handleUnknownAttrAsAnnotateAttr(S, D, AL);
+    return;
+  }
+
   if (AL.isInvalid() || AL.getKind() == ParsedAttr::IgnoredAttribute)
     return;
 
