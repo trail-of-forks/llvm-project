@@ -2461,6 +2461,7 @@ NamedDecl *Sema::LazilyCreateBuiltin(IdentifierInfo *II, unsigned ID,
   }
 
   if (!ForRedeclaration &&
+      !Context.BuiltinInfo.isPredefinedPASTAFunction(ID) &&
       (Context.BuiltinInfo.isPredefinedLibFunction(ID) ||
        Context.BuiltinInfo.isHeaderDependentFunction(ID))) {
     Diag(Loc, LangOpts.C99 ? diag::ext_implicit_lib_function_decl_c99
