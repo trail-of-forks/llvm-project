@@ -4233,7 +4233,7 @@ bool Sema::InstantiateClassTemplateSpecialization(
 
   auto TemplateArgs = getTemplateInstantiationArgs(ClassTemplateSpec);
 
-  if (!getLangOpts().LexicalTemplateInstantiation) {
+  if (getLangOpts().LexicalTemplateInstantiation) {
     ClassTemplateSpecializationDecl *PrevClassTemplateSpec = ClassTemplateSpec;
 
     // PASTA patches for template instantiation
