@@ -4303,6 +4303,16 @@ void Sema::AddAnnotationAttr(Decl *D, const AttributeCommonInfo &CI,
   }
 }
 
+static Expr *identifierToStringLiteral(ASTContext &Ctx,
+                                       const IdentifierInfo *II,
+                                       clang::SourceLocation Loc) {
+  auto Name = II->getName();
+  auto StrTy = Ctx.getStringLiteralArrayType(Ctx.CharTy, Name.size());
+  return clang::StringLiteral::Create(
+      Ctx, Name, clang::StringLiteral::StringKind::Ordinary,
+      /*Pascal=*/false, StrTy, Loc);
+}
+
 static void
 handleUnknownAttrAsAnnotateAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
   llvm::SmallVector<Expr *, 4> Args;
@@ -4353,16 +4363,6 @@ static void handleAnnotateAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
   }
 
   S.AddAnnotationAttr(D, AL, Str, Args);
-}
-
-static Expr *identifierToStringLiteral(ASTContext &Ctx,
-                                       const IdentifierInfo *II,
-                                       clang::SourceLocation Loc) {
-  auto Name = II->getName();
-  auto StrTy = Ctx.getStringLiteralArrayType(Ctx.CharTy, Name.size());
-  return clang::StringLiteral::Create(
-      Ctx, Name, clang::StringLiteral::StringKind::Ordinary,
-      /*Pascal=*/false, StrTy, Loc);
 }
 
 static void handleAlignValueAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
