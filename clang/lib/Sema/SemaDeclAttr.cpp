@@ -4287,6 +4287,31 @@ void Sema::AddAnnotationAttr(Decl *D, const AttributeCommonInfo &CI,
   }
 }
 
+static void
+handleUnknownAttrAsAnnotateAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
+  llvm::SmallVector<Expr *, 4> Args;
+  Args.reserve(AL.getNumArgs());
+
+  for (unsigned Idx = 0; Idx < AL.getNumArgs(); Idx++) {
+    if (AL.isArgExpr(Idx)) {
+      Args.push_back(AL.getArgAsExpr(Idx));
+
+    // Its an identifier; convert it to a string literal.
+    } else if (AL.isArgIdent(Idx)) {
+      IdentifierLoc *Parm = AL.getArgAsIdent(Idx);
+      Args.push_back(identifierToStringLiteral(
+          S.getASTContext(), Parm->Ident, Parm->Loc));
+    }
+  }
+
+  auto &Info = const_cast<ParsedAttrInfo &>(AL.getInfo());
+  Info.IsAnnotateFromUnknown = 1;
+  Info.IsType = 0;
+  Info.IsStmt = 0;
+  Info.AttrKind = ParsedAttr::AT_Annotate;
+  S.AddAnnotationAttr(D, AL, AL.getAttrName()->getName(), Args);
+}
+
 static void handleAnnotateAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
 
   if (S.getLangOpts().UnknownAttrAnnotate) {
@@ -4322,31 +4347,6 @@ static Expr *identifierToStringLiteral(ASTContext &Ctx,
   return clang::StringLiteral::Create(
       Ctx, Name, clang::StringLiteral::StringKind::Ordinary,
       /*Pascal=*/false, StrTy, Loc);
-}
-
-static void
-handleUnknownAttrAsAnnotateAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
-  llvm::SmallVector<Expr *, 4> Args;
-  Args.reserve(AL.getNumArgs());
-
-  for (unsigned Idx = 0; Idx < AL.getNumArgs(); Idx++) {
-    if (AL.isArgExpr(Idx)) {
-      Args.push_back(AL.getArgAsExpr(Idx));
-
-    // Its an identifier; convert it to a string literal.
-    } else if (AL.isArgIdent(Idx)) {
-      IdentifierLoc *Parm = AL.getArgAsIdent(Idx);
-      Args.push_back(identifierToStringLiteral(
-          S.getASTContext(), Parm->Ident, Parm->Loc));
-    }
-  }
-
-  auto &Info = const_cast<ParsedAttrInfo &>(AL.getInfo());
-  Info.IsAnnotateFromUnknown = 1;
-  Info.IsType = 0;
-  Info.IsStmt = 0;
-  Info.AttrKind = ParsedAttr::AT_Annotate;
-  S.AddAnnotationAttr(D, AL, AL.getAttrName()->getName(), Args);
 }
 
 static void handleAlignValueAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
