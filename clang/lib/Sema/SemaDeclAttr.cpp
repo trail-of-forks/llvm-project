@@ -4331,6 +4331,11 @@ static void handleAnnotateAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
         return;
       }
     }
+
+    if (!L.getNumArgs()) {
+      handleUnknownAttrAsAnnotateAttr(S, D, AL);
+      return;
+    }
   }
 
   // Make sure that there is a string literal as the annotation's first
