@@ -4288,6 +4288,16 @@ void Sema::AddAnnotationAttr(Decl *D, const AttributeCommonInfo &CI,
 }
 
 static void handleAnnotateAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
+
+  if (S.getLangOpts().UnknownAttrAnnotate) {
+    for (unsigned Idx = 0; Idx < AL.getNumArgs(); Idx++) {
+      if (!AL.isArgExpr(Idx)) {
+        handleUnknownAttrAsAnnotateAttr(S, D, AL);
+        return;
+      }
+    }
+  }
+
   // Make sure that there is a string literal as the annotation's first
   // argument.
   StringRef Str;
