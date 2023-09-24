@@ -4332,7 +4332,7 @@ static void handleAnnotateAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
       }
     }
 
-    if (!L.getNumArgs()) {
+    if (!AL.getNumArgs()) {
       handleUnknownAttrAsAnnotateAttr(S, D, AL);
       return;
     }
