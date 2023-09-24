@@ -4191,6 +4191,11 @@ static void handleAnnotateAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
         return;
       }
     }
+
+    if (!AL.getNumArgs()) {
+      handleUnknownAttrAsAnnotateAttr(S, D, AL);
+      return;
+    }
   }
 
   // LLVM 20: Sema::AddAnnotationAttr was removed; use CreateAnnotationAttr +
