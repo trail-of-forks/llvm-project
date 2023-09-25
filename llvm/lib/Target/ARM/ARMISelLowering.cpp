@@ -2123,7 +2123,7 @@ CCAssignFn *ARMTargetLowering::CCAssignFnForReturn(CallingConv::ID CC,
 
 /// CCAssignFnForNode - Selects the correct CCAssignFn for the given
 /// CallingConvention.
-CCAssignFn *ARMTargetLowering::CCAssignFnForNode(CallingConv::ID CC,
+CCAssignFn *ARMTargetLowering::defaultCCAssignFnsForNode(CallingConv::ID CC,
                                                  bool Return,
                                                  bool isVarArg) const {
   switch (getEffectiveCallingConv(CC, isVarArg)) {

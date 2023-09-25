@@ -27,6 +27,7 @@
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
+#include "llvm/CodeGen/CallingConvLower.h"
 #include "llvm/CodeGen/ComplexDeinterleavingPass.h"
 #include "llvm/CodeGen/DAGCombine.h"
 #include "llvm/CodeGen/ISDOpcodes.h"
@@ -55,6 +56,7 @@
 #include <cassert>
 #include <climits>
 #include <cstdint>
+#include <functional>
 #include <iterator>
 #include <map>
 #include <string>
@@ -355,6 +357,15 @@ protected:
   /// Initialize all of the actions to default values.
   void initActions();
 
+   CCAssignFn* CCAssignFnForNode(CallingConv::ID CC,
+                                                       bool Return,
+                                                       bool isVarArg) const;
+  
+  virtual CCAssignFn* defaultCCAssignFnsForNode(CallingConv::ID CC, bool Return, bool isVarArg) const {
+    return nullptr;
+  }
+
+
 public:
   const TargetMachine &getTargetMachine() const { return TM; }
 
@@ -366,6 +377,7 @@ public:
   virtual MVT getPointerTy(const DataLayout &DL, uint32_t AS = 0) const {
     return MVT::getIntegerVT(DL.getPointerSizeInBits(AS));
   }
+
 
   /// Return the in-memory pointer type for the given address space, defaults to
   /// the pointer type from the data layout.  FIXME: The default needs to be
@@ -4510,7 +4522,7 @@ public:
               SmallVectorImpl<SDValue> &/*InVals*/) const {
     llvm_unreachable("Not Implemented");
   }
-
+  
   /// Target-specific cleanup for formal ByVal parameters.
   virtual void HandleByVal(CCState *, unsigned &, Align) const {}
 

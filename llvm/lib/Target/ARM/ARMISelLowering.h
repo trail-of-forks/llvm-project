@@ -794,8 +794,8 @@ class VectorType;
 
     CallingConv::ID getEffectiveCallingConv(CallingConv::ID CC,
                                             bool isVarArg) const;
-    CCAssignFn *CCAssignFnForNode(CallingConv::ID CC, bool Return,
-                                  bool isVarArg) const;
+    CCAssignFn *defaultCCAssignFnsForNode(CallingConv::ID CC, bool Return,
+                                  bool isVarArg) const override;
     std::pair<SDValue, MachinePointerInfo>
     computeAddrForCallArg(const SDLoc &dl, SelectionDAG &DAG,
                           const CCValAssign &VA, SDValue StackPtr,

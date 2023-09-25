@@ -45,12 +45,14 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
+#include "llvm/MC/CCRegistry.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Compiler.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/MathExtras.h"
 #include "llvm/Target/TargetMachine.h"
+#include "llvm/MC/TargetRegistry.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/TargetParser/Triple.h"
 #include "llvm/Transforms/Utils/SizeOpts.h"
@@ -2402,4 +2404,19 @@ bool TargetLoweringBase::shouldLocalize(const MachineInstr &MI,
     return MRI.hasAtMostUserInstrs(Reg, MaxUses);
   }
   }
+
+}
+
+
+    CCAssignFn* TargetLoweringBase::CCAssignFnForNode(CallingConv::ID CC,
+                                                       bool Return,
+                                                       bool isVarArg) const {
+                                                        
+    for (const auto& override : CCRegistry::findCCOverrides(this->getTargetMachine().getTarget().getName())) {
+      auto maybe_ptr = override.second->CCAssignFnForNode(CC, Return, isVarArg);
+      if (maybe_ptr) {
+        return maybe_ptr;
+      }
+    }
+    return this->defaultCCAssignFnsForNode(CC, Return, isVarArg);
 }
