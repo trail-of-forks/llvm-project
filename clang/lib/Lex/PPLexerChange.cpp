@@ -634,7 +634,7 @@ bool Preprocessor::HandleEndOfTokenLexer(Token &Result) {
          "Ending a macro when currently in a #include file!");
 
   // Tell us about the end of macro expansions.
-  if (CurTokenLexer && CurTokenLexer->Macro) {
+  if (CurTokenLexer && CurTokenLexer->Macro && Callbacks) {
     Callbacks->Event(CurTokenLexer->MacroNameTok,
                      PPCallbacks::EndMacroExpansion,
                      reinterpret_cast<uintptr_t>(CurTokenLexer->Macro));
