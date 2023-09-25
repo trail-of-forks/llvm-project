@@ -394,6 +394,13 @@ bool Sema::ConstantFoldAttrArgs(const AttributeCommonInfo &CI,
     if (E->isValueDependent() || E->isTypeDependent())
       continue;
 
+    // Unevaluated string literal in attributes.
+    //
+    // XREF: https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2361r0.pdf
+    if (auto SL = dyn_cast<StringLiteral>(E))
+      if (SL->isUnevaluated())
+        continue;
+
     // FIXME: Use DefaultFunctionArrayLValueConversion() in place of the logic
     // that adds implicit casts here.
     if (E->getType()->isArrayType())
