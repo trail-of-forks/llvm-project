@@ -2111,14 +2111,14 @@ ARMTargetLowering::getEffectiveCallingConv(CallingConv::ID CC,
   }
 }
 
-CCAssignFn *ARMTargetLowering::CCAssignFnForCall(CallingConv::ID CC,
+CCAssignFn *ARMTargetLowering::CCAssignFnForCall(CallingConv::ID CC, const ParameterLocationInfo & f,
                                                  bool isVarArg) const {
-  return CCAssignFnForNode(CC, false, isVarArg);
+  return CCAssignFnForNode(CC, f, false, isVarArg);
 }
 
-CCAssignFn *ARMTargetLowering::CCAssignFnForReturn(CallingConv::ID CC,
+CCAssignFn *ARMTargetLowering::CCAssignFnForReturn(CallingConv::ID CC, const ParameterLocationInfo& f,
                                                    bool isVarArg) const {
-  return CCAssignFnForNode(CC, true, isVarArg);
+  return CCAssignFnForNode(CC,f, true, isVarArg);
 }
 
 /// CCAssignFnForNode - Selects the correct CCAssignFn for the given
@@ -2414,7 +2414,7 @@ ARMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   SmallVector<CCValAssign, 16> ArgLocs;
   CCState CCInfo(CallConv, isVarArg, DAG.getMachineFunction(), ArgLocs,
                  *DAG.getContext());
-  CCInfo.AnalyzeCallOperands(Outs, CCAssignFnForCall(CallConv, isVarArg));
+  CCInfo.AnalyzeCallOperands(Outs, CCAssignFnForCall(CallConv, ParameterLocationInfo(MF, CLI.CB, true), isVarArg));
 
   // Get a count of how many bytes are to be pushed on the stack.
   unsigned NumBytes = CCInfo.getStackSize();
@@ -3041,11 +3041,12 @@ bool ARMTargetLowering::IsEligibleForTailCallOptimization(
 
   // Check that the call results are passed in the same way.
   LLVMContext &C = *DAG.getContext();
+  ParameterLocationInfo param_loc_info(MF, nullptr, true);
   if (!CCState::resultsCompatible(
           getEffectiveCallingConv(CalleeCC, isVarArg),
           getEffectiveCallingConv(CallerCC, CallerF.isVarArg()), MF, C, Ins,
-          CCAssignFnForReturn(CalleeCC, isVarArg),
-          CCAssignFnForReturn(CallerCC, CallerF.isVarArg())))
+          CCAssignFnForReturn(CalleeCC, param_loc_info, isVarArg),
+          CCAssignFnForReturn(CallerCC, param_loc_info, CallerF.isVarArg())))
     return false;
   // The callee has to preserve all registers the caller needs to preserve.
   const ARMBaseRegisterInfo *TRI = Subtarget->getRegisterInfo();
@@ -3070,7 +3071,7 @@ bool ARMTargetLowering::IsEligibleForTailCallOptimization(
     // argument is passed on the stack.
     SmallVector<CCValAssign, 16> ArgLocs;
     CCState CCInfo(CalleeCC, isVarArg, MF, ArgLocs, C);
-    CCInfo.AnalyzeCallOperands(Outs, CCAssignFnForCall(CalleeCC, isVarArg));
+    CCInfo.AnalyzeCallOperands(Outs, CCAssignFnForCall(CalleeCC, MF, isVarArg));
     if (CCInfo.getStackSize()) {
       // Check if the arguments are already laid out in the right way as
       // the caller's fixed stack objects.
@@ -4471,7 +4472,7 @@ SDValue ARMTargetLowering::LowerFormalArguments(
   SmallVector<CCValAssign, 16> ArgLocs;
   CCState CCInfo(CallConv, isVarArg, DAG.getMachineFunction(), ArgLocs,
                  *DAG.getContext());
-  CCInfo.AnalyzeFormalArguments(Ins, CCAssignFnForCall(CallConv, isVarArg));
+  CCInfo.AnalyzeFormalArguments(Ins, CCAssignFnForCall(CallConv, ParameterLocationInfo(MF, nullptr, false), isVarArg));
 
   SmallVector<SDValue, 16> ArgValues;
   SDValue ArgValue;

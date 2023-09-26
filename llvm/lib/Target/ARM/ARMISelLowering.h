@@ -704,8 +704,8 @@ class VectorType;
     preferredShiftLegalizationStrategy(SelectionDAG &DAG, SDNode *N,
                                        unsigned ExpansionFactor) const override;
 
-    CCAssignFn *CCAssignFnForCall(CallingConv::ID CC, bool isVarArg) const;
-    CCAssignFn *CCAssignFnForReturn(CallingConv::ID CC, bool isVarArg) const;
+    CCAssignFn *CCAssignFnForCall(CallingConv::ID CC, const ParameterLocationInfo &, bool isVarArg) const;
+    CCAssignFn *CCAssignFnForReturn(CallingConv::ID CC, const ParameterLocationInfo &,  bool isVarArg) const;
 
     /// Returns true if \p VecTy is a legal interleaved access type. This
     /// function checks the vector element type and the overall width of the
