@@ -15345,16 +15345,6 @@ Decl *Sema::ActOnStartOfFunctionDef(Scope *FnBodyScope, Decl *D,
     PushFunctionScope();
   }
 
-  // Builtin functions cannot be defined.
-  if (unsigned BuiltinID = FD->getBuiltinID()) {
-    if (!Context.BuiltinInfo.isPredefinedLibFunction(BuiltinID) &&
-        !Context.BuiltinInfo.isPredefinedRuntimeFunction(BuiltinID) &&
-        !Context.BuiltinInfo.isPredefinedPASTAFunction(BuiltinID)) {
-      Diag(FD->getLocation(), diag::err_builtin_definition) << FD;
-      FD->setInvalidDecl();
-    }
-  }
-
   // The return type of a function definition must be complete (C99 6.9.1p3).
   // C++23 [dcl.fct.def.general]/p2
   // The type of [...] the return for a function definition
