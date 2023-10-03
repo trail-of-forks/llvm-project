@@ -21,16 +21,14 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/iterator_range.h"
 #include "llvm/CodeGen/CallingConvLower.h"
-#include "llvm/IR/Function.h"
 #include <map>
 #include <memory>
- 
 namespace llvm {
 
 class CCObj {
     public:
     virtual ~CCObj();
-    virtual CCAssignFn* CCAssignFnForNode(CallingConv::ID CC, const Function* func, 
+    virtual CCAssignFn* CCAssignFnForNode(CallingConv::ID CC,
                                                        bool Return,
                                                        bool isVarArg) = 0;
 };

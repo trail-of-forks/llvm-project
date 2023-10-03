@@ -45,10 +45,8 @@
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InlineAsm.h"
-#include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
-#include "llvm/IR/ModuleSummaryIndex.h"
 #include "llvm/IR/Type.h"
 #include "llvm/Support/Alignment.h"
 #include "llvm/Support/AtomicOrdering.h"
@@ -61,7 +59,6 @@
 #include <functional>
 #include <iterator>
 #include <map>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -190,16 +187,6 @@ public:
   bool isAligned(Align AlignCheck) const {
     return isSrcAligned(AlignCheck) && isDstAligned(AlignCheck);
   }
-};
-
-
-struct ParameterLocationInfo {
-public:
-  const MachineFunction& Func;
-  std::optional<const llvm::CallBase*> Call;
-  bool IsABIForCalledFunction;
-
-  ParameterLocationInfo(const MachineFunction& Func, const llvm::CallBase* cb, bool IsABIForCalledFunction): Func(Func), Call(cb ? std::optional(cb) : std::nullopt), IsABIForCalledFunction(IsABIForCalledFunction)  {}
 };
 
 /// This base class for TargetLowering contains the SelectionDAG-independent
@@ -370,7 +357,7 @@ protected:
   /// Initialize all of the actions to default values.
   void initActions();
 
-   CCAssignFn* CCAssignFnForNode(CallingConv::ID CC, const ParameterLocationInfo&,
+   CCAssignFn* CCAssignFnForNode(CallingConv::ID CC,
                                                        bool Return,
                                                        bool isVarArg) const;
   

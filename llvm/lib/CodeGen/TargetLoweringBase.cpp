@@ -2408,7 +2408,7 @@ bool TargetLoweringBase::shouldLocalize(const MachineInstr &MI,
 }
 
 
-    CCAssignFn* TargetLoweringBase::CCAssignFnForNode(CallingConv::ID CC, const MachineFunction& f,
+    CCAssignFn* TargetLoweringBase::CCAssignFnForNode(CallingConv::ID CC,
                                                        bool Return,
                                                        bool isVarArg) const {
                                                         
