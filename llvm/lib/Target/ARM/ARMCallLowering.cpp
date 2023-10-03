@@ -200,7 +200,7 @@ bool ARMCallLowering::lowerReturnVal(MachineIRBuilder &MIRBuilder,
   SmallVector<ArgInfo, 4> SplitRetInfos;
   splitToValueTypes(OrigRetInfo, SplitRetInfos, DL, F.getCallingConv());
 
-  CCAssignFn *AssignFn =
+  std::function<CCAssignFn> AssignFn =
       TLI.CCAssignFnForReturn(F.getCallingConv(), F.isVarArg());
 
   OutgoingValueAssigner RetAssigner(AssignFn);
@@ -388,7 +388,7 @@ bool ARMCallLowering::lowerFormalArguments(MachineIRBuilder &MIRBuilder,
       return false;
   }
 
-  CCAssignFn *AssignFn =
+  std::function<CCAssignFn> AssignFn =
       TLI.CCAssignFnForCall(F.getCallingConv(), F.isVarArg());
 
   OutgoingValueAssigner ArgAssigner(AssignFn);

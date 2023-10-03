@@ -936,7 +936,7 @@ void CallLowering::insertSRetOutgoingArgument(MachineIRBuilder &MIRBuilder,
 
 bool CallLowering::checkReturn(CCState &CCInfo,
                                SmallVectorImpl<BaseArgInfo> &Outs,
-                               CCAssignFn *Fn) const {
+                               std::function<CCAssignFn>Fn) const {
   for (unsigned I = 0, E = Outs.size(); I < E; ++I) {
     MVT VT = MVT::getVT(Outs[I].Ty);
     if (Fn(I, VT, VT, CCValAssign::Full, Outs[I].Flags[0], CCInfo))

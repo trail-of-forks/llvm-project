@@ -260,46 +260,46 @@ public:
   /// AnalyzeFormalArguments - Analyze an array of argument values,
   /// incorporating info about the formals into this state.
   void AnalyzeFormalArguments(const SmallVectorImpl<ISD::InputArg> &Ins,
-                              CCAssignFn Fn);
+                              std::function<CCAssignFn> Fn);
 
   /// The function will invoke AnalyzeFormalArguments.
   void AnalyzeArguments(const SmallVectorImpl<ISD::InputArg> &Ins,
-                        CCAssignFn Fn) {
+                        std::function<CCAssignFn> Fn) {
     AnalyzeFormalArguments(Ins, Fn);
   }
 
   /// AnalyzeReturn - Analyze the returned values of a return,
   /// incorporating info about the result values into this state.
   void AnalyzeReturn(const SmallVectorImpl<ISD::OutputArg> &Outs,
-                     CCAssignFn Fn);
+                     std::function<CCAssignFn> Fn);
 
   /// CheckReturn - Analyze the return values of a function, returning
   /// true if the return can be performed without sret-demotion, and
   /// false otherwise.
   bool CheckReturn(const SmallVectorImpl<ISD::OutputArg> &Outs,
-                   CCAssignFn Fn);
+                   std::function<CCAssignFn> Fn);
 
   /// AnalyzeCallOperands - Analyze the outgoing arguments to a call,
   /// incorporating info about the passed values into this state.
   void AnalyzeCallOperands(const SmallVectorImpl<ISD::OutputArg> &Outs,
-                           CCAssignFn Fn);
+                           std::function<CCAssignFn> Fn);
 
   /// AnalyzeCallOperands - Same as above except it takes vectors of types
   /// and argument flags.
   void AnalyzeCallOperands(SmallVectorImpl<MVT> &ArgVTs,
                            SmallVectorImpl<ISD::ArgFlagsTy> &Flags,
-                           CCAssignFn Fn);
+                           std::function<CCAssignFn> Fn);
 
   /// The function will invoke AnalyzeCallOperands.
   void AnalyzeArguments(const SmallVectorImpl<ISD::OutputArg> &Outs,
-                        CCAssignFn Fn) {
+                        std::function<CCAssignFn> Fn) {
     AnalyzeCallOperands(Outs, Fn);
   }
 
   /// AnalyzeCallResult - Analyze the return values of a call,
   /// incorporating info about the passed values into this state.
   void AnalyzeCallResult(const SmallVectorImpl<ISD::InputArg> &Ins,
-                         CCAssignFn Fn);
+                         std::function<CCAssignFn> Fn);
 
   /// A shadow allocated register is a register that was allocated
   /// but wasn't added to the location list (Locs).
@@ -308,7 +308,7 @@ public:
 
   /// AnalyzeCallResult - Same as above except it's specialized for calls which
   /// produce a single value.
-  void AnalyzeCallResult(MVT VT, CCAssignFn Fn);
+  void AnalyzeCallResult(MVT VT, std::function<CCAssignFn> Fn);
 
   /// getFirstUnallocated - Return the index of the first unallocated register
   /// in the set, or Regs.size() if they are all allocated.
@@ -493,13 +493,13 @@ public:
   /// registers that normal prototyped parameters would be passed in, or for
   /// implementing perfect forwarding.
   void getRemainingRegParmsForType(SmallVectorImpl<MCPhysReg> &Regs, MVT VT,
-                                   CCAssignFn Fn);
+                                   std::function<CCAssignFn> Fn);
 
   /// Compute the set of registers that need to be preserved and forwarded to
   /// any musttail calls.
   void analyzeMustTailForwardedRegisters(
       SmallVectorImpl<ForwardedRegister> &Forwards, ArrayRef<MVT> RegParmTypes,
-      CCAssignFn Fn);
+      std::function<CCAssignFn> Fn);
 
   /// Returns true if the results of the two calling conventions are compatible.
   /// This is usually part of the check for tailcall eligibility.
@@ -507,14 +507,14 @@ public:
                                 CallingConv::ID CallerCC, MachineFunction &MF,
                                 LLVMContext &C,
                                 const SmallVectorImpl<ISD::InputArg> &Ins,
-                                CCAssignFn CalleeFn, CCAssignFn CallerFn);
+                                std::function<CCAssignFn> CalleeFn, std::function<CCAssignFn> CallerFn);
 
   /// The function runs an additional analysis pass over function arguments.
   /// It will mark each argument with the attribute flag SecArgPass.
   /// After running, it will sort the locs list.
   template <class T>
   void AnalyzeArgumentsSecondPass(const SmallVectorImpl<T> &Args,
-                                  CCAssignFn Fn) {
+                                  std::function<CCAssignFn> Fn) {
     unsigned NumFirstPassLocs = Locs.size();
 
     /// Creates similar argument list to \p Args in which each argument is

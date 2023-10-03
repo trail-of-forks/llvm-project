@@ -2111,19 +2111,19 @@ ARMTargetLowering::getEffectiveCallingConv(CallingConv::ID CC,
   }
 }
 
-CCAssignFn *ARMTargetLowering::CCAssignFnForCall(CallingConv::ID CC,
+std::function<CCAssignFn> ARMTargetLowering::CCAssignFnForCall(CallingConv::ID CC,
                                                  bool isVarArg) const {
   return CCAssignFnForNode(CC, false, isVarArg);
 }
 
-CCAssignFn *ARMTargetLowering::CCAssignFnForReturn(CallingConv::ID CC,
+std::function<CCAssignFn> ARMTargetLowering::CCAssignFnForReturn(CallingConv::ID CC,
                                                    bool isVarArg) const {
   return CCAssignFnForNode(CC, true, isVarArg);
 }
 
 /// CCAssignFnForNode - Selects the correct CCAssignFn for the given
 /// CallingConvention.
-CCAssignFn *ARMTargetLowering::defaultCCAssignFnsForNode(CallingConv::ID CC,
+std::function<CCAssignFn> ARMTargetLowering::defaultCCAssignFnsForNode(CallingConv::ID CC,
                                                  bool Return,
                                                  bool isVarArg) const {
   switch (getEffectiveCallingConv(CC, isVarArg)) {

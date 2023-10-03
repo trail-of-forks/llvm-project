@@ -30,6 +30,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/Support/CodeGen.h"
+#include <functional>
 #include <optional>
 #include <utility>
 
@@ -704,8 +705,8 @@ class VectorType;
     preferredShiftLegalizationStrategy(SelectionDAG &DAG, SDNode *N,
                                        unsigned ExpansionFactor) const override;
 
-    CCAssignFn *CCAssignFnForCall(CallingConv::ID CC, bool isVarArg) const;
-    CCAssignFn *CCAssignFnForReturn(CallingConv::ID CC, bool isVarArg) const;
+    std::function<CCAssignFn> CCAssignFnForCall(CallingConv::ID CC, bool isVarArg) const;
+    std::function<CCAssignFn>  CCAssignFnForReturn(CallingConv::ID CC, bool isVarArg) const;
 
     /// Returns true if \p VecTy is a legal interleaved access type. This
     /// function checks the vector element type and the overall width of the
@@ -794,7 +795,7 @@ class VectorType;
 
     CallingConv::ID getEffectiveCallingConv(CallingConv::ID CC,
                                             bool isVarArg) const;
-    CCAssignFn *defaultCCAssignFnsForNode(CallingConv::ID CC, bool Return,
+    std::function<CCAssignFn>  defaultCCAssignFnsForNode(CallingConv::ID CC, bool Return,
                                   bool isVarArg) const override;
     std::pair<SDValue, MachinePointerInfo>
     computeAddrForCallArg(const SDLoc &dl, SelectionDAG &DAG,

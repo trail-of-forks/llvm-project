@@ -83,7 +83,7 @@ bool CCState::IsShadowAllocatedReg(MCRegister Reg) const {
 /// incorporating info about the formals into this state.
 void
 CCState::AnalyzeFormalArguments(const SmallVectorImpl<ISD::InputArg> &Ins,
-                                CCAssignFn Fn) {
+                                std::function<CCAssignFn> Fn) {
   unsigned NumArgs = Ins.size();
 
   for (unsigned i = 0; i != NumArgs; ++i) {
@@ -97,7 +97,7 @@ CCState::AnalyzeFormalArguments(const SmallVectorImpl<ISD::InputArg> &Ins,
 /// Analyze the return values of a function, returning true if the return can
 /// be performed without sret-demotion and false otherwise.
 bool CCState::CheckReturn(const SmallVectorImpl<ISD::OutputArg> &Outs,
-                          CCAssignFn Fn) {
+                          std::function<CCAssignFn> Fn) {
   // Determine which register each value should be copied into.
   for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
     MVT VT = Outs[i].VT;
@@ -111,7 +111,7 @@ bool CCState::CheckReturn(const SmallVectorImpl<ISD::OutputArg> &Outs,
 /// Analyze the returned values of a return,
 /// incorporating info about the result values into this state.
 void CCState::AnalyzeReturn(const SmallVectorImpl<ISD::OutputArg> &Outs,
-                            CCAssignFn Fn) {
+                            std::function<CCAssignFn> Fn) {
   // Determine which register each value should be copied into.
   for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
     MVT VT = Outs[i].VT;
@@ -124,7 +124,7 @@ void CCState::AnalyzeReturn(const SmallVectorImpl<ISD::OutputArg> &Outs,
 /// Analyze the outgoing arguments to a call,
 /// incorporating info about the passed values into this state.
 void CCState::AnalyzeCallOperands(const SmallVectorImpl<ISD::OutputArg> &Outs,
-                                  CCAssignFn Fn) {
+                                  std::function<CCAssignFn> Fn) {
   unsigned NumOps = Outs.size();
   for (unsigned i = 0; i != NumOps; ++i) {
     MVT ArgVT = Outs[i].VT;
@@ -142,7 +142,7 @@ void CCState::AnalyzeCallOperands(const SmallVectorImpl<ISD::OutputArg> &Outs,
 /// Same as above except it takes vectors of types and argument flags.
 void CCState::AnalyzeCallOperands(SmallVectorImpl<MVT> &ArgVTs,
                                   SmallVectorImpl<ISD::ArgFlagsTy> &Flags,
-                                  CCAssignFn Fn) {
+                                  std::function<CCAssignFn> Fn) {
   unsigned NumOps = ArgVTs.size();
   for (unsigned i = 0; i != NumOps; ++i) {
     MVT ArgVT = ArgVTs[i];
@@ -160,7 +160,7 @@ void CCState::AnalyzeCallOperands(SmallVectorImpl<MVT> &ArgVTs,
 /// Analyze the return values of a call, incorporating info about the passed
 /// values into this state.
 void CCState::AnalyzeCallResult(const SmallVectorImpl<ISD::InputArg> &Ins,
-                                CCAssignFn Fn) {
+                                std::function<CCAssignFn> Fn) {
   for (unsigned i = 0, e = Ins.size(); i != e; ++i) {
     MVT VT = Ins[i].VT;
     ISD::ArgFlagsTy Flags = Ins[i].Flags;
@@ -175,7 +175,7 @@ void CCState::AnalyzeCallResult(const SmallVectorImpl<ISD::InputArg> &Ins,
 }
 
 /// Same as above except it's specialized for calls that produce a single value.
-void CCState::AnalyzeCallResult(MVT VT, CCAssignFn Fn) {
+void CCState::AnalyzeCallResult(MVT VT, std::function<CCAssignFn> Fn) {
   if (Fn(0, VT, VT, CCValAssign::Full, ISD::ArgFlagsTy(), *this)) {
 #ifndef NDEBUG
     dbgs() << "Call result has unhandled type "
@@ -199,7 +199,7 @@ static bool isValueTypeInRegForCC(CallingConv::ID CC, MVT VT) {
 }
 
 void CCState::getRemainingRegParmsForType(SmallVectorImpl<MCPhysReg> &Regs,
-                                          MVT VT, CCAssignFn Fn) {
+                                          MVT VT, std::function<CCAssignFn> Fn) {
   uint64_t SavedStackSize = StackSize;
   Align SavedMaxStackArgAlign = MaxStackArgAlign;
   unsigned NumLocs = Locs.size();
@@ -239,7 +239,7 @@ void CCState::getRemainingRegParmsForType(SmallVectorImpl<MCPhysReg> &Regs,
 
 void CCState::analyzeMustTailForwardedRegisters(
     SmallVectorImpl<ForwardedRegister> &Forwards, ArrayRef<MVT> RegParmTypes,
-    CCAssignFn Fn) {
+    std::function<CCAssignFn> Fn) {
   // Oftentimes calling conventions will not user register parameters for
   // variadic functions, so we need to assume we're not variadic so that we get
   // all the registers that might be used in a non-variadic call.
@@ -262,7 +262,7 @@ bool CCState::resultsCompatible(CallingConv::ID CalleeCC,
                                 CallingConv::ID CallerCC, MachineFunction &MF,
                                 LLVMContext &C,
                                 const SmallVectorImpl<ISD::InputArg> &Ins,
-                                CCAssignFn CalleeFn, CCAssignFn CallerFn) {
+                                std::function<CCAssignFn> CalleeFn, std::function<CCAssignFn> CallerFn) {
   if (CalleeCC == CallerCC)
     return true;
   SmallVector<CCValAssign, 4> RVLocs1;

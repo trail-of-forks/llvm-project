@@ -159,8 +159,8 @@ public:
   /// ValueAssigner should not depend on any specific function state, and
   /// only determine the types and locations for arguments.
   struct ValueAssigner {
-    ValueAssigner(bool IsIncoming, CCAssignFn *AssignFn_,
-                  CCAssignFn *AssignFnVarArg_ = nullptr)
+    ValueAssigner(bool IsIncoming, std::function<CCAssignFn>AssignFn_,
+                  std::function<CCAssignFn>AssignFnVarArg_ = nullptr)
         : AssignFn(AssignFn_), AssignFnVarArg(AssignFnVarArg_),
           IsIncomingArgumentHandler(IsIncoming) {
 
@@ -193,18 +193,18 @@ public:
     }
 
     /// Assignment function to use for a general call.
-    CCAssignFn *AssignFn;
+    std::function<CCAssignFn>AssignFn;
 
     /// Assignment function to use for a variadic call. This is usually the same
     /// as AssignFn on most targets.
-    CCAssignFn *AssignFnVarArg;
+    std::function<CCAssignFn>AssignFnVarArg;
 
     /// The size of the currently allocated portion of the stack.
     uint64_t StackSize = 0;
 
     /// Select the appropriate assignment function depending on whether this is
     /// a variadic call.
-    CCAssignFn *getAssignFn(bool IsVarArg) const {
+    std::function<CCAssignFn>getAssignFn(bool IsVarArg) const {
       return IsVarArg ? AssignFnVarArg : AssignFn;
     }
 
@@ -214,14 +214,14 @@ public:
   };
 
   struct IncomingValueAssigner : public ValueAssigner {
-    IncomingValueAssigner(CCAssignFn *AssignFn_,
-                          CCAssignFn *AssignFnVarArg_ = nullptr)
+    IncomingValueAssigner(std::function<CCAssignFn>AssignFn_,
+                          std::function<CCAssignFn>AssignFnVarArg_ = nullptr)
         : ValueAssigner(true, AssignFn_, AssignFnVarArg_) {}
   };
 
   struct OutgoingValueAssigner : public ValueAssigner {
-    OutgoingValueAssigner(CCAssignFn *AssignFn_,
-                          CCAssignFn *AssignFnVarArg_ = nullptr)
+    OutgoingValueAssigner(std::function<CCAssignFn>AssignFn_,
+                          std::function<CCAssignFn>AssignFnVarArg_ = nullptr)
         : ValueAssigner(false, AssignFn_, AssignFnVarArg_) {}
   };
 
@@ -472,7 +472,7 @@ public:
   /// \return True if the return type described by \p Outs can be returned
   /// without performing sret demotion.
   bool checkReturn(CCState &CCInfo, SmallVectorImpl<BaseArgInfo> &Outs,
-                   CCAssignFn *Fn) const;
+                   std::function<CCAssignFn>Fn) const;
 
   /// Get the type and the ArgFlags for the split components of \p RetTy as
   /// returned by \c ComputeValueVTs.
