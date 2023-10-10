@@ -2071,6 +2071,10 @@ static void FPCCToARMCC(ISD::CondCode CC, ARMCC::CondCodes &CondCode,
 CallingConv::ID
 ARMTargetLowering::getEffectiveCallingConv(CallingConv::ID CC,
                                            bool isVarArg) const {
+  if (CC >= CallingConv::CUSTOM_ID_RANGE_START) {
+    return CC;
+  }
+  
   switch (CC) {
   default:
     report_fatal_error("Unsupported calling convention");

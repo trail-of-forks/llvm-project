@@ -27,7 +27,7 @@ namespace llvm {
 
 class CCObj {
     public:
-    virtual ~CCObj();
+    virtual ~CCObj() = default;
     virtual std::function<CCAssignFn> CCAssignFnForNode(CallingConv::ID CC,
                                                        bool Return,
                                                        bool isVarArg) = 0;

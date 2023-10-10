@@ -245,8 +245,10 @@ namespace CallingConv {
     /// placement. Preserves active lane values for input VGPRs.
     AMDGPU_CS_ChainPreserve = 105,
 
+    CUSTOM_ID_RANGE_START = 200,
+
     /// The highest possible ID. Must be some 2^k - 1.
-    MaxID = 1023
+    MaxID = 1048575
   };
 
 } // end namespace CallingConv
