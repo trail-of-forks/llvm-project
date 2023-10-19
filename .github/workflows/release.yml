@@ -16,7 +16,7 @@ jobs:
 
       - name: Prerequisites
         run: |
-          echo "RELEASE_DIR=${{ env.RUNNER_TEMP }}/release" >> $GITHUB_ENV
+          echo "RELEASE_DIR=${RUNNER_TEMP}/release" >> $GITHUB_ENV
           echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
 
       - name: Install LLVM Toolchain
@@ -39,12 +39,12 @@ jobs:
 
       - name: Build
         run: |
-          mkdir -p ${{ env.RELEASE_DIR }}
+          mkdir -p ${RELEASE_DIR}
           CXXFLAGS="-fno-omit-frame-pointer -fno-optimize-sibling-calls -gline-tables-only" \
           CCFLAGS="-fno-omit-frame-pointer -fno-optimize-sibling-calls -gline-tables-only" \
           cmake \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=${{ env.RELEASE_DIR }} \
+            -DCMAKE_INSTALL_PREFIX=${RELEASE_DIR} \
             -DCMAKE_C_COMPILER=/usr/bin/clang \
             -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
             -DLLVM_ENABLE_PROJECTS="clang;mlir;lld" \
@@ -79,8 +79,8 @@ jobs:
 
       - name: Package Release
         run: |
-          cd ${{ env.RELEASE_DIR }}
-          tar -czvf "llvm-pasta-${{ env.SHORT_SHA }}.tar.gz" *
+          cd ${RELEASE_DIR}
+          tar -czvf "llvm-pasta-${SHORT_SHA}.tar.gz" *
 
       - name: Release
         uses: softprops/action-gh-release@v1
