@@ -25,7 +25,7 @@ if [ $? != 0 ]; then
 fi
 release_version=`echo "$tag" | sed 's/llvmorg-//g'`
 release=`echo "$release_version" | sed 's/-.*//g'`
-build_dir=`echo "$release_version" | sed 's,^[^-]\+,final,' | sed 's,[^-]\+-rc\(.\+\),rc\1,'`
+build_dir=`echo "$release_version" | sed 's,^[^-]\+,final,' | sed 's,[^-]\+-rc\(.\+\),rc\1,' | sed 's,-pasta,,g'`
 rc_flags=`echo "$release_version" | sed 's,^[^-]\+,-final,' | sed 's,[^-]\+-rc\(.\+\),-rc \1 -test-asserts,' | sed 's,--,-,' | sed 's,-pasta,,g'`
 echo "release-version=$release_version" >> $GITHUB_OUTPUT
 echo "release=$release" >> $GITHUB_OUTPUT
