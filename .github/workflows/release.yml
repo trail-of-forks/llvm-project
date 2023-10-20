@@ -9,28 +9,32 @@ jobs:
   build_release:
     name: Build and Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     env:
-      LLVM_VER: 16
+      LLVM_VER: 17
     steps:
       - uses: actions/checkout@v4
 
       - name: Prerequisites
         run: |
           echo "RELEASE_DIR=${RUNNER_TEMP}/release" >> $GITHUB_ENV
-          echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=llvm-pasta-${GITHUB_SHA::7}.tar.xz" >> $GITHUB_ENV
 
       - name: Install LLVM Toolchain
         run: |
-          curl -sSL https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-16 main" | sudo tee -a /etc/apt/sources.list
-          echo "deb-src http://apt.llvm.org/jammy/ llvm-toolchain-jammy-16 main" | sudo tee -a /etc/apt/sources.list
-          sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-          sudo apt-get update
+          curl -sSL https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
+          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-16 main" | tee -a /etc/apt/sources.list
+          echo "deb-src http://apt.llvm.org/jammy/ llvm-toolchain-jammy-16 main" | tee -a /etc/apt/sources.list
+          add-apt-repository ppa:ubuntu-toolchain-r/test
+          apt-get update
 
       - name: Install Dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
+          apt-get update
+          apt-get install -y \
+            pixz \
             build-essential \
             ninja-build \
             cmake \
@@ -80,11 +84,10 @@ jobs:
       - name: Package Release
         run: |
           cd ${RELEASE_DIR}
-          tar -czvf "llvm-pasta-${SHORT_SHA}.tar.gz" *
+          tar --use-compress-program pixz -cf "${ARTIFACT_NAME}" *
 
-      - name: Release
-        uses: softprops/action-gh-release@v1
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
         with:
-          files: "${{ env.RELEASE_DIR }}/llvm-pasta-${{ env.SHORT_SHA }}.tar.gz"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ env.RELEASE_DIR }}/${{ env.ARTIFACT_NAME }}
