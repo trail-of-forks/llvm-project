@@ -13,7 +13,7 @@ jobs:
       contents: write
 
     env:
-      LLVM_VER: 17
+      LLVM_VER: 16
     steps:
       - uses: actions/checkout@v4
 
