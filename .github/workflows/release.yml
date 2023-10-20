@@ -24,16 +24,16 @@ jobs:
 
       - name: Install LLVM Toolchain
         run: |
-          curl -sSL https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
-          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-16 main" | tee -a /etc/apt/sources.list
-          echo "deb-src http://apt.llvm.org/jammy/ llvm-toolchain-jammy-16 main" | tee -a /etc/apt/sources.list
-          add-apt-repository ppa:ubuntu-toolchain-r/test
-          apt-get update
+          curl -sSL https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-16 main" | sudo tee -a /etc/apt/sources.list
+          echo "deb-src http://apt.llvm.org/jammy/ llvm-toolchain-jammy-16 main" | sudo tee -a /etc/apt/sources.list
+          sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+          sudo apt-get update
 
       - name: Install Dependencies
         run: |
-          apt-get update
-          apt-get install -y \
+          sudo apt-get update
+          sudo apt-get install -y \
             pixz \
             build-essential \
             ninja-build \
