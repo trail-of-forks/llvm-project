@@ -4657,18 +4657,18 @@ def working_directory_EQ : Joined<["-"], "working-directory=">, Flags<[CC1Option
 
 defm lexical_template_instantiation : BoolOption<"f", "lexical-template-instantiation",
   LangOpts<"LexicalTemplateInstantiation">, DefaultFalse,
-  PosFlag<SetTrue, [], [ClangOption], "Maintain lexical provenance of template instantiations">,
-  NegFlag<SetFalse>, BothFlags<[], [ClangOption, CC1Option]>>;
+  PosFlag<SetTrue, [], "Maintain lexical provenance of template instantiations">,
+  NegFlag<SetFalse>, BothFlags<[CC1Option]>>;
 
 defm attr_types_have_attrs : BoolOption<"f", "attr-types-have-attrs",
   LangOpts<"AttrTypesHaveAttrs">, DefaultFalse,
-  PosFlag<SetTrue, [], [ClangOption], "Store attributes in attributed types">,
-  NegFlag<SetFalse>, BothFlags<[], [ClangOption, CC1Option]>>;
+  PosFlag<SetTrue, [], "Store attributes in attributed types">,
+  NegFlag<SetFalse>, BothFlags<[CC1Option]>>;
 
 defm unknown_attrs_as_annotate : BoolOption<"f", "unknown-attrs-as-annotate",
   LangOpts<"UnknownAttrAnnotate">, DefaultFalse,
-  PosFlag<SetTrue, [], [ClangOption], "Treat unknown attributes as annotation attributes">,
-  NegFlag<SetFalse>, BothFlags<[], [ClangOption, CC1Option]>>;
+  PosFlag<SetTrue, [], "Treat unknown attributes as annotation attributes">,
+  NegFlag<SetFalse>, BothFlags<[CC1Option]>>;
 
 // Double dash options, which are usually an alias for one of the previous
 // options.
