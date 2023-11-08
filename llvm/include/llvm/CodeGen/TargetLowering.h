@@ -367,6 +367,8 @@ protected:
 
 
 public:
+  bool isTailCallingOverride(CallingConv::ID CC) const;
+
   const TargetMachine &getTargetMachine() const { return TM; }
 
   virtual bool useSoftFloat() const { return false; }

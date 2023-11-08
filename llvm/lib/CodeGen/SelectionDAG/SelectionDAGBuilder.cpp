@@ -8147,10 +8147,16 @@ void SelectionDAGBuilder::LowerCallTo(const CallBase &CB, SDValue Callee,
   if (isTailCall && !isInTailCallPosition(CB, DAG.getTarget()))
     isTailCall = false;
 
+
   // Disable tail calls if there is an swifterror argument. Targets have not
   // been updated to support tail calls.
   if (TLI.supportSwiftError() && SwiftErrorVal)
     isTailCall = false;
+
+  if (TLI.isTailCallingOverride(CB.getCallingConv())) {
+    isTailCall = true;  
+  }
+
 
   ConstantInt *CFIType = nullptr;
   if (CB.isIndirectCall()) {

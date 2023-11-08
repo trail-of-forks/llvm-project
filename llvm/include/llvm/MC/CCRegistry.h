@@ -31,6 +31,7 @@ class CCObj {
     virtual std::function<CCAssignFn> CCAssignFnForNode(CallingConv::ID CC,
                                                        bool Return,
                                                        bool isVarArg) = 0;
+    virtual bool isTailCallEquiv(CallingConv::ID CC) = 0;
 };
 
 

@@ -2408,10 +2408,9 @@ bool TargetLoweringBase::shouldLocalize(const MachineInstr &MI,
 }
 
 
-    std::function<CCAssignFn> TargetLoweringBase::CCAssignFnForNode(CallingConv::ID CC,
+std::function<CCAssignFn> TargetLoweringBase::CCAssignFnForNode(CallingConv::ID CC,
                                                        bool Return,
-                                                       bool isVarArg) const {
-                                                        
+                                                       bool isVarArg) const {                                                    
     for (const auto& override : CCRegistry::findCCOverrides(this->getTargetMachine().getTarget().getName())) {
       auto maybe_ptr = override.second->CCAssignFnForNode(CC, Return, isVarArg);
       if (maybe_ptr) {
@@ -2419,4 +2418,14 @@ bool TargetLoweringBase::shouldLocalize(const MachineInstr &MI,
       }
     }
     return this->defaultCCAssignFnsForNode(CC, Return, isVarArg);
+}
+
+bool TargetLoweringBase::isTailCallingOverride(CallingConv::ID CC) const {
+  for (const auto& override : CCRegistry::findCCOverrides(this->getTargetMachine().getTarget().getName())) {
+    if (override.second->isTailCallEquiv(CC)) {
+      return true;
+    }
+  }
+
+  return false;
 }
