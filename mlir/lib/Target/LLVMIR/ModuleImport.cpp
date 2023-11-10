@@ -12,6 +12,9 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Target/LLVMIR/ModuleImport.h"
+#include "mlir/Dialect/LLVMIR/LLVMAttrs.h"
+#include "mlir/IR/Value.h"
+#include "mlir/Support/LogicalResult.h"
 #include "mlir/Target/LLVMIR/Import.h"
 
 #include "AttrKindDetail.h"
@@ -28,6 +31,7 @@
 
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/ScopeExit.h"
+#include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringSet.h"
 #include "llvm/IR/Comdat.h"
 #include "llvm/IR/Constants.h"
@@ -35,6 +39,7 @@
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
+#include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Operator.h"
 #include "llvm/Support/ModRef.h"
@@ -595,6 +600,19 @@ void ModuleImport::setNonDebugMetadataAttrs(llvm::Instruction *inst,
   }
 }
 
+FastmathFlags ModuleImport::getFastmathFlagsAttr(llvm::Instruction *inst) const {
+  llvm::FastMathFlags flags = inst->getFastMathFlags();
+  FastmathFlags value = {};
+  value = bitEnumSet(value, FastmathFlags::nnan, flags.noNaNs());
+  value = bitEnumSet(value, FastmathFlags::ninf, flags.noInfs());
+  value = bitEnumSet(value, FastmathFlags::nsz, flags.noSignedZeros());
+  value = bitEnumSet(value, FastmathFlags::arcp, flags.allowReciprocal());
+  value = bitEnumSet(value, FastmathFlags::contract, flags.allowContract());
+  value = bitEnumSet(value, FastmathFlags::afn, flags.approxFunc());
+  value = bitEnumSet(value, FastmathFlags::reassoc, flags.allowReassoc());
+  return value;
+}
+
 void ModuleImport::setFastmathFlagsAttr(llvm::Instruction *inst,
                                         Operation *op) const {
   auto iface = cast<FastmathFlagsInterface>(op);
@@ -605,18 +623,8 @@ void ModuleImport::setFastmathFlagsAttr(llvm::Instruction *inst,
   // fastmath flags.
   if (!isa<llvm::FPMathOperator>(inst))
     return;
-  llvm::FastMathFlags flags = inst->getFastMathFlags();
 
-  // Set the fastmath bits flag-by-flag.
-  FastmathFlags value = {};
-  value = bitEnumSet(value, FastmathFlags::nnan, flags.noNaNs());
-  value = bitEnumSet(value, FastmathFlags::ninf, flags.noInfs());
-  value = bitEnumSet(value, FastmathFlags::nsz, flags.noSignedZeros());
-  value = bitEnumSet(value, FastmathFlags::arcp, flags.allowReciprocal());
-  value = bitEnumSet(value, FastmathFlags::contract, flags.allowContract());
-  value = bitEnumSet(value, FastmathFlags::afn, flags.approxFunc());
-  value = bitEnumSet(value, FastmathFlags::reassoc, flags.allowReassoc());
-  FastmathFlagsAttr attr = FastmathFlagsAttr::get(builder.getContext(), value);
+  FastmathFlagsAttr attr = FastmathFlagsAttr::get(builder.getContext(), getFastmathFlagsAttr(inst));
   iface->setAttr(iface.getFastmathAttrName(), attr);
 }
 
@@ -1259,9 +1267,36 @@ ModuleImport::convertCallTypeAndOperands(llvm::CallBase *callInst,
 LogicalResult ModuleImport::convertIntrinsic(llvm::CallInst *inst) {
   if (succeeded(iface.convertIntrinsic(builder, inst, *this)))
     return success();
+  
+
 
   Location loc = translateLoc(inst->getDebugLoc());
-  return emitError(loc) << "unhandled intrinsic: " << diag(*inst);
+
+  SmallVector<Type> types;
+  SmallVector<Value> operands;
+  if (failed(convertCallTypeAndOperands(inst, types, operands)))
+    return failure();
+  
+  // Fall through to normal intrinsic
+  LLVM::CallIntrinsicOp op;
+  SmallVector<Type> res_tys;
+  if (!types.empty()) {
+    res_tys.push_back(types[0]);
+  }
+
+  if (isa<llvm::FPMathOperator>(inst)) {
+    op = builder.create<LLVM::CallIntrinsicOp>(loc, res_tys, inst->getCalledFunction()->getName(), operands, getFastmathFlagsAttr(inst));
+  } else { 
+    op = builder.create<LLVM::CallIntrinsicOp>(loc, res_tys, inst->getCalledFunction()->getName(), operands);
+  }
+
+  if (!inst->getType()->isVoidTy() && op->getNumResults() > 0)
+    mapValue(inst, op.getResult(0));
+  else
+    mapNoResultOp(inst, op);
+
+  // return emitError(loc) << "unhandled intrinsic: " << diag(*inst);
+  return success();
 }
 
 LogicalResult ModuleImport::convertInstruction(llvm::Instruction *inst) {

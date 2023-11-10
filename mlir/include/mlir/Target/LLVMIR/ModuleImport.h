@@ -14,6 +14,7 @@
 #ifndef MLIR_TARGET_LLVMIR_MODULEIMPORT_H
 #define MLIR_TARGET_LLVMIR_MODULEIMPORT_H
 
+#include "mlir/Dialect/LLVMIR/LLVMAttrs.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/Target/LLVMIR/Import.h"
@@ -175,6 +176,8 @@ public:
   /// the original instruction `inst`. Asserts if the operation does not
   /// implement the fastmath interface.
   void setFastmathFlagsAttr(llvm::Instruction *inst, Operation *op) const;
+
+  FastmathFlags getFastmathFlagsAttr(llvm::Instruction *inst) const;
 
   /// Converts all LLVM metadata nodes that translate to attributes such as
   /// alias analysis or access group metadata, and builds a map from the
