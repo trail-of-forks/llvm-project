@@ -357,6 +357,10 @@ protected:
   /// Initialize all of the actions to default values.
   void initActions();
 
+  std::function<CCAssignFn> CCAssignFnForNodeWithDefault(CallingConv::ID CC, std::function<CCAssignFn> Default,
+                                                       bool Return,
+                                                       bool isVarArg) const;
+
    std::function<CCAssignFn> CCAssignFnForNode(CallingConv::ID CC,
                                                        bool Return,
                                                        bool isVarArg) const;

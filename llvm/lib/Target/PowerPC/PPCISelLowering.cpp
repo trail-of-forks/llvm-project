@@ -94,6 +94,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
+#include <functional>
 #include <iterator>
 #include <list>
 #include <optional>
@@ -4104,7 +4105,7 @@ SDValue PPCTargetLowering::LowerFormalArguments_32SVR4(
   if (useSoftFloat())
     CCInfo.PreAnalyzeFormalArguments(Ins);
 
-  CCInfo.AnalyzeFormalArguments(Ins, CC_PPC32_SVR4);
+  CCInfo.AnalyzeFormalArguments(Ins, CCAssignFnForNodeWithDefault(CallConv,CC_PPC32_SVR4,false,isVarArg));
   CCInfo.clearWasPPCF128();
 
   for (unsigned i = 0, e = ArgLocs.size(); i != e; ++i) {
