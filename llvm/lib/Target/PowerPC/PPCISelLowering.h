@@ -1171,8 +1171,11 @@ namespace llvm {
             HasNest(HasNest), NoMerge(NoMerge) {}
     };
 
-    CCAssignFn *ccAssignFnForCall(CallingConv::ID CC, bool Return,
-                                  bool IsVarArg) const;
+    std::function<CCAssignFn> ccAssignFnForCall(CallingConv::ID CC, bool Return,
+                                                bool IsVarArg) const;
+    std::function<CCAssignFn>
+    defaultCCAssignFnsForNode(CallingConv::ID CC, bool Return,
+                              bool IsVarArg) const override;
     bool supportsTailCallFor(const CallBase *CB) const;
 
   private:

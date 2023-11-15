@@ -132,7 +132,7 @@ bool PPCCallLowering::lowerFormalArguments(MachineIRBuilder &MIRBuilder,
     ++I;
   }
 
-  CCAssignFn *AssignFn =
+  std::function<CCAssignFn> AssignFn =
       TLI.ccAssignFnForCall(F.getCallingConv(), false, F.isVarArg());
   IncomingValueAssigner ArgAssigner(AssignFn);
   FormalArgHandler ArgHandler(MIRBuilder, MRI);

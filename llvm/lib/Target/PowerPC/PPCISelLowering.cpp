@@ -18462,9 +18462,15 @@ PPC::AddrMode PPCTargetLowering::SelectOptimalAddrMode(const SDNode *Parent,
   return Mode;
 }
 
-CCAssignFn *PPCTargetLowering::ccAssignFnForCall(CallingConv::ID CC,
-                                                 bool Return,
-                                                 bool IsVarArg) const {
+std::function<CCAssignFn>
+PPCTargetLowering::ccAssignFnForCall(CallingConv::ID CC, bool Return,
+                                     bool IsVarArg) const {
+  return CCAssignFnForNode(CC, Return, IsVarArg);
+}
+
+std::function<CCAssignFn>
+PPCTargetLowering::defaultCCAssignFnsForNode(CallingConv::ID CC, bool Return,
+                                             bool IsVarArg) const {
   switch (CC) {
   case CallingConv::Cold:
     return (Return ? RetCC_PPC_Cold : CC_PPC64_ELF);
