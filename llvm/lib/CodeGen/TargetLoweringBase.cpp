@@ -2407,17 +2407,17 @@ bool TargetLoweringBase::shouldLocalize(const MachineInstr &MI,
 
 }
 
-  std::function<CCAssignFn> TargetLoweringBase::CCAssignFnForNodeWithDefault(CallingConv::ID CC, std::function<CCAssignFn> Default,
+std::function<CCAssignFn> TargetLoweringBase::CCAssignFnForNodeWithDefault(CallingConv::ID CC, std::function<CCAssignFn> Default,
                                                        bool Return,
                                                        bool isVarArg) const {
-      for (const auto& override : CCRegistry::findCCOverrides(this->getTargetMachine().getTarget().getName())) {
+    for (const auto& override : CCRegistry::findCCOverrides(this->getTargetMachine().getTarget().getName())) {
       auto maybe_ptr = override.second->CCAssignFnForNode(CC, Return, isVarArg);
       if (maybe_ptr) {
         return maybe_ptr;
       }
-      return Default;
     }
-                                                       }
+    return Default;                                                  
+}
 
 
 std::function<CCAssignFn> TargetLoweringBase::CCAssignFnForNode(CallingConv::ID CC,

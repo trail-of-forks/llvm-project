@@ -4105,7 +4105,8 @@ SDValue PPCTargetLowering::LowerFormalArguments_32SVR4(
   if (useSoftFloat())
     CCInfo.PreAnalyzeFormalArguments(Ins);
 
-  CCInfo.AnalyzeFormalArguments(Ins, CCAssignFnForNodeWithDefault(CallConv,CC_PPC32_SVR4,false,isVarArg));
+  auto res = CCAssignFnForNodeWithDefault(CallConv,CC_PPC32_SVR4,false,isVarArg);
+  CCInfo.AnalyzeFormalArguments(Ins, res);
   CCInfo.clearWasPPCF128();
 
   for (unsigned i = 0, e = ArgLocs.size(); i != e; ++i) {
@@ -4206,7 +4207,7 @@ SDValue PPCTargetLowering::LowerFormalArguments_32SVR4(
   // Reserve stack space for the allocations in CCInfo.
   CCByValInfo.AllocateStack(CCInfo.getStackSize(), PtrAlign);
 
-  CCByValInfo.AnalyzeFormalArguments(Ins, CC_PPC32_SVR4_ByVal);
+  CCByValInfo.AnalyzeFormalArguments(Ins, this->CCAssignFnForNodeWithDefault(CallConv, CC_PPC32_SVR4_ByVal,false, false));
 
   // Area that is at least reserved in the caller of this function.
   unsigned MinReservedArea = CCByValInfo.getStackSize();
@@ -5809,7 +5810,7 @@ SDValue PPCTargetLowering::LowerCall_32SVR4(
 
   assert((CallConv == CallingConv::C ||
           CallConv == CallingConv::Cold ||
-          CallConv == CallingConv::Fast) && "Unknown calling convention!");
+          CallConv == CallingConv::Fast || CallConv >= CallingConv::CUSTOM_ID_RANGE_START) && "Unknown calling convention!");
 
   const Align PtrAlign(4);
 
@@ -5850,11 +5851,11 @@ SDValue PPCTargetLowering::LowerCall_32SVR4(
       bool Result;
 
       if (Outs[i].IsFixed) {
-        Result = CC_PPC32_SVR4(i, ArgVT, ArgVT, CCValAssign::Full, ArgFlags,
+        Result = this->CCAssignFnForNodeWithDefault(CallConv, CC_PPC32_SVR4, true, false)(i, ArgVT, ArgVT, CCValAssign::Full, ArgFlags,
                                CCInfo);
       } else {
-        Result = CC_PPC32_SVR4_VarArg(i, ArgVT, ArgVT, CCValAssign::Full,
-                                      ArgFlags, CCInfo);
+        Result = this->CCAssignFnForNodeWithDefault(CallConv, CC_PPC32_SVR4_VarArg, true, true)(i, ArgVT, ArgVT, CCValAssign::Full, ArgFlags,
+                               CCInfo);
       }
 
       if (Result) {
@@ -5867,7 +5868,7 @@ SDValue PPCTargetLowering::LowerCall_32SVR4(
     }
   } else {
     // All arguments are treated the same.
-    CCInfo.AnalyzeCallOperands(Outs, CC_PPC32_SVR4);
+    CCInfo.AnalyzeCallOperands(Outs, this->CCAssignFnForNodeWithDefault(CallConv, CC_PPC32_SVR4, true, false));
   }
   CCInfo.clearWasPPCF128();
 
@@ -5878,7 +5879,7 @@ SDValue PPCTargetLowering::LowerCall_32SVR4(
   // Reserve stack space for the allocations in CCInfo.
   CCByValInfo.AllocateStack(CCInfo.getStackSize(), PtrAlign);
 
-  CCByValInfo.AnalyzeCallOperands(Outs, CC_PPC32_SVR4_ByVal);
+  CCByValInfo.AnalyzeCallOperands(Outs, this->CCAssignFnForNodeWithDefault(CallConv, CC_PPC32_SVR4_ByVal, true, false));
 
   // Size of the linkage area, parameter list area and the part of the local
   // space variable where copies of aggregates which are passed by value are
