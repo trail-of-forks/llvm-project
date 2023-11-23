@@ -525,6 +525,13 @@ class Sema final : public SemaBase {
       ClassTemplateSpecializationDecl *ClassTemplateSpec,
       SourceLocation PointOfInstantiation, CXXRecordDecl *Pattern);
 
+  CXXRecordDecl *
+  createCXXRecordSpecializationForDefinition(
+    CXXRecordDecl *Record, SourceLocation PointOfInstantiation,
+    CXXRecordDecl *Pattern);
+
+  bool isOutOfLine(const clang::Decl *decl);
+
 public:
   Sema(Preprocessor &pp, ASTContext &ctxt, ASTConsumer &consumer,
        TranslationUnitKind TUKind = TU_Complete,

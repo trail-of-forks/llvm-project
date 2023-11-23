@@ -14,12 +14,14 @@
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/ASTLambda.h"
 #include "clang/AST/ASTMutationListener.h"
+#include "clang/AST/DeclCXX.h"
 #include "clang/AST/DeclTemplate.h"
 #include "clang/AST/DependentDiagnostic.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
 #include "clang/AST/PrettyDeclStackTrace.h"
 #include "clang/AST/TypeLoc.h"
+#include "clang/Basic/SourceLocation.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Basic/TargetInfo.h"
 #include "clang/Sema/EnterExpressionEvaluationContext.h"
@@ -3602,6 +3604,47 @@ static void collectUnexpandedParameterPacks(
   }
 }
 
+bool Sema::isOutOfLine(const clang::Decl *decl) {
+  if (decl->isOutOfLine()) {
+    return true;
+  }
+
+  if (const CXXRecordDecl *RD = cast_or_null<CXXRecordDecl>(decl)) {
+    if (RD->hasDefinition()) {
+      auto Definition = RD->getDefinition();
+      if (Definition->isOutOfLine()) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+CXXRecordDecl *Sema::createCXXRecordSpecializationForDefinition(
+  CXXRecordDecl *RD, SourceLocation PointOfInstantiation, CXXRecordDecl *Pattern) {
+    if (!isOutOfLine(Pattern)) {
+      return RD;
+    }
+
+    CXXRecordDecl *PatternDef = cast_or_null<CXXRecordDecl>(Pattern->getDefinition());
+    Pattern = PatternDef;
+    auto *LexicalDC = Pattern->getLexicalDeclContext();
+    InstantiatingTemplate Inst(*this, PointOfInstantiation, Pattern);
+    if (Inst.isInvalid())
+      return RD;
+
+    assert(!Inst.isAlreadyInstantiating() && "should have been caught by caller");
+    auto TemplateArgs = getTemplateInstantiationArgs(RD);
+    TemplateDeclInstantiator DeclInstantiator(*this, LexicalDC, TemplateArgs);
+    if (auto *NewRD = cast_or_null<CXXRecordDecl>(DeclInstantiator.Visit(Pattern))) {
+      NewRD->setLexicalDeclContext(LexicalDC);
+      NewRD->setPreviousDecl(RD);
+      return NewRD;
+    }
+    return RD;
+}
+
 FunctionDecl *Sema::createMemberSpecializationForDefinition(
     FunctionDecl *Function, SourceLocation PointOfInstantiation) {
 
@@ -3841,23 +3884,14 @@ FunctionDecl *Sema::createFriendFunctionTemplateSpecializationForDefinition(
 ClassTemplateSpecializationDecl *Sema::createClassTemplateSpecializationForDefinition(
     ClassTemplateSpecializationDecl *ClassTemplateSpec,
     SourceLocation PointOfInstantiation, CXXRecordDecl *Pattern) {
+  assert(Pattern && "instantiating a non-template");
 
-  CXXRecordDecl *PatternDecl = Pattern;
-  assert(PatternDecl && "instantiating a non-template");
-
-  CXXRecordDecl *PatternDef = PatternDecl;
-  if (PatternDecl->hasDefinition()) {
-    PatternDef = PatternDecl->getDefinition();
-  }
-
-  // NOTE(kumarak): If the PatternDef is an instance of ClassTemplatePartialSpecializationDecl
-  //                ClassTemplate will be null. How to handle such case.
-  auto ClassTemplate = PatternDef->getDescribedClassTemplate();
-  if (!ClassTemplate || !ClassTemplate->isOutOfLine()) {
+  if (!isOutOfLine(Pattern)) {
     return nullptr;
   }
 
-  auto LexicalDC = PatternDef->getLexicalDeclContext();
+  auto *ClassTemplate = Pattern->getDescribedClassTemplate();
+  auto *LexicalDC = Pattern->getLexicalDeclContext();
   auto TemplateArgs = getTemplateInstantiationArgs(ClassTemplateSpec);
 
   assert(ClassTemplateSpec->getLexicalDeclContext() != LexicalDC
@@ -3870,9 +3904,12 @@ ClassTemplateSpecializationDecl *Sema::createClassTemplateSpecializationForDefin
 
   TemplateDeclInstantiator DeclInstantiator(*this, LexicalDC, TemplateArgs);
   ClassTemplateDecl *NewClassTemplate = dyn_cast<ClassTemplateDecl>(DeclInstantiator.Visit(ClassTemplate));
+  NewClassTemplate->mergePrevDecl(ClassTemplateSpec->getSpecializedTemplate());
+  NewClassTemplate->setDeclContext(ClassTemplate->getDeclContext());
+
   if (NewClassTemplate) {
-    ArrayRef<TemplateArgument> Innermost = TemplateArgs.getInnermost();
-    auto NewClassTemplateSpec = ClassTemplateSpecializationDecl::Create(
+      ArrayRef<TemplateArgument> Innermost = TemplateArgs.getInnermost();
+    auto *NewClassTemplateSpec = ClassTemplateSpecializationDecl::Create(
         Context, NewClassTemplate->getTemplatedDecl()->getTagKind(),
         NewClassTemplate->getLexicalDeclContext(),
         NewClassTemplate->getTemplatedDecl()->getBeginLoc(),
@@ -3880,14 +3917,13 @@ ClassTemplateSpecializationDecl *Sema::createClassTemplateSpecializationForDefin
         NewClassTemplate,
         Innermost,
         /*MatchedPackOnParmToNonPackOnArg=*/false,
-        nullptr
+        ClassTemplateSpec
     );
 
-    NewClassTemplate->AddSpecialization(NewClassTemplateSpec, nullptr);
     NewClassTemplateSpec->setAccess(ClassTemplateSpec->getAccess());
     NewClassTemplateSpec->setSpecializationKind(ClassTemplateSpec->getSpecializationKind());
-    NewClassTemplateSpec->setPreviousDecl(ClassTemplateSpec);
     NewClassTemplateSpec->setDeclContext(ClassTemplateSpec->getDeclContext());
+    NewClassTemplateSpec->setBraceRange(Pattern->getSourceRange());
     return NewClassTemplateSpec;
   }
 
