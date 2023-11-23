@@ -403,6 +403,13 @@ class Sema final {
       ClassTemplateSpecializationDecl *ClassTemplateSpec,
       SourceLocation PointOfInstantiation, CXXRecordDecl *Pattern);
 
+  CXXRecordDecl *
+  createCXXRecordSpecializationForDefinition(
+    CXXRecordDecl *Record, SourceLocation PointOfInstantiation,
+    CXXRecordDecl *Pattern);
+
+  bool isOutOfLine(const clang::Decl *decl);
+
 public:
   /// The maximum alignment, same as in llvm::Value. We duplicate them here
   /// because that allows us not to duplicate the constants in clang code,

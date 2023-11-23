@@ -9256,10 +9256,25 @@ bool Sema::RequireCompleteTypeImpl(SourceLocation Loc, QualType T,
         if (MSI->getTemplateSpecializationKind() !=
             TSK_ExplicitSpecialization) {
           runWithSufficientStackSpace(Loc, [&] {
-            Diagnosed = InstantiateClass(Loc, RD, Pattern,
-                                         getTemplateInstantiationArgs(RD),
-                                         TSK_ImplicitInstantiation,
-                                         /*Complain=*/Diagnoser);
+            if (getASTContext().getLangOpts().LexicalTemplateInstantiation) {
+              if (isOutOfLine(Pattern)) {
+                CXXRecordDecl *NewRD = createCXXRecordSpecializationForDefinition(RD, Loc, Pattern);
+                Diagnosed = InstantiateClass(Loc, NewRD, Pattern,
+                                            getTemplateInstantiationArgs(NewRD),
+                                            TSK_ImplicitInstantiation,
+                                            /*Complain=*/Diagnoser);
+              } else {
+                Diagnosed = InstantiateClass(Loc, RD, Pattern,
+                                            getTemplateInstantiationArgs(RD),
+                                            TSK_ImplicitInstantiation,
+                                            /*Complain=*/Diagnoser);
+              }
+            } else {
+              Diagnosed = InstantiateClass(Loc, RD, Pattern,
+                                          getTemplateInstantiationArgs(RD),
+                                          TSK_ImplicitInstantiation,
+                                          /*Complain=*/Diagnoser);
+            }
           });
           Instantiated = true;
         }

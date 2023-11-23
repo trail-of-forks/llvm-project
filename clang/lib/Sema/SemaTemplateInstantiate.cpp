@@ -3193,6 +3193,12 @@ Sema::InstantiateClass(SourceLocation PointOfInstantiation,
 
   Pattern = PatternDef;
 
+  if (Instantiation->getDeclKind() == clang::Decl::Kind::CXXRecord) {
+    if (Pattern->isOutOfLine()) {
+
+    }
+  }
+
   // Record the point of instantiation.
   if (MemberSpecializationInfo *MSInfo
         = Instantiation->getMemberSpecializationInfo()) {
@@ -3771,23 +3777,20 @@ bool Sema::InstantiateClassTemplateSpecialization(
 
     // NOTE(kumarak): If the PatternDef is an instance of ClassTemplatePartialSpecializationDecl
     //                ClassTemplate will be null. How to handle such case.
-    if (PatternDef) {
-      auto ClassTemplate = PatternDef->getDescribedClassTemplate();
-      if (ClassTemplate) {
-        auto CanClassTemplate = ClassTemplate->getCanonicalDecl();
-        if (ClassTemplate->isOutOfLine() || CanClassTemplate->isOutOfLine()) {
-          auto isFriend = (CanClassTemplate->getFriendObjectKind() != Decl::FOK_None);
-          if (isFriend) {
+    if (PatternDef && isOutOfLine(PatternDef)) {
+      ClassTemplateDecl *ClassTemplate = PatternDef->getDescribedClassTemplate();
+      assert(ClassTemplate && "instantiating pattern is a non-template");
+      bool isFriend = (ClassTemplate->getFriendObjectKind() != Decl::FOK_None);
+      if (isFriend) {
               //if (auto NewClassTemplateSpec = createFriendClassTemplateSpecializationForDefinition(
               //    ClassTemplateSpec, PointOfInstantiation, Pattern.get())) {
                // ClassTemplateSpec = NewClassTemplateSpec;
               //}
-          } else {
-            if (auto NewClassTemplateSpec = createClassTemplateSpecializationForDefinition(
-                ClassTemplateSpec, PointOfInstantiation, Pattern.get())) {
+      } else {
+            if (ClassTemplateSpecializationDecl *NewClassTemplateSpec =
+            createClassTemplateSpecializationForDefinition(ClassTemplateSpec,
+             PointOfInstantiation, PatternDef)) {
               ClassTemplateSpec = NewClassTemplateSpec;
-            }
-          }
         }
       }
 

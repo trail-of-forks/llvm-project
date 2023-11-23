@@ -2322,6 +2322,8 @@ public:
   /// Load any lazily-loaded specializations from the external source.
   void LoadLazySpecializations() const;
 
+  void mergePrevDecl(ClassTemplateDecl *Prev);
+
   /// Get the underlying class declarations of the template.
   CXXRecordDecl *getTemplatedDecl() const {
     return static_cast<CXXRecordDecl *>(TemplatedDecl);
