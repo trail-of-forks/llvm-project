@@ -37,6 +37,9 @@
 #include "llvm/Support/MathExtras.h"
 #include "llvm/Support/Printable.h"
 #include "llvm/Support/raw_ostream.h"
+#include <llvm/Target/TargetMachine.h>
+#include <llvm/MC/TargetRegistry.h>
+#include <llvm/MC/CCRegistry.h>
 #include <cassert>
 #include <utility>
 
@@ -676,3 +679,29 @@ void TargetRegisterInfo::dumpReg(Register Reg, unsigned SubRegIndex,
   dbgs() << printReg(Reg, TRI, SubRegIndex) << "\n";
 }
 #endif
+
+  const MCPhysReg*
+  TargetRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {    
+    auto tgt = MF->getTarget().getTarget().getName();
+    for (const auto& rng : CCRegistry::findCCOverrides(tgt)) {
+      auto res = rng.second->getCalleeSaves(MF);
+      if (res) {
+        return *res;
+      }
+    }
+
+    return this->getCalleeSavedRegsDefault(MF);
+  }
+
+  const uint32_t *TargetRegisterInfo::getCallPreservedMask(const MachineFunction &MF,
+                                               CallingConv::ID CC) const {
+    auto tgt = MF.getTarget().getTarget().getName();
+    for (const auto& rng : CCRegistry::findCCOverrides(tgt)) {
+      auto res = rng.second->getCallPreservedMask(MF, CC);
+      if (res) {
+        return *res;
+      }
+    }
+
+    return this->getCallPreservedMaskDefault(MF, CC);                                              
+  }

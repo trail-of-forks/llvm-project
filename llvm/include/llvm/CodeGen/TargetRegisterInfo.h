@@ -459,7 +459,11 @@ public:
   ///         In most cases you will want to use instead the function
   ///         getCalleeSavedRegs that is implemented in MachineRegisterInfo.
   virtual const MCPhysReg*
-  getCalleeSavedRegs(const MachineFunction *MF) const = 0;
+  getCalleeSavedRegs(const MachineFunction *MF) const;
+
+
+  virtual const MCPhysReg*
+  getCalleeSavedRegsDefault(const MachineFunction *MF) const { return nullptr; }
 
   /// Return a mask of call-preserved registers for the given calling convention
   /// on the current function. The mask should include all call-preserved
@@ -480,10 +484,11 @@ public:
   /// registers.
   ///
   virtual const uint32_t *getCallPreservedMask(const MachineFunction &MF,
-                                               CallingConv::ID) const {
-    // The default mask clobbers everything.  All targets should override.
-    return nullptr;
-  }
+                                               CallingConv::ID) const;
+
+
+  virtual const uint32_t *getCallPreservedMaskDefault(const MachineFunction &MF,
+                                               CallingConv::ID) const { return nullptr; }
 
   /// Return a register mask for the registers preserved by the unwinder,
   /// or nullptr if no custom mask is needed.

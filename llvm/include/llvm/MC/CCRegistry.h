@@ -31,6 +31,11 @@ class CCObj {
     virtual std::function<CCAssignFn> CCAssignFnForNode(CallingConv::ID CC,
                                                        bool Return,
                                                        bool isVarArg) = 0;
+                                                    
+    virtual std::optional<const MCPhysReg*> getCalleeSaves(const MachineFunction *M) = 0;     
+
+    virtual std::optional< const uint32_t *> getCallPreservedMask(const MachineFunction& M,  CallingConv::ID) = 0;     
+
     virtual bool isTailCallEquiv(CallingConv::ID CC) = 0;
 };
 

@@ -60,7 +60,7 @@ ARMBaseRegisterInfo::ARMBaseRegisterInfo()
 }
 
 const MCPhysReg*
-ARMBaseRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
+ARMBaseRegisterInfo::getCalleeSavedRegsDefault(const MachineFunction *MF) const {
   const ARMSubtarget &STI = MF->getSubtarget<ARMSubtarget>();
   bool UseSplitPush = STI.splitFramePushPop(*MF);
   const Function &F = MF->getFunction();
@@ -128,7 +128,7 @@ const MCPhysReg *ARMBaseRegisterInfo::getCalleeSavedRegsViaCopy(
 }
 
 const uint32_t *
-ARMBaseRegisterInfo::getCallPreservedMask(const MachineFunction &MF,
+ARMBaseRegisterInfo::getCallPreservedMaskDefault(const MachineFunction &MF,
                                           CallingConv::ID CC) const {
   const ARMSubtarget &STI = MF.getSubtarget<ARMSubtarget>();
   if (CC == CallingConv::GHC)
