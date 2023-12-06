@@ -1626,6 +1626,14 @@ QualType CallExpr::getCallReturnType(const ASTContext &Ctx) const {
   } else if (CalleeType->isDependentType() ||
              CalleeType->isSpecificPlaceholderType(BuiltinType::Overload)) {
     return Ctx.DependentTy;
+
+    // PASTA PATCH: If the CalleeType is Builtin the function asserts
+    //              on casting it to the FunctionType. Instead get the
+    //              Callee function and get the return type;
+  } else if (CalleeType->isBuiltinType()) {
+    if (const FunctionDecl* Func = getDirectCallee()) {
+      return Func->getReturnType();
+    }
   }
 
   const FunctionType *FnType = CalleeType->castAs<FunctionType>();
