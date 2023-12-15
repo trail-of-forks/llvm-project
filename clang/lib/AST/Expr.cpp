@@ -32,6 +32,7 @@
 #include "clang/Lex/Lexer.h"
 #include "clang/Lex/LiteralSupport.h"
 #include "clang/Lex/Preprocessor.h"
+#include "llvm/Support/Casting.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
@@ -1633,6 +1634,10 @@ QualType CallExpr::getCallReturnType(const ASTContext &Ctx) const {
   } else if (CalleeType->isBuiltinType()) {
     if (const FunctionDecl* Func = getDirectCallee()) {
       return Func->getReturnType();
+    }
+  } else if (auto TempObj = dyn_cast_or_null<CXXTemporaryObjectExpr>(Callee)) {
+    if (auto Constructor = TempObj->getConstructor()) {
+      return Constructor->getType();
     }
   }
 
