@@ -3303,6 +3303,8 @@ StringRef BuiltinType::getName(const PrintingPolicy &Policy) const {
   case Id:                                                                     \
     return Name;
 #include "clang/Basic/WebAssemblyReferenceTypes.def"
+  case Unresolved:
+    return "unresolved";
   }
 
   llvm_unreachable("Invalid builtin type.");
@@ -4451,6 +4453,7 @@ bool Type::canHaveNullability(bool ResultIfUnknown) const {
     case BuiltinType::OMPArraySection:
     case BuiltinType::OMPArrayShaping:
     case BuiltinType::OMPIterator:
+    case BuiltinType::Unresolved:
       return false;
     }
     llvm_unreachable("unknown builtin type");

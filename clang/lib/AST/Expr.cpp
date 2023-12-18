@@ -25,6 +25,7 @@
 #include "clang/AST/Mangle.h"
 #include "clang/AST/RecordLayout.h"
 #include "clang/AST/StmtVisitor.h"
+#include "clang/AST/Type.h"
 #include "clang/Basic/Builtins.h"
 #include "clang/Basic/CharInfo.h"
 #include "clang/Basic/SourceManager.h"
@@ -1641,8 +1642,11 @@ QualType CallExpr::getCallReturnType(const ASTContext &Ctx) const {
     }
   }
 
-  const FunctionType *FnType = CalleeType->castAs<FunctionType>();
-  return FnType->getReturnType();
+  if (const FunctionType *FnType = CalleeType->getAs<FunctionType>()) {
+    return FnType->getReturnType();
+  }
+
+  return Ctx.UnresolvedTy;
 }
 
 const Attr *CallExpr::getUnusedResultAttr(const ASTContext &Ctx) const {

@@ -1128,6 +1128,7 @@ public:
 #include "clang/Basic/RISCVVTypes.def"
 #define WASM_TYPE(Name, Id, SingletonId) CanQualType SingletonId;
 #include "clang/Basic/WebAssemblyReferenceTypes.def"
+  CanQualType UnresolvedTy;
 
   // Types for deductions in C++0x [stmt.ranged]'s desugaring. Built on demand.
   mutable QualType AutoDeductTy;     // Deduction against 'auto'.
