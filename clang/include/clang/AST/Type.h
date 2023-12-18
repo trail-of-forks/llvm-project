@@ -2588,6 +2588,8 @@ public:
   bool isObjCObjectOrInterfaceType() const;
   bool isObjCIdType() const;                    // id
   bool isDecltypeType() const;
+
+  bool isUnresolvedType() const;
   /// Was this type written with the special inert-in-ARC __unsafe_unretained
   /// qualifier?
   ///
@@ -5767,6 +5769,16 @@ public:
   static bool classof(const Type *T) { return T->getTypeClass() == Typedef; }
 };
 
+// Placeholder type that shows the AST Node type is not resolved yet
+class UnresolvedType : public Type {
+  friend class ASTContext; // ASTContext creates these.
+
+public:
+  //static bool classof(const Type *T) {
+  //  return T->getTypeClass() == Unresolved;
+  //}
+};
+
 /// Sugar type that represents a type that was qualified by a qualifier written
 /// as a macro invocation.
 class MacroQualifiedType : public Type {
@@ -8391,6 +8403,10 @@ inline bool Type::isObjCBuiltinType() const {
 
 inline bool Type::isDecltypeType() const {
   return isa<DecltypeType>(this);
+}
+
+inline bool Type::isUnresolvedType() const {
+  return isSpecificBuiltinType(BuiltinType::Unresolved);
 }
 
 #define IMAGE_TYPE(ImgType, Id, SingletonId, Access, Suffix) \
