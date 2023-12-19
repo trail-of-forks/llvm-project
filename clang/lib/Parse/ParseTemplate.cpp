@@ -487,14 +487,25 @@ bool Parser::ParseTemplateParameters(
   }
 
   if (Tok.is(tok::greatergreater)) {
+    auto Callbacks = PP.getPPCallbacks();
+
     // No diagnostic required here: a template-parameter-list can only be
     // followed by a declaration or, for a template template parameter, the
     // 'class' keyword. Therefore, the second '>' will be diagnosed later.
     // This matters for elegant diagnosis of:
     //   template<template<typename>> struct S;
     Tok.setKind(tok::greater);
+    if (Callbacks) {
+      Callbacks->Event(Tok, PPCallbacks::SplitToken, 0);
+    }
+
     RAngleLoc = Tok.getLocation();
     Tok.setLocation(Tok.getLocation().getLocWithOffset(1));
+
+    if (Callbacks) {
+      Callbacks->Event(Tok, PPCallbacks::SplitToken, 0);
+    }
+
   } else if (!TryConsumeToken(tok::greater, RAngleLoc) && Failed) {
     Diag(Tok.getLocation(), diag::err_expected) << tok::greater;
     return true;
@@ -1228,6 +1239,11 @@ bool Parser::ParseGreaterThanInTemplateList(SourceLocation LAngleLoc,
   Greater.setKind(tok::greater);
   Greater.setLength(GreaterLength);
 
+  auto Callbacks = PP.getPPCallbacks();
+  if (Callbacks) {
+    Callbacks->Event(Greater, PPCallbacks::SplitToken, 0);
+  }
+
   unsigned OldLength = Tok.getLength();
   if (MergeWithNextToken) {
     ConsumeToken();
@@ -1237,6 +1253,10 @@ bool Parser::ParseGreaterThanInTemplateList(SourceLocation LAngleLoc,
   Tok.setKind(RemainingToken);
   Tok.setLength(OldLength - GreaterLength);
 
+  if (Callbacks) {
+    Callbacks->Event(Tok, PPCallbacks::SplitToken, 0);
+  }
+
   // Split the second token if lexing it normally would lex a different token
   // (eg, the fifth token in 'A<B>>>' should re-lex as '>', not '>>').
   SourceLocation AfterGreaterLoc = TokLoc.getLocWithOffset(GreaterLength);
@@ -1244,11 +1264,8 @@ bool Parser::ParseGreaterThanInTemplateList(SourceLocation LAngleLoc,
     AfterGreaterLoc = PP.SplitToken(AfterGreaterLoc, Tok.getLength());
   Tok.setLocation(AfterGreaterLoc);
 
-  // We want to observe when tokens are split up so that we can have this
-  // reflected in PASTA's token lists.
-  if (PPCallbacks *Callbacks = PP.getPPCallbacks()) {
-    Callbacks->Event(Greater, PPCallbacks::BeginSplitToken, 0);
-    Callbacks->Event(Tok, PPCallbacks::EndSplitToken, 0);
+  if (Callbacks) {
+    Callbacks->Event(Tok, PPCallbacks::SplitToken, 0);
   }
 
   // Update the token cache to match what we just did if necessary.

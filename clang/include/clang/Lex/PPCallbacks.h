@@ -42,7 +42,7 @@ public:
 
   // Add in an event that lets us get better visibility into the
   // behavior of the preprocessor, as things are happening.
-#define LLVM_CLANG_HAS_PASTA_EVENTS 20230920L
+#define LLVM_CLANG_HAS_PASTA_EVENTS 20231218L
   enum EventKind : int;
   virtual void Event(const Token &Tok, EventKind Kind, uintptr_t Data) {}
 
