@@ -1298,6 +1298,10 @@ public:
   /// Returns the FileID for the preprocessor predefines.
   FileID getPredefinesFileID() const { return PredefinesFileID; }
 
+  void clearPPCallbacks() {
+    Callbacks.reset();
+  }
+
   /// \{
   /// Accessors for preprocessor callbacks.
   ///

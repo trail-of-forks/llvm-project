@@ -25,8 +25,7 @@ enum PPCallbacks::EventKind : int {
   // code for templates, e.g. `constant<bar<A>>>0`, where the `>>>` is first
   // treated as one token, but then where the parser realizes that it is
   // really `constant<bar<A>> > 0`.
-  BeginSplitToken,
-  EndSplitToken,
+  SplitToken,
 
   // Tell the listener that we've just lexed the hash token that should start
   // off a directive.
