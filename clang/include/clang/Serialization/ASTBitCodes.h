@@ -1093,6 +1093,7 @@ enum PredefinedTypeIDs {
 #define WASM_TYPE(Name, Id, SingletonId) PREDEF_TYPE_##Id##_ID,
 #include "clang/Basic/WebAssemblyReferenceTypes.def"
   // Sentinel value. Considered a predefined type but not useable as one.
+  PREDEF_TYPE_UNRESOLVED_ID,
   PREDEF_TYPE_LAST_ID
 };
 

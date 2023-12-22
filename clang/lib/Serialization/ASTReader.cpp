@@ -7390,6 +7390,9 @@ QualType ASTReader::GetType(TypeID ID) {
     T = Context.SingletonId;                                                   \
     break;
 #include "clang/Basic/WebAssemblyReferenceTypes.def"
+  case PREDEF_TYPE_UNRESOLVED_ID:
+    T= Context.UnresolvedTy;
+    break;
     }
 
     assert(!T.isNull() && "Unknown predefined type");
