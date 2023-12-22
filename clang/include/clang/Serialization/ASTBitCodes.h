@@ -1149,6 +1149,7 @@ enum PredefinedTypeIDs {
   /// The placeholder type for unresolved templates.
   PREDEF_TYPE_UNRESOLVED_TEMPLATE,
   // Sentinel value. Considered a predefined type but not useable as one.
+  PREDEF_TYPE_UNRESOLVED_ID,
   PREDEF_TYPE_LAST_ID
 };
 
@@ -1157,7 +1158,7 @@ enum PredefinedTypeIDs {
 ///
 /// Type IDs for non-predefined types will start at
 /// NUM_PREDEF_TYPE_IDs.
-const unsigned NUM_PREDEF_TYPE_IDS = 513;
+const unsigned NUM_PREDEF_TYPE_IDS = 514;
 
 // Ensure we do not overrun the predefined types we reserved
 // in the enum PredefinedTypeIDs above.
