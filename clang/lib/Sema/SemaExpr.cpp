@@ -6810,6 +6810,8 @@ static bool isPlaceholderToRemoveAsArg(QualType type) {
   case BuiltinType::OMPIterator:
     return true;
 
+  case BuiltinType::Unresolved:
+    return true;
   }
   llvm_unreachable("bad builtin type kind");
 }
@@ -21689,6 +21691,7 @@ ExprResult Sema::CheckPlaceholderExpr(Expr *E) {
 #define BUILTIN_TYPE(Id, SingletonId) case BuiltinType::Id:
 #define PLACEHOLDER_TYPE(Id, SingletonId)
 #include "clang/AST/BuiltinTypes.def"
+  case BuiltinType::Unresolved:
     break;
   }
 

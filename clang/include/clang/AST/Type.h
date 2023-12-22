@@ -4623,16 +4623,6 @@ public:
   static bool classof(const Type *T) { return T->getTypeClass() == Typedef; }
 };
 
-// Placeholder type that shows the AST Node type is not resolved yet
-class UnresolvedType : public Type {
-  friend class ASTContext; // ASTContext creates these.
-
-public:
-  //static bool classof(const Type *T) {
-  //  return T->getTypeClass() == Unresolved;
-  //}
-};
-
 /// Sugar type that represents a type that was qualified by a qualifier written
 /// as a macro invocation.
 class MacroQualifiedType : public Type {
