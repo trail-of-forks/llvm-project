@@ -174,9 +174,15 @@ public:
             OrigDecl->getLocation(), OrigDecl->getIdentifier(), TSI);
       else {
         assert(isa<TypedefDecl>(OrigDecl) && "Not a Type alias or typedef");
-        Decl = TypedefDecl::Create(
-            Context, Context.getTranslationUnitDecl(), OrigDecl->getBeginLoc(),
-            OrigDecl->getLocation(), OrigDecl->getIdentifier(), TSI);
+        if (SemaRef.getLangOpts().LexicalTemplateInstantiation) {
+          Decl = TypedefDecl::Create(
+              Context, OrigDecl->getLexicalDeclContext(), OrigDecl->getBeginLoc(),
+              OrigDecl->getLocation(), OrigDecl->getIdentifier(), TSI);
+        } else {
+          Decl = TypedefDecl::Create(
+              Context, Context.getTranslationUnitDecl(), OrigDecl->getBeginLoc(),
+              OrigDecl->getLocation(), OrigDecl->getIdentifier(), TSI);
+        }
       }
       MaterializedTypedefs.push_back(Decl);
     }
@@ -220,8 +226,17 @@ buildDeductionGuide(Sema &SemaRef, TemplateDecl *OriginalTemplate,
 
   for (auto *Param : Params)
     Param->setDeclContext(Guide);
-  for (auto *TD : MaterializedTypedefs)
-    TD->setDeclContext(Guide);
+  for (auto *TD : MaterializedTypedefs) {
+    if (SemaRef.getLangOpts().LexicalTemplateInstantiation) {
+      auto LDC = TD->getLexicalDeclContext();
+      auto DC = TD->getDeclContext();
+      TD->setDeclContext(Guide);
+      TD->setLexicalDeclContext(LDC);
+      DC->addDecl(TD);
+    } else {
+      TD->setDeclContext(Guide);
+    }
+  }
   if (isa<CXXRecordDecl>(DC))
     Guide->setAccess(AS_public);
 
