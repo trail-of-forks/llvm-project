@@ -3529,7 +3529,7 @@ FunctionDecl *Sema::createMemberSpecializationForDefinition(
     return nullptr;
   }
 
-  if (Function->isStatic() || Function->isInlined())
+  if (Function->isStatic())
     return nullptr;
 
   const FunctionDecl *PatternDecl = Function->getTemplateInstantiationPattern();
@@ -3575,6 +3575,10 @@ FunctionDecl *Sema::createMemberSpecializationForDefinition(
   MissingFunctionDef->setTemplateSpecializationKind(
       Function->getTemplateSpecializationKindForInstantiation(), PointOfInstantiation);
   MissingFunctionDef->setIneligibleOrNotSelected(Function->isIneligibleOrNotSelected());
+  MissingFunctionDef->setLocation(PatternDef->getLocation());
+  if (auto tsi = MissingFunctionDef->getTypeSourceInfo()) {
+    tsi->getTypeLoc().initialize(Context, PatternDef->getLocation());
+  }
 
   return MissingFunctionDef;
 }
@@ -3590,7 +3594,7 @@ FunctionDecl *Sema::createFunctionTemplateSpecializationForDefinition(
   }
 
   // TODO(kumarak): Not handling static and explicitly inlined method
-  if (Function->isStatic() || Function->isInlined())
+  if (Function->isStatic())
     return nullptr;
 
   const FunctionDecl *PatternDecl = Function->getTemplateInstantiationPattern();
@@ -3656,6 +3660,10 @@ FunctionDecl *Sema::createFunctionTemplateSpecializationForDefinition(
         NewMethod->setAccess(Function->getAccess());
       }
 
+      NewMethod->setLocation(PatternDef->getLocation());
+      if (auto tsi = NewMethod->getTypeSourceInfo()) {
+        tsi->getTypeLoc().initialize(Context, PatternDef->getLocation());
+      }
       NewMethod->setInstantiationIsPending(Function->instantiationIsPending());
       NewMethod->setTemplateSpecializationKind(
           Function->getTemplateSpecializationKindForInstantiation(), PointOfInstantiation);
