@@ -3852,22 +3852,25 @@ bool Sema::InstantiateClassTemplateSpecialization(
     // NOTE(kumarak): If the PatternDef is an instance of ClassTemplatePartialSpecializationDecl
     //                ClassTemplate will be null. How to handle such case.
     if (PatternDef && isOutOfLine(PatternDef)) {
-      ClassTemplateDecl *ClassTemplate = PatternDef->getDescribedClassTemplate();
-      assert(ClassTemplate && "instantiating pattern is a non-template");
-      bool isFriend = (ClassTemplate->getFriendObjectKind() != Decl::FOK_None);
-      if (isFriend) {
-              //if (auto NewClassTemplateSpec = createFriendClassTemplateSpecializationForDefinition(
-              //    ClassTemplateSpec, PointOfInstantiation, Pattern.get())) {
-               // ClassTemplateSpec = NewClassTemplateSpec;
-              //}
-      } else {
+      if (ClassTemplateDecl *ClassTemplate = PatternDef->getDescribedClassTemplate()) {
+#if 0
+	// Note(kumarak) Disable the patch since it is causing issues during bootstrap
+	// on linux.
+        bool isFriend = (ClassTemplate->getFriendObjectKind() != Decl::FOK_None);
+        if (isFriend) {
+                //if (auto NewClassTemplateSpec = createFriendClassTemplateSpecializationForDefinition(
+                //    ClassTemplateSpec, PointOfInstantiation, Pattern.get())) {
+                // ClassTemplateSpec = NewClassTemplateSpec;
+               //}
+        } else {
             if (ClassTemplateSpecializationDecl *NewClassTemplateSpec =
             createClassTemplateSpecializationForDefinition(ClassTemplateSpec,
              PointOfInstantiation, PatternDef)) {
               ClassTemplateSpec = NewClassTemplateSpec;
+          }
         }
+#endif
       }
-
       assert((ClassTemplateSpec->getDeclContext() == PrevClassTemplateSpec->getDeclContext()) &&
              "Class template declaration and definition context mismatch");
     }
