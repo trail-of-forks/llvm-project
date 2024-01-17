@@ -9741,7 +9741,14 @@ bool Sema::CheckFunctionTemplateSpecialization(
   // specialization kind was explicit.
   TemplateSpecializationKind TSK = SpecInfo->getTemplateSpecializationKind();
   if (TSK == TSK_Undeclared || TSK == TSK_ImplicitInstantiation) {
-    Specialization->setLocation(FD->getLocation());
+
+    // Note(kumarak): The source location from the function template declaration that
+    //                later gets updated to the specialization. However if the method
+    //                isOutOfLine, there is no need to update the location since the
+    //                specialization will act as a redeclaration in the AST.
+    if (!(getLangOpts().LexicalTemplateInstantiation && Specialization->isOutOfLine())) {
+      Specialization->setLocation(FD->getLocation());
+    }
     Specialization->setLexicalDeclContext(FD->getLexicalDeclContext());
     // C++11 [dcl.constexpr]p1: An explicit specialization of a constexpr
     // function can differ from the template declaration with respect to
