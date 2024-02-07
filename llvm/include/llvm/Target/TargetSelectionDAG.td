@@ -1904,3 +1904,6 @@ class ComplexPattern<ValueType ty, int numops, string fn,
   list<SDNodeProperty> Properties = props;
   int Complexity = complexity;
 }
+
+def immFullPTR  : Operand<iPTR>, ImmLeaf<iPTR, [{return true;}]>;
+def : Pat<(int_addrrepr imm:$p), (POINTER_HANDLER immFullPTR:$p)>;

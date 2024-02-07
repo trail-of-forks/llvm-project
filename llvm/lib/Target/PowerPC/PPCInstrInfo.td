@@ -3408,13 +3408,6 @@ def : Pat<(fcopysign f32:$frB, f64:$frA),
 }
 
 
-def immFullPTR  : Operand<iPTR>, ImmLeaf<iPTR, [{return true;}]>;
-def POINTER_HANDLER :  PPCPostRAExpPseudo<
-    (outs gprc:$dst), (ins immFullPTR:$ptr), "POINTER_HANDLER $dst, $ptr",
-    []>;
-
-def : Pat<(int_addrrepr imm:$p), (POINTER_HANDLER immFullPTR:$p)>;
-
 // XL Compat intrinsics.
 def : Pat<(int_ppc_fmsub f64:$A, f64:$B, f64:$C), (FMSUB $A, $B, $C)>;
 def : Pat<(int_ppc_fmsubs f32:$A, f32:$B, f32:$C), (FMSUBS $A, $B, $C)>;

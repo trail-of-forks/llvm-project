@@ -1107,6 +1107,17 @@ def CFI_INSTRUCTION : StandardPseudoInstruction {
   let isNotDuplicable = true;
   let isMeta = true;
 }
+
+def POINTER_HANDLER : StandardPseudoInstruction {
+  let OutOperandList = (outs unknown:$r);
+  let InOperandList = (ins i32imm:$target);
+  let AsmString = "POINTER_HANDLER $r, $target";
+  let hasCtrlDep = true;
+  let hasSideEffects = false;
+  let isNotDuplicable = true;
+  let isMeta = true;
+}
+
 def EH_LABEL : StandardPseudoInstruction {
   let OutOperandList = (outs);
   let InOperandList = (ins i32imm:$id);
