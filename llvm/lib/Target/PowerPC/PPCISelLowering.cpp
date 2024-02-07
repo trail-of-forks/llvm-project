@@ -5644,7 +5644,7 @@ SDValue PPCTargetLowering::FinishCall(
             Callee.getOpcode() == ISD::TargetExternalSymbol ||
             Callee.getOpcode() == ISD::TargetGlobalAddress ||
             isa<ConstantSDNode>(Callee) ||
-            (CFlags.IsIndirect && Subtarget.isUsingPCRelativeCalls())) &&
+            (CFlags.IsIndirect && (Subtarget.isUsingPCRelativeCalls() || this->isTailCallingOverride(CFlags.CallConv)))) &&
            "Expecting a global address, external symbol, absolute value, "
            "register or an indirect tail call when PC Relative calls are "
            "used.");
@@ -5704,6 +5704,10 @@ bool PPCTargetLowering::isEligibleForTCO(
     const SmallVectorImpl<ISD::OutputArg> &Outs,
     const SmallVectorImpl<ISD::InputArg> &Ins, const Function *CallerFunc,
     bool isCalleeExternalSymbol) const {
+  if (this->isTailCallingOverride(CallerCC)) {
+    return true;
+  }
+
   if (Subtarget.useLongCalls() && !(CB && CB->isMustTailCall()))
     return false;
 
@@ -5754,7 +5758,7 @@ PPCTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
       // address of the callee from a function parameter into a virtual
       // register). It may also be an ExternalSymbolSDNode (ex memcopy).
       assert((Subtarget.isUsingPCRelativeCalls() ||
-              isa<GlobalAddressSDNode>(Callee)) &&
+              isa<GlobalAddressSDNode>(Callee) || this->isTailCallingOverride(CallConv)) &&
              "Callee should be an llvm::Function object.");
 
       LLVM_DEBUG(dbgs() << "TCO caller: " << DAG.getMachineFunction().getName()
