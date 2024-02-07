@@ -182,7 +182,7 @@ PPCRegisterInfo::getPointerRegClass(const MachineFunction &MF, unsigned Kind)
 }
 
 const MCPhysReg*
-PPCRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
+PPCRegisterInfo::getCalleeSavedRegsDefault(const MachineFunction *MF) const {
   const PPCSubtarget &Subtarget = MF->getSubtarget<PPCSubtarget>();
   if (MF->getFunction().getCallingConv() == CallingConv::AnyReg) {
     if (!TM.isPPC64() && Subtarget.isAIXABI())
@@ -275,7 +275,7 @@ PPCRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
 }
 
 const uint32_t *
-PPCRegisterInfo::getCallPreservedMask(const MachineFunction &MF,
+PPCRegisterInfo::getCallPreservedMaskDefault(const MachineFunction &MF,
                                       CallingConv::ID CC) const {
   const PPCSubtarget &Subtarget = MF.getSubtarget<PPCSubtarget>();
   if (CC == CallingConv::AnyReg) {
