@@ -802,6 +802,9 @@ def int_addressofreturnaddress : DefaultAttrsIntrinsic<[llvm_anyptr_ty], [], [In
 def int_frameaddress : DefaultAttrsIntrinsic<[llvm_anyptr_ty], [llvm_i32_ty],
                                  [IntrNoMem, ImmArg<ArgIndex<0>>]>;
 def int_sponentry  : DefaultAttrsIntrinsic<[llvm_anyptr_ty], [], [IntrNoMem]>;
+
+def int_addrrepr : DefaultAttrsIntrinsic<[llvm_anyptr_ty],[llvm_i32_ty],[IntrNoMem], "llvm.addrrepr">;
+
 def int_read_register  : DefaultAttrsIntrinsic<[llvm_anyint_ty], [llvm_metadata_ty],
                                    [IntrReadMem], "llvm.read_register">;
 def int_write_register : Intrinsic<[], [llvm_metadata_ty, llvm_anyint_ty],
