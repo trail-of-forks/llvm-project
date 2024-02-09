@@ -1110,8 +1110,8 @@ def CFI_INSTRUCTION : StandardPseudoInstruction {
 
 def POINTER_HANDLER : StandardPseudoInstruction {
   let OutOperandList = (outs unknown:$r);
-  let InOperandList = (ins i32imm:$target);
-  let AsmString = "POINTER_HANDLER $r, $target";
+  let InOperandList = (ins  unknown:$target, i32imm:$shouldfix);
+  let AsmString = "POINTER_HANDLER $r, $target, $shouldfix";
   let hasCtrlDep = true;
   let hasSideEffects = false;
   let isNotDuplicable = true;

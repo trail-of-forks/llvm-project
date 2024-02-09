@@ -1906,4 +1906,6 @@ class ComplexPattern<ValueType ty, int numops, string fn,
 }
 
 def immFullPTR  : Operand<iPTR>, ImmLeaf<iPTR, [{return true;}]>;
-def : Pat<(int_addrrepr imm:$p), (POINTER_HANDLER immFullPTR:$p)>;
+def immBool : Operand<i32>, ImmLeaf<i32, [{return isUInt<32>(Imm);}]>;
+def : Pat<(int_addrrepr imm:$p, imm:$should_fix), (POINTER_HANDLER immFullPTR:$p, immBool:$should_fix)>;
+
