@@ -57,6 +57,7 @@
 #include "llvm/MC/MCExpr.h"
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/Support/CommandLine.h"
+#include "llvm/Support/Compiler.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/KnownBits.h"
@@ -4221,12 +4222,13 @@ SDValue X86TargetLowering::LowerFormalArguments(
   if (IsWin64)
     CCInfo.AllocateStack(32, Align(8));
 
-  CCInfo.AnalyzeArguments(Ins, CC_X86);
+  auto res = CCAssignFnForNodeWithDefault(CallConv, CC_X86, false, IsVarArg);
+  CCInfo.AnalyzeArguments(Ins, res);
 
   // In vectorcall calling convention a second pass is required for the HVA
   // types.
   if (CallingConv::X86_VectorCall == CallConv) {
-    CCInfo.AnalyzeArgumentsSecondPass(Ins, CC_X86);
+    CCInfo.AnalyzeArgumentsSecondPass(Ins, res);
   }
 
   // The next loop assumes that the locations are in the same order of the
@@ -4579,12 +4581,13 @@ X86TargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   if (IsWin64)
     CCInfo.AllocateStack(32, Align(8));
 
-  CCInfo.AnalyzeArguments(Outs, CC_X86);
+  auto res = CCAssignFnForNodeWithDefault(CallConv, CC_X86, true, isVarArg);
+  CCInfo.AnalyzeArguments(Outs, res);
 
   // In vectorcall calling convention a second pass is required for the HVA
   // types.
   if (CallingConv::X86_VectorCall == CallConv) {
-    CCInfo.AnalyzeArgumentsSecondPass(Outs, CC_X86);
+    CCInfo.AnalyzeArgumentsSecondPass(Outs, res);
   }
 
   // Get a count of how many bytes are to be pushed on the stack.
@@ -5232,12 +5235,17 @@ bool X86TargetLowering::IsEligibleForTailCallOptimization(
     bool isVarArg, Type *RetTy, const SmallVectorImpl<ISD::OutputArg> &Outs,
     const SmallVectorImpl<SDValue> &OutVals,
     const SmallVectorImpl<ISD::InputArg> &Ins, SelectionDAG &DAG) const {
-  if (!mayTailCallThisCC(CalleeCC))
-    return false;
-
   // If -tailcallopt is specified, make fastcc functions tail-callable.
   MachineFunction &MF = DAG.getMachineFunction();
   const Function &CallerF = MF.getFunction();
+
+  CallingConv::ID CallerCC = CallerF.getCallingConv();
+  if (this->isTailCallingOverride(CallerCC)) {
+    return true;
+  }
+
+  if (!mayTailCallThisCC(CalleeCC))
+    return false;
 
   // If the function return type is x86_fp80 and the callee return type is not,
   // then the FP_EXTEND of the call result is not a nop. It's not safe to
@@ -5245,7 +5253,6 @@ bool X86TargetLowering::IsEligibleForTailCallOptimization(
   if (CallerF.getReturnType()->isX86_FP80Ty() && !RetTy->isX86_FP80Ty())
     return false;
 
-  CallingConv::ID CallerCC = CallerF.getCallingConv();
   bool CCMatch = CallerCC == CalleeCC;
   bool IsCalleeWin64 = Subtarget.isCallingConvWin64(CalleeCC);
   bool IsCallerWin64 = Subtarget.isCallingConvWin64(CallerCC);
@@ -29946,8 +29953,6 @@ SDValue X86TargetLowering::LowerINIT_TRAMPOLINE(SDValue Op,
     unsigned NestReg;
 
     switch (CC) {
-    default:
-      llvm_unreachable("Unsupported calling convention");
     case CallingConv::C:
     case CallingConv::X86_StdCall: {
       // Pass 'nest' parameter in ECX.
@@ -29977,6 +29982,11 @@ SDValue X86TargetLowering::LowerINIT_TRAMPOLINE(SDValue Op,
       }
       break;
     }
+    default:
+      if (CC < CallingConv::CUSTOM_ID_RANGE_START) {
+        llvm_unreachable("Unsupported calling convention");
+      }
+      LLVM_FALLTHROUGH;
     case CallingConv::X86_FastCall:
     case CallingConv::X86_ThisCall:
     case CallingConv::Fast:

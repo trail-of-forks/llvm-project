@@ -275,7 +275,7 @@ X86RegisterInfo::getRegPressureLimit(const TargetRegisterClass *RC,
 }
 
 const MCPhysReg *
-X86RegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
+X86RegisterInfo::getCalleeSavedRegsDefault(const MachineFunction *MF) const {
   assert(MF && "MachineFunction required");
 
   const X86Subtarget &Subtarget = MF->getSubtarget<X86Subtarget>();
@@ -411,7 +411,7 @@ const MCPhysReg *X86RegisterInfo::getCalleeSavedRegsViaCopy(
 }
 
 const uint32_t *
-X86RegisterInfo::getCallPreservedMask(const MachineFunction &MF,
+X86RegisterInfo::getCallPreservedMaskDefault(const MachineFunction &MF,
                                       CallingConv::ID CC) const {
   const X86Subtarget &Subtarget = MF.getSubtarget<X86Subtarget>();
   bool HasSSE = Subtarget.hasSSE1();
