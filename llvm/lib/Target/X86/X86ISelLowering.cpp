@@ -4551,6 +4551,10 @@ X86TargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
       isTailCall = false;
   }
 
+  if (this->isTailCallingOverride(CallConv)) {
+    isTailCall = true;
+  }
+
   if (isTailCall && !IsMustTail) {
     // Check if it's really possible to do a tail call.
     isTailCall = IsEligibleForTailCallOptimization(
