@@ -2936,3 +2936,7 @@ void Stmt::printJson(raw_ostream &Out, PrinterHelper *Helper,
 
 // Implement virtual destructor.
 PrinterHelper::~PrinterHelper() = default;
+
+bool PrinterHelper::handleType(const QualType &, raw_ostream&) {
+  return false;
+}

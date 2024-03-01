@@ -21,11 +21,14 @@ namespace clang {
 class DeclContext;
 class LangOptions;
 class Stmt;
+class Type;
+class QualType;
 
 class PrinterHelper {
 public:
   virtual ~PrinterHelper();
   virtual bool handledStmt(Stmt* E, raw_ostream& OS) = 0;
+  virtual bool handleType(const QualType &, raw_ostream& OS);
 };
 
 /// Callbacks to use to customize the behavior of the pretty-printer.

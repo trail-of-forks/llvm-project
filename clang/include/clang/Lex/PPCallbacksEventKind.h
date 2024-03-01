@@ -27,6 +27,13 @@ enum PPCallbacks::EventKind : int {
   // really `constant<bar<A>> > 0`.
   SplitToken,
 
+  // Specify the LAngle and RAngle tokens.
+  //
+  // `Tok` is a `<` or a `>`.
+  // `Data` is a `SourceLocation *` of the `<` or `>`, or `nullptr`.
+  LAngleToken,
+  RAngleToken,
+
   // Tell the listener that we've just lexed the hash token that should start
   // off a directive.
   //

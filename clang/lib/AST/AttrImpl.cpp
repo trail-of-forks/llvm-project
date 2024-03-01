@@ -14,6 +14,7 @@
 #include "clang/AST/Attr.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/Type.h"
+#include <cstring>
 #include <optional>
 using namespace clang;
 
@@ -268,6 +269,42 @@ unsigned AlignedAttr::getAlignment(ASTContext &Ctx) const {
            Ctx.getCharWidth();
 
   return Ctx.getTargetDefaultAlignForAttributeAligned();
+}
+
+namespace {
+
+static thread_local PrinterHelper *gAttrPrinterHelper{nullptr};
+
+}  // namespace clang
+
+void Attr::SetPrinterHelper(PrinterHelper *helper) {
+  gAttrPrinterHelper = helper;
+}
+
+// Escape a string literal.
+std::string Attr::EscapeString(llvm::StringRef a) {
+  std::string new_a;
+  new_a.reserve(a.size());
+  for (char c : a) {
+    switch (c) {
+      case '\n':
+        new_a += "\\n";
+        break;
+      case '\r':
+        new_a += "\\r";
+        break;
+      case '\t':
+        new_a += "\\t";
+        break;
+      case '"':
+        new_a += "\\\"";
+        break;
+      default:
+        new_a += c;
+        break;
+    }
+  }
+  return new_a;
 }
 
 #include "clang/AST/AttrImpl.inc"

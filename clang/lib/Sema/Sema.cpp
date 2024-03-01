@@ -880,6 +880,8 @@ bool Sema::isExternalWithNoLinkageType(const ValueDecl *VD) const {
 /// ODR-used.
 void Sema::getUndefinedButUsed(
     SmallVectorImpl<std::pair<NamedDecl *, SourceLocation> > &Undefined) {
+  auto FeatAggressive = getLangOpts().AggressiveTemplateInstantiation;
+
   for (const auto &UndefinedUse : UndefinedButUsed) {
     NamedDecl *ND = UndefinedUse.first;
 
@@ -905,7 +907,7 @@ void Sema::getUndefinedButUsed(
       if (FD->isExternallyVisible() &&
           !isExternalWithNoLinkageType(FD) &&
           !FD->getMostRecentDecl()->isInlined() &&
-          !FD->hasAttr<ExcludeFromExplicitInstantiationAttr>())
+          !(!FeatAggressive && FD->hasAttr<ExcludeFromExplicitInstantiationAttr>()))
         continue;
       if (FD->getBuiltinID())
         continue;
@@ -916,7 +918,7 @@ void Sema::getUndefinedButUsed(
       if (VD->isExternallyVisible() &&
           !isExternalWithNoLinkageType(VD) &&
           !VD->getMostRecentDecl()->isInline() &&
-          !VD->hasAttr<ExcludeFromExplicitInstantiationAttr>())
+          !(!FeatAggressive && VD->hasAttr<ExcludeFromExplicitInstantiationAttr>()))
         continue;
 
       // Skip VarDecls that lack formal definitions but which we know are in

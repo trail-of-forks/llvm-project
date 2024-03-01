@@ -488,12 +488,12 @@ namespace {
     }
 
     void writeValue(raw_ostream &OS) const override {
-      OS << "\\\"\" << get" << getUpperName() << "() << \"\\\"";
+      OS << "\\\"\" << Attr::EscapeString(get" << getUpperName() << "()) << \"\\\"";
     }
 
     void writeDump(raw_ostream &OS) const override {
-      OS << "    OS << \" \\\"\" << SA->get" << getUpperName()
-         << "() << \"\\\"\";\n";
+      OS << "    OS << \" \\\"\" << Attr::EscapeString(SA->get" << getUpperName()
+         << "()) << \"\\\"\";\n";
     }
   };
 
@@ -648,11 +648,13 @@ namespace {
       OS << "    if (is" << getLowerName() << "Expr && " << getLowerName()
          << "Expr)";
       OS << "      " << getLowerName()
-         << "Expr->printPretty(OS, nullptr, Policy);\n";
+         << "Expr->printPretty(OS, gAttrPrinterHelper, Policy);\n";
       OS << "    if (!is" << getLowerName() << "Expr && " << getLowerName()
-         << "Type)";
-      OS << "      " << getLowerName()
-         << "Type->getType().print(OS, Policy);\n";
+         << "Type) {\n"
+         << "      auto QT = " << getLowerName() << "Type->getType();\n";
+      OS << "      if (!gAttrPrinterHelper || !gAttrPrinterHelper->handleType(QT, OS))\n"
+         << "        QT.print(OS, Policy);\n"
+         << "    }\n";
       OS << "    OS << \"";
     }
 
@@ -990,8 +992,8 @@ namespace {
       // FIXME: this isn't 100% correct -- some enum arguments require printing
       // as a string literal, while others require printing as an identifier.
       // Tablegen currently does not distinguish between the two forms.
-      OS << "\\\"\" << " << getAttrName() << "Attr::Convert" << shortType
-         << "ToStr(get" << getUpperName() << "()) << \"\\\"";
+      OS << "\\\"\" << Attr::EscapeString(" << getAttrName() << "Attr::Convert" << shortType << "ToStr(get"
+         << getUpperName() << "())) << \"\\\"";
     }
 
     void writeDump(raw_ostream &OS) const override {
@@ -1065,9 +1067,8 @@ namespace {
       // FIXME: this isn't 100% correct -- some enum arguments require printing
       // as a string literal, while others require printing as an identifier.
       // Tablegen currently does not distinguish between the two forms.
-      OS << "    OS << \"\\\"\" << " << getAttrName() << "Attr::Convert"
-         << shortType << "ToStr(Val)"
-         << "<< \"\\\"\";\n";
+      OS << "    OS << \"\\\"\" << Attr::EscapeString(" << getAttrName() << "Attr::Convert" << shortType
+         << "ToStr(Val)" << ")<< \"\\\"\";\n";
     }
 
   public:
@@ -1284,7 +1285,7 @@ namespace {
     void writeValue(raw_ostream &OS) const override {
       OS << "\";\n";
       OS << "    get" << getUpperName()
-         << "()->printPretty(OS, nullptr, Policy);\n";
+         << "()->printPretty(OS, gAttrPrinterHelper, Policy);\n";
       OS << "    OS << \"";
     }
 
@@ -1399,7 +1400,7 @@ namespace {
     }
 
     void writeValueImpl(raw_ostream &OS) const override {
-      OS << "    OS << \"\\\"\" << Val << \"\\\"\";\n";
+      OS << "    OS << \"\\\"\" << Attr::EscapeString(Val) << \"\\\"\";\n";
     }
   };
 
@@ -1556,11 +1557,11 @@ static void writeAvailabilityValue(raw_ostream &OS) {
 }
 
 static void writeDeprecatedAttrValue(raw_ostream &OS, StringRef Variety) {
-  OS << "\\\"\" << getMessage() << \"\\\"\";\n";
+  OS << "\\\"\" << Attr::EscapeString(getMessage()) << \"\\\"\";\n";
   // Only GNU deprecated has an optional fixit argument at the second position.
   if (Variety == "GNU")
      OS << "    if (!getReplacement().empty()) OS << \", \\\"\""
-           " << getReplacement() << \"\\\"\";\n";
+           " << Attr::EscapeString(getReplacement()) << \"\\\"\";\n";
   OS << "    OS << \"";
 }
 

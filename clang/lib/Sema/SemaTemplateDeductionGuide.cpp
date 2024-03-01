@@ -33,6 +33,10 @@
 #include "clang/Basic/SourceLocation.h"
 #include "clang/Basic/Specifiers.h"
 #include "clang/Basic/TypeTraits.h"
+#include "clang/Lex/PPCallbacks.h"
+#include "clang/Lex/PPCallbacksEventKind.h"
+#include "clang/Lex/Preprocessor.h"
+#include "clang/Lex/Token.h"
 #include "clang/Sema/DeclSpec.h"
 #include "clang/Sema/Initialization.h"
 #include "clang/Sema/Lookup.h"
@@ -436,9 +440,29 @@ struct ConvertConstructorToDeductionGuideTransform {
         RequiresClause = E.get();
       }
 
+      auto LAngleLoc = InnerParams->getLAngleLoc();
+      auto RAngleLoc = InnerParams->getRAngleLoc();
+      if (LAngleLoc.isValid() && RAngleLoc.isValid()) {
+        if (auto Callbacks = SemaRef.PP.getPPCallbacks()) {
+          Token LAngleTok;
+          LAngleTok.setKind(clang::tok::less);
+          LAngleTok.setLocation(LAngleLoc);
+          LAngleTok.setLength(1);
+          Callbacks->Event(LAngleTok, PPCallbacks::LAngleToken,
+                           reinterpret_cast<uintptr_t>(&LAngleLoc));
+
+          Token RAngleTok;
+          RAngleTok.setKind(clang::tok::greater);
+          RAngleTok.setLocation(RAngleLoc);
+          RAngleTok.setLength(1);
+          Callbacks->Event(RAngleTok, PPCallbacks::RAngleToken,
+                           reinterpret_cast<uintptr_t>(&RAngleLoc));
+        }
+      }
+
       TemplateParams = TemplateParameterList::Create(
           SemaRef.Context, InnerParams->getTemplateLoc(),
-          InnerParams->getLAngleLoc(), AllParams, InnerParams->getRAngleLoc(),
+          LAngleLoc, AllParams, RAngleLoc,
           RequiresClause);
     }
 

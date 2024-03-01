@@ -509,10 +509,13 @@ class Sema final : public SemaBase {
   FunctionDecl *createMemberSpecializationForDefinition(
       FunctionDecl *Function, SourceLocation PointOfInstantiation);
 
-  FunctionDecl *createFunctionTemplateSpecializationForDefinition(
+  FunctionDecl *createMethodTemplateSpecializationForDefinition(
       FunctionDecl *Function, SourceLocation PointOfInstantiation);
 
   FunctionDecl *createFriendFunctionTemplateSpecializationForDefinition(
+      FunctionDecl *Function, SourceLocation PointOfInstantiation);
+
+  FunctionDecl *createFunctionTemplateSpecializationForDefinition(
       FunctionDecl *Function, SourceLocation PointOfInstantiation);
 
   ClassTemplateSpecializationDecl *
@@ -1658,6 +1661,15 @@ public:
     ValueType CurrentValue;
     SourceLocation CurrentPragmaLocation;
   };
+
+  struct DeferredTypeCompletion {
+    ClassTemplateSpecializationDecl *Decl;
+    SourceLocation Loc;
+    QualType Type;
+  };
+
+  std::deque<DeferredTypeCompletion> DeferredTypeCompletions;
+
   // FIXME: We should serialize / deserialize these if they occur in a PCH (but
   // we shouldn't do so if they're in a module).
 
@@ -13882,6 +13894,8 @@ public:
   /// an implicit 'operator=='.
   FunctionDecl *SubstSpaceshipAsEqualEqual(CXXRecordDecl *RD,
                                            FunctionDecl *Spaceship);
+
+  void PerformDeferredTypeCompletions(void);
 
   /// Performs template instantiation for all implicit template
   /// instantiations we have seen until this point.
