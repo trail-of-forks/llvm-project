@@ -37,6 +37,7 @@
 #include "clang/Basic/TargetInfo.h"
 #include "clang/Basic/TypeTraits.h"
 #include "clang/Lex/LiteralSupport.h"
+#include "clang/Lex/PPCallbacksEventKind.h"
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Sema/AnalysisBasedWarnings.h"
 #include "clang/Sema/DeclSpec.h"
@@ -2346,6 +2347,23 @@ Sema::DecomposeUnqualifiedId(const UnqualifiedId &Id,
                              DeclarationNameInfo &NameInfo,
                              const TemplateArgumentListInfo *&TemplateArgs) {
   if (Id.getKind() == UnqualifiedIdKind::IK_TemplateId) {
+
+    if (auto Callbacks = PP.getPPCallbacks()) {
+      Token LAngleTok;
+      LAngleTok.setKind(clang::tok::less);
+      LAngleTok.setLocation(Id.TemplateId->LAngleLoc);
+      LAngleTok.setLength(1);
+      Callbacks->Event(LAngleTok, PPCallbacks::LAngleToken,
+                       reinterpret_cast<uintptr_t>(&(Id.TemplateId->LAngleLoc)));
+
+      Token RAngleTok;
+      RAngleTok.setKind(clang::tok::greater);
+      RAngleTok.setLocation(Id.TemplateId->RAngleLoc);
+      RAngleTok.setLength(1);
+      Callbacks->Event(RAngleTok, PPCallbacks::RAngleToken,
+                       reinterpret_cast<uintptr_t>(&(Id.TemplateId->RAngleLoc)));
+    }
+
     Buffer.setLAngleLoc(Id.TemplateId->LAngleLoc);
     Buffer.setRAngleLoc(Id.TemplateId->RAngleLoc);
 
@@ -18965,6 +18983,10 @@ void Sema::MarkFunctionReferenced(SourceLocation Loc, FunctionDecl *Func,
   bool NeedDefinition = !IsRecursiveCall && (OdrUse == OdrUseContext::Used ||
                                              NeededForConstantEvaluation);
 
+  // if (!NeedDefinition && getLangOpts().AggressiveTemplateInstantiation) {
+  //   NeedDefinition = !IsRecursiveCall;
+  // }
+
   // C++14 [temp.expl.spec]p6:
   //   If a template [...] is explicitly specialized then that specialization
   //   shall be declared before the first use of that specialization that would
@@ -19084,6 +19106,21 @@ void Sema::MarkFunctionReferenced(SourceLocation Loc, FunctionDecl *Func,
             MarkFunctionReferenced(Loc, i, MightBeOdrUse);
         }
       }
+
+      // // Try to force function templates to be instantiated.
+      // if (getLangOpts().AggressiveTemplateInstantiation &&
+      //     Func->isTemplateInstantiation() &&
+      //     !Func->doesThisDeclarationHaveABody()) {
+      //   auto POI = Func->getPointOfInstantiation();
+      //   if (POI.isInvalid()) {
+      //     POI = Loc;
+      //   }
+      //   if (auto Pattern = Func->getTemplateInstantiationPattern()) {
+      //     if (Pattern->doesThisDeclarationHaveABody()) {
+      //       InstantiateFunctionDefinition(POI, Func);
+      //     }
+      //   }
+      // }
     });
   }
 

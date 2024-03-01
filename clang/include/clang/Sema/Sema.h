@@ -388,10 +388,13 @@ class Sema final {
   FunctionDecl *createMemberSpecializationForDefinition(
       FunctionDecl *Function, SourceLocation PointOfInstantiation);
 
-  FunctionDecl *createFunctionTemplateSpecializationForDefinition(
+  FunctionDecl *createMethodTemplateSpecializationForDefinition(
       FunctionDecl *Function, SourceLocation PointOfInstantiation);
 
   FunctionDecl *createFriendFunctionTemplateSpecializationForDefinition(
+      FunctionDecl *Function, SourceLocation PointOfInstantiation);
+
+  FunctionDecl *createFunctionTemplateSpecializationForDefinition(
       FunctionDecl *Function, SourceLocation PointOfInstantiation);
 
   ClassTemplateSpecializationDecl *
@@ -697,6 +700,15 @@ public:
     ValueType CurrentValue;
     SourceLocation CurrentPragmaLocation;
   };
+
+  struct DeferredTypeCompletion {
+    ClassTemplateSpecializationDecl *Decl;
+    SourceLocation Loc;
+    QualType Type;
+  };
+
+  std::deque<DeferredTypeCompletion> DeferredTypeCompletions;
+
   // FIXME: We should serialize / deserialize these if they occur in a PCH (but
   // we shouldn't do so if they're in a module).
 
@@ -10264,6 +10276,8 @@ public:
       return Infos.data();
     }
   };
+
+  void PerformDeferredTypeCompletions(void);
 
   void PerformPendingInstantiations(bool LocalOnly = false);
 

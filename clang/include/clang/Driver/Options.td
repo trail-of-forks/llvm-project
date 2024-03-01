@@ -5577,6 +5577,12 @@ defm lexical_template_instantiation : BoolOption<"f", "lexical-template-instanti
   PosFlag<SetTrue, [], [ClangOption], "Maintain lexical provenance of template instantiations">,
   NegFlag<SetFalse>, BothFlags<[], [ClangOption, CC1Option]>>;
 
+
+defm aggressive_template_instantiation : BoolOption<"f", "aggressive-template-instantiation",
+  LangOpts<"AggressiveTemplateInstantiation">, DefaultFalse,
+  PosFlag<SetTrue, [], [], "Aggressively instatiate templates">,
+  NegFlag<SetFalse>, BothFlags<[], [CC1Option]>>;
+
 defm attr_types_have_attrs : BoolOption<"f", "attr-types-have-attrs",
   LangOpts<"AttrTypesHaveAttrs">, DefaultFalse,
   PosFlag<SetTrue, [], [ClangOption], "Store attributes in attributed types">,

@@ -476,6 +476,10 @@ bool Parser::ParseTemplateParameters(
     MultiParseScope &TemplateScopes, unsigned Depth,
     SmallVectorImpl<NamedDecl *> &TemplateParams, SourceLocation &LAngleLoc,
     SourceLocation &RAngleLoc) {
+
+  auto Callbacks = PP.getPPCallbacks();
+  Token LAngleTok = Tok;
+
   // Get the template parameter list.
   if (!TryConsumeToken(tok::less, LAngleLoc)) {
     Diag(Tok.getLocation(), diag::err_expected_less_after) << "template";
@@ -490,8 +494,9 @@ bool Parser::ParseTemplateParameters(
     Failed = ParseTemplateParameterList(Depth, TemplateParams);
   }
 
+  Token RAngleTok = Tok;
+
   if (Tok.is(tok::greatergreater)) {
-    auto Callbacks = PP.getPPCallbacks();
 
     // No diagnostic required here: a template-parameter-list can only be
     // followed by a declaration or, for a template template parameter, the
@@ -503,17 +508,22 @@ bool Parser::ParseTemplateParameters(
       Callbacks->Event(Tok, PPCallbacks::SplitToken, 0);
     }
 
+    RAngleTok = Tok;
     RAngleLoc = Tok.getLocation();
     Tok.setLocation(Tok.getLocation().getLocWithOffset(1));
-
-    if (Callbacks) {
-      Callbacks->Event(Tok, PPCallbacks::SplitToken, 0);
-    }
 
   } else if (!TryConsumeToken(tok::greater, RAngleLoc) && Failed) {
     Diag(Tok.getLocation(), diag::err_expected) << tok::greater;
     return true;
   }
+
+  if (Callbacks) {
+    Callbacks->Event(LAngleTok, PPCallbacks::LAngleToken,
+                     reinterpret_cast<uintptr_t>(&LAngleLoc));
+    Callbacks->Event(RAngleTok, PPCallbacks::RAngleToken,
+                     reinterpret_cast<uintptr_t>(&RAngleLoc));
+  }
+
   return false;
 }
 
@@ -1256,10 +1266,6 @@ bool Parser::ParseGreaterThanInTemplateList(SourceLocation LAngleLoc,
   Tok.setKind(RemainingToken);
   Tok.setLength(OldLength - GreaterLength);
 
-  if (Callbacks) {
-    Callbacks->Event(Tok, PPCallbacks::SplitToken, 0);
-  }
-
   // Split the second token if lexing it normally would lex a different token
   // (eg, the fifth token in 'A<B>>>' should re-lex as '>', not '>>').
   SourceLocation AfterGreaterLoc = TokLoc.getLocWithOffset(GreaterLength);
@@ -1267,7 +1273,7 @@ bool Parser::ParseGreaterThanInTemplateList(SourceLocation LAngleLoc,
     AfterGreaterLoc = PP.SplitToken(AfterGreaterLoc, Tok.getLength());
   Tok.setLocation(AfterGreaterLoc);
 
-  if (Callbacks) {
+  if (PreventMergeWithNextToken && Callbacks) {
     Callbacks->Event(Tok, PPCallbacks::SplitToken, 0);
   }
 
@@ -1411,6 +1417,22 @@ bool Parser::AnnotateTemplateIdToken(TemplateTy Template, TemplateNameKind TNK,
     // template-id in another context. Try to annotate anyway?
     if (RAngleLoc.isInvalid())
       return true;
+  }
+
+  if (auto Callbacks = PP.getPPCallbacks()) {
+    Token LAngleTok;
+    LAngleTok.setKind(clang::tok::less);
+    LAngleTok.setLocation(LAngleLoc);
+    LAngleTok.setLength(1);
+    Callbacks->Event(LAngleTok, PPCallbacks::LAngleToken,
+                     reinterpret_cast<uintptr_t>(&LAngleLoc));
+
+    Token RAngleTok;
+    RAngleTok.setKind(clang::tok::greater);
+    RAngleTok.setLocation(RAngleLoc);
+    RAngleTok.setLength(1);
+    Callbacks->Event(RAngleTok, PPCallbacks::RAngleToken,
+                     reinterpret_cast<uintptr_t>(&RAngleLoc));
   }
 
   ASTTemplateArgsPtr TemplateArgsPtr(TemplateArgs);

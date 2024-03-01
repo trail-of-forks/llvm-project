@@ -18255,6 +18255,10 @@ void Sema::ActOnTagFinishDefinition(Scope *S, Decl *TagD,
                                     SourceRange BraceRange) {
   AdjustDeclIfTemplate(TagD);
   TagDecl *Tag = cast<TagDecl>(TagD);
+
+  assert(Tag->getBraceRange().getBegin().isInvalid() ||
+         Tag->getBraceRange().getBegin() == BraceRange.getBegin());
+
   Tag->setBraceRange(BraceRange);
 
   // Make sure we "complete" the definition even it is invalid.

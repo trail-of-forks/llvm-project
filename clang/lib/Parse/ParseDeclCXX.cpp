@@ -2031,8 +2031,11 @@ void Parser::ParseClassSpecifier(tok::TokenKind TagTokKind,
           Diag(DS.getFriendSpecLoc(), diag::err_friend_explicit_instantiation);
           TemplateParams = nullptr;
         } else {
-          SourceLocation LAngleLoc =
-              PP.getLocForEndOfToken(TemplateInfo.TemplateLoc);
+
+          // NOTE(pag): Don't want the token splitter to split whatever is after
+          //            `template` if there isn't actually a `<`.
+          SourceLocation LAngleLoc = {};
+
           Diag(TemplateId->TemplateNameLoc,
                diag::err_explicit_instantiation_with_definition)
               << SourceRange(TemplateInfo.TemplateLoc)
@@ -3660,6 +3663,14 @@ void Parser::ParseCXXMemberSpecification(SourceLocation RecordLoc,
   } else {
     SkipUntil(tok::r_brace);
   }
+
+  // Set the brace range to what was parsed.
+  //
+  // NOTE(pag): This should be redundant w.r.t. some later code that acts on
+  //            a completed definition, but we have all the info here so we
+  //            go with it.
+  if (auto TD = dyn_cast_or_null<::clang::TagDecl>(TagDecl))
+    TD->setBraceRange(T.getRange());
 
   // If attributes exist after class contents, parse them.
   ParsedAttributes attrs(AttrFactory);

@@ -239,6 +239,10 @@ public:
     ModulePrivate
   };
 
+public:
+
+  Decl *RemappedDecl;
+
 protected:
   /// The next declaration within the same lexical
   /// DeclContext. These pointers form the linked list that is
@@ -392,7 +396,8 @@ public:
 
 protected:
   Decl(Kind DK, DeclContext *DC, SourceLocation L)
-      : NextInContextAndBits(nullptr, getModuleOwnershipKindForChildOf(DC)),
+      : RemappedDecl(this),
+        NextInContextAndBits(nullptr, getModuleOwnershipKindForChildOf(DC)),
         DeclCtx(DC), Loc(L), DeclKind(DK), InvalidDecl(false), HasAttrs(false),
         Implicit(false), Used(false), Referenced(false),
         TopLevelDeclInObjCContainer(false), Access(AS_none), FromASTFile(0),
@@ -402,7 +407,8 @@ protected:
   }
 
   Decl(Kind DK, EmptyShell Empty)
-      : DeclKind(DK), InvalidDecl(false), HasAttrs(false), Implicit(false),
+      : RemappedDecl(this),
+        DeclKind(DK), InvalidDecl(false), HasAttrs(false), Implicit(false),
         Used(false), Referenced(false), TopLevelDeclInObjCContainer(false),
         Access(AS_none), FromASTFile(0),
         IdentifierNamespace(getIdentifierNamespaceForKind(DK)),
@@ -428,6 +434,7 @@ protected:
   }
 
 public:
+
   /// Source range that this declaration covers.
   virtual SourceRange getSourceRange() const LLVM_READONLY {
     return SourceRange(getLocation(), getLocation());

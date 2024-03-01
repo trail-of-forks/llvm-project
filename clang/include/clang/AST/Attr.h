@@ -37,6 +37,7 @@ class ASTContext;
 class AttributeCommonInfo;
 class FunctionDecl;
 class OMPTraitInfo;
+class PrinterHelper;
 
 /// Attr - This represents one attribute.
 class Attr : public AttributeCommonInfo {
@@ -95,6 +96,7 @@ public:
   SourceLocation getLocation() const { return getRange().getBegin(); }
 
   bool isInherited() const { return Inherited; }
+  void setInherited(bool I) { Inherited = I; }
 
   /// Returns true if the attribute has been implicitly created instead
   /// of explicitly written by the user.
@@ -113,6 +115,9 @@ public:
   void printPretty(raw_ostream &OS, const PrintingPolicy &Policy) const;
 
   static StringRef getDocumentation(attr::Kind);
+
+  static void SetPrinterHelper(PrinterHelper *);
+  static std::string EscapeString(llvm::StringRef a);
 };
 
 class TypeAttr : public Attr {

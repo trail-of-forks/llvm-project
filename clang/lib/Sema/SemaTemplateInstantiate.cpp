@@ -3914,8 +3914,10 @@ Sema::InstantiateClassMembers(SourceLocation PointOfInstantiation,
           }
         }
 
-        if (Function->hasAttr<ExcludeFromExplicitInstantiationAttr>())
-          continue;
+        if (!getLangOpts().AggressiveTemplateInstantiation) {
+          if (Function->hasAttr<ExcludeFromExplicitInstantiationAttr>())
+            continue;
+        }
 
         MemberSpecializationInfo *MSInfo =
             Function->getMemberSpecializationInfo();
@@ -3959,8 +3961,11 @@ Sema::InstantiateClassMembers(SourceLocation PointOfInstantiation,
         continue;
 
       if (Var->isStaticDataMember()) {
-        if (Var->hasAttr<ExcludeFromExplicitInstantiationAttr>())
-          continue;
+
+        if (!getLangOpts().AggressiveTemplateInstantiation) {
+          if (Var->hasAttr<ExcludeFromExplicitInstantiationAttr>())
+            continue;
+        }
 
         MemberSpecializationInfo *MSInfo = Var->getMemberSpecializationInfo();
         assert(MSInfo && "No member specialization information?");
@@ -3993,8 +3998,11 @@ Sema::InstantiateClassMembers(SourceLocation PointOfInstantiation,
         }
       }
     } else if (auto *Record = dyn_cast<CXXRecordDecl>(D)) {
-      if (Record->hasAttr<ExcludeFromExplicitInstantiationAttr>())
-        continue;
+
+      if (!getLangOpts().AggressiveTemplateInstantiation) {
+        if (Record->hasAttr<ExcludeFromExplicitInstantiationAttr>())
+          continue;
+      }
 
       // Always skip the injected-class-name, along with any
       // redeclarations of nested classes, since both would cause us

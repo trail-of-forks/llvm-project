@@ -26,6 +26,7 @@
 #include "clang/Basic/SourceLocation.h"
 #include "clang/Basic/Stack.h"
 #include "clang/Basic/TargetInfo.h"
+#include "clang/Lex/PPCallbacksEventKind.h"
 #include "clang/Sema/DeclSpec.h"
 #include "clang/Sema/EnterExpressionEvaluationContext.h"
 #include "clang/Sema/Initialization.h"
@@ -1100,6 +1101,21 @@ NamedDecl *Sema::ActOnTypeParameter(Scope *S, bool Typename,
 /// Convert the parser's template argument list representation into our form.
 static TemplateArgumentListInfo
 makeTemplateArgumentListInfo(Sema &S, TemplateIdAnnotation &TemplateId) {
+  if (auto Callbacks = S.PP.getPPCallbacks()) {
+    Token LAngleTok;
+    LAngleTok.setKind(clang::tok::less);
+    LAngleTok.setLocation(TemplateId.LAngleLoc);
+    LAngleTok.setLength(1);
+    Callbacks->Event(LAngleTok, PPCallbacks::LAngleToken,
+                     reinterpret_cast<uintptr_t>(&(TemplateId.LAngleLoc)));
+
+    Token RAngleTok;
+    RAngleTok.setKind(clang::tok::greater);
+    RAngleTok.setLocation(TemplateId.RAngleLoc);
+    RAngleTok.setLength(1);
+    Callbacks->Event(RAngleTok, PPCallbacks::RAngleToken,
+                     reinterpret_cast<uintptr_t>(&(TemplateId.RAngleLoc)));
+  }
   TemplateArgumentListInfo TemplateArgs(TemplateId.LAngleLoc,
                                         TemplateId.RAngleLoc);
   ASTTemplateArgsPtr TemplateArgsPtr(TemplateId.getTemplateArgs(),
@@ -1183,6 +1199,22 @@ static ExprResult formImmediatelyDeclaredConstraint(
     SourceLocation RAngleLoc, QualType ConstrainedType,
     SourceLocation ParamNameLoc, ArgumentLocAppender Appender,
     SourceLocation EllipsisLoc) {
+
+  if (auto Callbacks = S.PP.getPPCallbacks()) {
+    Token LAngleTok;
+    LAngleTok.setKind(clang::tok::less);
+    LAngleTok.setLocation(LAngleLoc);
+    LAngleTok.setLength(1);
+    Callbacks->Event(LAngleTok, PPCallbacks::LAngleToken,
+                     reinterpret_cast<uintptr_t>(&LAngleLoc));
+
+    Token RAngleTok;
+    RAngleTok.setKind(clang::tok::greater);
+    RAngleTok.setLocation(RAngleLoc);
+    RAngleTok.setLength(1);
+    Callbacks->Event(RAngleTok, PPCallbacks::RAngleToken,
+                     reinterpret_cast<uintptr_t>(&RAngleLoc));
+  }
 
   TemplateArgumentListInfo ConstraintArgs;
   ConstraintArgs.addArgument(
@@ -1288,9 +1320,30 @@ bool Sema::AttachTypeConstraint(AutoTypeLoc TL,
                        VK_PRValue, OrigConstrainedParm->getLocation());
   if (!Ref)
     return true;
+
+  SourceLocation LAngleLoc = TL.getLAngleLoc();
+  SourceLocation RAngleLoc = TL.getRAngleLoc();
+  if (LAngleLoc.isValid() && RAngleLoc.isValid()) {
+    if (auto Callbacks = PP.getPPCallbacks()) {
+      Token LAngleTok;
+      LAngleTok.setKind(clang::tok::less);
+      LAngleTok.setLocation(LAngleLoc);
+      LAngleTok.setLength(1);
+      Callbacks->Event(LAngleTok, PPCallbacks::LAngleToken,
+                       reinterpret_cast<uintptr_t>(&LAngleLoc));
+
+      Token RAngleTok;
+      RAngleTok.setKind(clang::tok::greater);
+      RAngleTok.setLocation(RAngleLoc);
+      RAngleTok.setLength(1);
+      Callbacks->Event(RAngleTok, PPCallbacks::RAngleToken,
+                       reinterpret_cast<uintptr_t>(&RAngleLoc));
+    }
+  }
+
   ExprResult ImmediatelyDeclaredConstraint = formImmediatelyDeclaredConstraint(
       *this, TL.getNestedNameSpecifierLoc(), TL.getConceptNameInfo(),
-      TL.getNamedConcept(), TL.getLAngleLoc(), TL.getRAngleLoc(),
+      TL.getNamedConcept(), LAngleLoc, RAngleLoc,
       BuildDecltypeType(Ref), OrigConstrainedParm->getLocation(),
       [&](TemplateArgumentListInfo &ConstraintArgs) {
         for (unsigned I = 0, C = TL.getNumArgs(); I != C; ++I)
@@ -1812,6 +1865,22 @@ Sema::ActOnTemplateParameterList(unsigned Depth,
 
   for (NamedDecl *P : Params)
     warnOnReservedIdentifier(P);
+
+  if (auto Callbacks = PP.getPPCallbacks()) {
+    Token LAngleTok;
+    LAngleTok.setKind(clang::tok::less);
+    LAngleTok.setLocation(LAngleLoc);
+    LAngleTok.setLength(1);
+    Callbacks->Event(LAngleTok, PPCallbacks::LAngleToken,
+                     reinterpret_cast<uintptr_t>(&LAngleLoc));
+
+    Token RAngleTok;
+    RAngleTok.setKind(clang::tok::greater);
+    RAngleTok.setLocation(RAngleLoc);
+    RAngleTok.setLength(1);
+    Callbacks->Event(RAngleTok, PPCallbacks::RAngleToken,
+                     reinterpret_cast<uintptr_t>(&RAngleLoc));
+  }
 
   return TemplateParameterList::Create(
       Context, TemplateLoc, LAngleLoc,
@@ -2394,9 +2463,29 @@ struct ConvertConstructorToDeductionGuideTransform {
         RequiresClause = E.getAs<Expr>();
       }
 
+      auto LAngleLoc = InnerParams->getLAngleLoc();
+      auto RAngleLoc = InnerParams->getRAngleLoc();
+      if (LAngleLoc.isValid() && RAngleLoc.isValid()) {
+        if (auto Callbacks = SemaRef.PP.getPPCallbacks()) {
+          Token LAngleTok;
+          LAngleTok.setKind(clang::tok::less);
+          LAngleTok.setLocation(LAngleLoc);
+          LAngleTok.setLength(1);
+          Callbacks->Event(LAngleTok, PPCallbacks::LAngleToken,
+                           reinterpret_cast<uintptr_t>(&LAngleLoc));
+
+          Token RAngleTok;
+          RAngleTok.setKind(clang::tok::greater);
+          RAngleTok.setLocation(RAngleLoc);
+          RAngleTok.setLength(1);
+          Callbacks->Event(RAngleTok, PPCallbacks::RAngleToken,
+                           reinterpret_cast<uintptr_t>(&RAngleLoc));
+        }
+      }
+
       TemplateParams = TemplateParameterList::Create(
           SemaRef.Context, InnerParams->getTemplateLoc(),
-          InnerParams->getLAngleLoc(), AllParams, InnerParams->getRAngleLoc(),
+          LAngleLoc, AllParams, RAngleLoc,
           RequiresClause);
     }
 
@@ -4026,6 +4115,8 @@ QualType Sema::CheckTemplateIdType(TemplateName Name,
     return QualType();
 
   QualType CanonType;
+  CXXRecordDecl *TagPattern = nullptr;
+  ClassTemplateSpecializationDecl *Specialization = nullptr;
 
   if (TypeAliasTemplateDecl *AliasTemplate =
           dyn_cast<TypeAliasTemplateDecl>(Template)) {
@@ -4146,19 +4237,23 @@ QualType Sema::CheckTemplateIdType(TemplateName Name,
     ClassTemplateSpecializationDecl *Decl =
         ClassTemplate->findSpecialization(CanonicalConverted, InsertPos);
     if (!Decl) {
+      TagPattern = ClassTemplate->getTemplatedDecl();
       // This is the first time we have referenced this class template
       // specialization. Create the canonical declaration and add it to
       // the set of specializations.
       Decl = ClassTemplateSpecializationDecl::Create(
-          Context, ClassTemplate->getTemplatedDecl()->getTagKind(),
+          Context, TagPattern->getTagKind(),
           ClassTemplate->getDeclContext(),
-          ClassTemplate->getTemplatedDecl()->getBeginLoc(),
-          ClassTemplate->getLocation(), ClassTemplate, CanonicalConverted,
+          TagPattern->getBeginLoc(),
+          TagPattern->getLocation(), ClassTemplate, CanonicalConverted,
           nullptr);
+
       ClassTemplate->AddSpecialization(Decl, InsertPos);
       if (ClassTemplate->isOutOfLine())
         Decl->setLexicalDeclContext(ClassTemplate->getLexicalDeclContext());
     }
+
+    Specialization = Decl;
 
     if (Decl->getSpecializationKind() == TSK_Undeclared &&
         ClassTemplate->getTemplatedDecl()->hasAttrs()) {
@@ -4185,8 +4280,21 @@ QualType Sema::CheckTemplateIdType(TemplateName Name,
   // Build the fully-sugared type for this class template
   // specialization, which refers back to the class template
   // specialization we created or found.
-  return Context.getTemplateSpecializationType(Name, TemplateArgs.arguments(),
-                                               CanonType);
+  auto RT = Context.getTemplateSpecializationType(Name, TemplateArgs.arguments(),
+                                                  CanonType);
+
+  // Keep track of template specializations that need completing. In some
+  // cases, we have all we need to make a definition, but it's not *technically*
+  // needed, e.g. a partial specialization of `foo<T>` on `foo<bar<baz>>` will
+  // demand `bar<baz>`, but not require a definition of it unless it uses
+  // `bar<baz>` in another way.
+  if (Specialization && !Specialization->isCompleteDefinition() &&
+      getLangOpts().AggressiveTemplateInstantiation) {
+    DeferredTypeCompletions.emplace_back(DeferredTypeCompletion{
+        Specialization, TemplateLoc, RT});
+  }
+
+  return RT;
 }
 
 void Sema::ActOnUndeclaredTypeTemplateName(Scope *S, TemplateTy &ParsedName,
@@ -4251,6 +4359,22 @@ TypeResult Sema::ActOnTemplateIdType(
     ImplicitTypenameContext AllowImplicitTypename) {
   if (SS.isInvalid())
     return true;
+
+  if (auto Callbacks = PP.getPPCallbacks()) {
+    Token LAngleTok;
+    LAngleTok.setKind(clang::tok::less);
+    LAngleTok.setLocation(LAngleLoc);
+    LAngleTok.setLength(1);
+    Callbacks->Event(LAngleTok, PPCallbacks::LAngleToken,
+                     reinterpret_cast<uintptr_t>(&LAngleLoc));
+
+    Token RAngleTok;
+    RAngleTok.setKind(clang::tok::greater);
+    RAngleTok.setLocation(RAngleLoc);
+    RAngleTok.setLength(1);
+    Callbacks->Event(RAngleTok, PPCallbacks::RAngleToken,
+                     reinterpret_cast<uintptr_t>(&RAngleLoc));
+  }
 
   if (!IsCtorOrDtorName && !IsClassName && SS.isSet()) {
     DeclContext *LookupCtx = computeDeclContext(SS, /*EnteringContext*/false);
@@ -4366,6 +4490,22 @@ TypeResult Sema::ActOnTagTemplateIdType(TagUseKind TUK,
     return TypeResult(true);
 
   TemplateName Template = TemplateD.get();
+
+  if (auto Callbacks = PP.getPPCallbacks()) {
+    Token LAngleTok;
+    LAngleTok.setKind(clang::tok::less);
+    LAngleTok.setLocation(LAngleLoc);
+    LAngleTok.setLength(1);
+    Callbacks->Event(LAngleTok, PPCallbacks::LAngleToken,
+                     reinterpret_cast<uintptr_t>(&LAngleLoc));
+
+    Token RAngleTok;
+    RAngleTok.setKind(clang::tok::greater);
+    RAngleTok.setLocation(RAngleLoc);
+    RAngleTok.setLength(1);
+    Callbacks->Event(RAngleTok, PPCallbacks::RAngleToken,
+                     reinterpret_cast<uintptr_t>(&RAngleLoc));
+  }
 
   // Translate the parser's template argument list in our AST format.
   TemplateArgumentListInfo TemplateArgs(LAngleLoc, RAngleLoc);
@@ -4647,6 +4787,23 @@ DeclResult Sema::ActOnVarTemplateSpecialization(
   TemplateArgumentListInfo TemplateArgs =
       makeTemplateArgumentListInfo(*this, *TemplateId);
   SourceLocation TemplateNameLoc = D.getIdentifierLoc();
+
+  if (auto Callbacks = PP.getPPCallbacks()) {
+    Token LAngleTok;
+    LAngleTok.setKind(clang::tok::less);
+    LAngleTok.setLocation(TemplateId->LAngleLoc);
+    LAngleTok.setLength(1);
+    Callbacks->Event(LAngleTok, PPCallbacks::LAngleToken,
+                     reinterpret_cast<uintptr_t>(&(TemplateId->LAngleLoc)));
+
+    Token RAngleTok;
+    RAngleTok.setKind(clang::tok::greater);
+    RAngleTok.setLocation(TemplateId->RAngleLoc);
+    RAngleTok.setLength(1);
+    Callbacks->Event(RAngleTok, PPCallbacks::RAngleToken,
+                     reinterpret_cast<uintptr_t>(&(TemplateId->RAngleLoc)));
+  }
+
   SourceLocation LAngleLoc = TemplateId->LAngleLoc;
   SourceLocation RAngleLoc = TemplateId->RAngleLoc;
 
@@ -8842,6 +8999,22 @@ DeclResult Sema::ActOnClassTemplateSpecialization(
     MultiTemplateParamsArg TemplateParameterLists, SkipBodyInfo *SkipBody) {
   assert(TUK != TUK_Reference && "References are not specializations");
 
+  if (auto Callbacks = PP.getPPCallbacks()) {
+    Token LAngleTok;
+    LAngleTok.setKind(clang::tok::less);
+    LAngleTok.setLocation(TemplateId.LAngleLoc);
+    LAngleTok.setLength(1);
+    Callbacks->Event(LAngleTok, PPCallbacks::LAngleToken,
+                     reinterpret_cast<uintptr_t>(&(TemplateId.LAngleLoc)));
+
+    Token RAngleTok;
+    RAngleTok.setKind(clang::tok::greater);
+    RAngleTok.setLocation(TemplateId.RAngleLoc);
+    RAngleTok.setLength(1);
+    Callbacks->Event(RAngleTok, PPCallbacks::RAngleToken,
+                     reinterpret_cast<uintptr_t>(&(TemplateId.RAngleLoc)));
+  }
+
   // NOTE: KWLoc is the location of the tag keyword. This will instead
   // store the location of the outermost template keyword in the declaration.
   SourceLocation TemplateKWLoc = TemplateParameterLists.size() > 0
@@ -9076,8 +9249,9 @@ DeclResult Sema::ActOnClassTemplateSpecialization(
                                                     TemplateParameterLists);
     }
 
-    if (!PrevDecl)
+    if (!PrevDecl) {
       ClassTemplate->AddSpecialization(Specialization, InsertPos);
+    }
 
     if (CurContext->isDependentContext()) {
       TemplateName CanonTemplate = Context.getCanonicalTemplateName(Name);
@@ -9086,6 +9260,19 @@ DeclResult Sema::ActOnClassTemplateSpecialization(
     } else {
       CanonType = Context.getTypeDeclType(Specialization);
     }
+  }
+
+  if (Specialization->getNameAsString() == "DomTreeNodeBase") {
+    (void) Specialization->getLocation();
+  }
+
+
+  // Add in the brace range.
+  if (TUK == TUK_Definition &&
+      !isa<ClassTemplatePartialSpecializationDecl>(Specialization) &&
+      getTemplateSpecializationKind(Specialization) != TSK_ExplicitSpecialization) {
+    auto TagPattern = ClassTemplate->getTemplatedDecl();
+    Specialization->setBraceRange(TagPattern->getBraceRange());
   }
 
   // C++ [temp.expl.spec]p6:
@@ -9178,8 +9365,12 @@ DeclResult Sema::ActOnClassTemplateSpecialization(
   Specialization->setLexicalDeclContext(CurContext);
 
   // We may be starting the definition of this specialization.
-  if (TUK == TUK_Definition && (!SkipBody || !SkipBody->ShouldSkip))
+  if (TUK == TUK_Definition && (!SkipBody || !SkipBody->ShouldSkip)) {
+    if (!Specialization->getBraceRange().getBegin().isValid()) {
+      (void) Specialization->getCanonicalDecl();
+    }
     Specialization->startDefinition();
+  }
 
   if (TUK == TUK_Friend) {
     FriendDecl *Friend = FriendDecl::Create(Context, CurContext,
@@ -9195,8 +9386,10 @@ DeclResult Sema::ActOnClassTemplateSpecialization(
     CurContext->addDecl(Specialization);
   }
 
-  if (SkipBody && SkipBody->ShouldSkip)
+  if (SkipBody && SkipBody->ShouldSkip) {
+    assert(false);
     return SkipBody->Previous;
+  }
 
   return Specialization;
 }
@@ -9457,6 +9650,13 @@ Sema::CheckSpecializationInstantiationRedecl(SourceLocation NewLoc,
       return false;
 
     case TSK_ExplicitInstantiationDefinition:
+
+      // In the case of an `extern` explicit instantiation, we go and force in
+      // and explicit specialization so that the source locations are sane.
+      if (getLangOpts().LexicalTemplateInstantiation) {
+        return false;
+      }
+
       // C++0x [temp.explicit]p10:
       //   If an entity is the subject of both an explicit instantiation
       //   declaration and an explicit instantiation definition in the same
@@ -10182,6 +10382,23 @@ DeclResult Sema::ActOnExplicitInstantiation(
     TemplateTy TemplateD, SourceLocation TemplateNameLoc,
     SourceLocation LAngleLoc, ASTTemplateArgsPtr TemplateArgsIn,
     SourceLocation RAngleLoc, const ParsedAttributesView &Attr) {
+
+  if (auto Callbacks = PP.getPPCallbacks()) {
+    Token LAngleTok;
+    LAngleTok.setKind(clang::tok::less);
+    LAngleTok.setLocation(LAngleLoc);
+    LAngleTok.setLength(1);
+    Callbacks->Event(LAngleTok, PPCallbacks::LAngleToken,
+                     reinterpret_cast<uintptr_t>(&LAngleLoc));
+
+    Token RAngleTok;
+    RAngleTok.setKind(clang::tok::greater);
+    RAngleTok.setLocation(RAngleLoc);
+    RAngleTok.setLength(1);
+    Callbacks->Event(RAngleTok, PPCallbacks::RAngleToken,
+                     reinterpret_cast<uintptr_t>(&RAngleLoc));
+  }
+
   // Find the class template we're specializing
   TemplateName Name = TemplateD.get();
   TemplateDecl *TD = Name.getAsTemplateDecl();
@@ -10282,6 +10499,29 @@ DeclResult Sema::ActOnExplicitInstantiation(
   ClassTemplateSpecializationDecl *PrevDecl =
       ClassTemplate->findSpecialization(CanonicalConverted, InsertPos);
 
+  // If we have something like `extern template foo<bar>;`, then we want to
+  // create a specialization that "overlaps" with the pattern as a definition,
+  // and have the extern one be a redeclaration.
+  if ((!PrevDecl || !PrevDecl->getDefinition()) &&
+      ExternLoc.isValid() &&
+      getLangOpts().LexicalTemplateInstantiation) {
+
+    ParsedAttributesView EmptyAttr;
+    DeclResult Res = ActOnExplicitInstantiation(
+        S, {}, TemplateLoc, TagSpec, KWLoc, SS, TemplateD, TemplateNameLoc,
+        LAngleLoc, TemplateArgsIn, RAngleLoc, EmptyAttr);
+
+    if (!Res.isInvalid()) {
+      auto Added = cast<ClassTemplateSpecializationDecl>(Res.get());
+      TransferLexicalInfo(ClassTemplate, Added);
+
+      // Recalculate the insert pos if we added our definition.
+      InsertPos = nullptr;
+      PrevDecl =
+          ClassTemplate->findSpecialization(CanonicalConverted, InsertPos);
+    }
+  }
+
   TemplateSpecializationKind PrevDecl_TSK
     = PrevDecl ? PrevDecl->getTemplateSpecializationKind() : TSK_Undeclared;
 
@@ -10315,7 +10555,12 @@ DeclResult Sema::ActOnExplicitInstantiation(
     // Even though HasNoEffect == true means that this explicit instantiation
     // has no effect on semantics, we go on to put its syntax in the AST.
 
-    if (PrevDecl_TSK == TSK_ImplicitInstantiation ||
+    if (getLangOpts().LexicalTemplateInstantiation &&
+        PrevDecl->getLocation() != TemplateNameLoc) {
+      
+      // Prevent us from overwriting the `PrevDecl` location.
+    
+    } else if (PrevDecl_TSK == TSK_ImplicitInstantiation ||
         PrevDecl_TSK == TSK_Undeclared) {
       // Since the only prior class template specialization with these
       // arguments was referenced but not declared, reuse that
@@ -10403,6 +10648,7 @@ DeclResult Sema::ActOnExplicitInstantiation(
   ClassTemplateSpecializationDecl *Def
     = cast_or_null<ClassTemplateSpecializationDecl>(
                                               Specialization->getDefinition());
+
   if (!Def)
     InstantiateClassTemplateSpecialization(TemplateNameLoc, Specialization, TSK);
   else if (TSK == TSK_ExplicitInstantiationDefinition) {
@@ -11079,6 +11325,23 @@ Sema::ActOnTypenameType(Scope *S,
                         SourceLocation LAngleLoc,
                         ASTTemplateArgsPtr TemplateArgsIn,
                         SourceLocation RAngleLoc) {
+
+  if (auto Callbacks = PP.getPPCallbacks()) {
+    Token LAngleTok;
+    LAngleTok.setKind(clang::tok::less);
+    LAngleTok.setLocation(LAngleLoc);
+    LAngleTok.setLength(1);
+    Callbacks->Event(LAngleTok, PPCallbacks::LAngleToken,
+                     reinterpret_cast<uintptr_t>(&LAngleLoc));
+
+    Token RAngleTok;
+    RAngleTok.setKind(clang::tok::greater);
+    RAngleTok.setLocation(RAngleLoc);
+    RAngleTok.setLength(1);
+    Callbacks->Event(RAngleTok, PPCallbacks::RAngleToken,
+                     reinterpret_cast<uintptr_t>(&RAngleLoc));
+  }
+
   if (TypenameLoc.isValid() && S && !S->getTemplateParamParent())
     Diag(TypenameLoc,
          getLangOpts().CPlusPlus11 ?
