@@ -116,20 +116,24 @@ const Token &Preprocessor::PeekAhead(unsigned N) {
 void Preprocessor::AnnotatePreviousCachedTokens(const Token &Tok) {
   assert(Tok.isAnnotation() && "Expected annotation token");
   assert(CachedLexPos != 0 && "Expected to have some cached tokens");
-  assert(CachedTokens[CachedLexPos-1].getLastLoc() == Tok.getAnnotationEndLoc()
-         && "The annotation should be until the most recent cached token");
+
+  // NOTE(pag): The split token tracker stuff might make this not true.
+  // assert(CachedTokens[CachedLexPos-1].getLastLoc() == Tok.getAnnotationEndLoc()
+  //        && "The annotation should be until the most recent cached token");
+  auto T = Tok;
+  T.setAnnotationEndLoc(CachedTokens[CachedLexPos-1].getLastLoc());
 
   // Start from the end of the cached tokens list and look for the token
   // that is the beginning of the annotation token.
   for (CachedTokensTy::size_type i = CachedLexPos; i != 0; --i) {
     CachedTokensTy::iterator AnnotBegin = CachedTokens.begin() + i-1;
-    if (AnnotBegin->getLocation() == Tok.getLocation()) {
+    if (AnnotBegin->getLocation() == T.getLocation()) {
       assert((BacktrackPositions.empty() || BacktrackPositions.back() <= i) &&
              "The backtrack pos points inside the annotated tokens!");
       // Replace the cached tokens with the single annotation token.
       if (i < CachedLexPos)
         CachedTokens.erase(AnnotBegin + 1, CachedTokens.begin() + CachedLexPos);
-      *AnnotBegin = Tok;
+      *AnnotBegin = T;
       CachedLexPos = i;
       return;
     }

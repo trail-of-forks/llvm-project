@@ -16,6 +16,8 @@
 #include "clang/AST/ExprCXX.h"
 #include "clang/AST/NestedNameSpecifier.h"
 #include "clang/Basic/PartialDiagnostic.h"
+#include "clang/Lex/PPCallbacksEventKind.h"
+#include "clang/Lex/Preprocessor.h"
 #include "clang/Sema/DeclSpec.h"
 #include "clang/Sema/Lookup.h"
 #include "clang/Sema/SemaInternal.h"
@@ -895,6 +897,22 @@ bool Sema::ActOnCXXNestedNameSpecifier(Scope *S,
                                        bool EnteringContext) {
   if (SS.isInvalid())
     return true;
+
+  if (auto Callbacks = PP.getPPCallbacks()) {
+    Token LAngleTok;
+    LAngleTok.setKind(clang::tok::less);
+    LAngleTok.setLocation(LAngleLoc);
+    LAngleTok.setLength(1);
+    Callbacks->Event(LAngleTok, PPCallbacks::LAngleToken,
+                     reinterpret_cast<uintptr_t>(&LAngleLoc));
+
+    Token RAngleTok;
+    RAngleTok.setKind(clang::tok::greater);
+    RAngleTok.setLocation(RAngleLoc);
+    RAngleTok.setLength(1);
+    Callbacks->Event(RAngleTok, PPCallbacks::RAngleToken,
+                     reinterpret_cast<uintptr_t>(&RAngleLoc));
+  }
 
   TemplateName Template = OpaqueTemplate.get();
 
