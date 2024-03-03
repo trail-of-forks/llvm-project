@@ -326,7 +326,8 @@ COMPATIBLE_LANGOPT(CLUnsafeMath , 1, 0, "Unsafe Floating Point Math")
 COMPATIBLE_LANGOPT(CLFiniteMathOnly , 1, 0, "__FINITE_MATH_ONLY__ predefined macro")
 
 // PASTA-specific options.
-LANGOPT(LexicalTemplateInstantiation , 1, 0, "Try to maintain the lexical provenance of decls during template instantiation")
+LANGOPT(EnablePredefines, 1, 1, "Enable the macro preamble, which pre-defined many built-in macros")
+LANGOPT(LexicalTemplateInstantiation, 1, 0, "Try to maintain the lexical provenance of decls during template instantiation")
 LANGOPT(AggressiveTemplateInstantiation , 1, 0, "Aggressively try to instantiate templates during parsing")
 LANGOPT(AttrTypesHaveAttrs, 1, 0, "Embed attributes into attribute types")
 LANGOPT(UnknownAttrAnnotate, 1, 0, "Treat unknown/unrecognized attributes as annotation attributes")

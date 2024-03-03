@@ -567,16 +567,18 @@ void Preprocessor::EnterMainSourceFile() {
       markIncluded(*FE);
   }
 
-  // Preprocess Predefines to populate the initial preprocessor state.
-  std::unique_ptr<llvm::MemoryBuffer> SB =
-    llvm::MemoryBuffer::getMemBufferCopy(Predefines, "<built-in>");
-  assert(SB && "Cannot create predefined source buffer");
-  FileID FID = SourceMgr.createFileID(std::move(SB));
-  assert(FID.isValid() && "Could not create FileID for predefines?");
-  setPredefinesFileID(FID);
+  if (getLangOpts().EnablePredefines) {
+    // Preprocess Predefines to populate the initial preprocessor state.
+    std::unique_ptr<llvm::MemoryBuffer> SB =
+      llvm::MemoryBuffer::getMemBufferCopy(Predefines, "<built-in>");
+    assert(SB && "Cannot create predefined source buffer");
+    FileID FID = SourceMgr.createFileID(std::move(SB));
+    assert(FID.isValid() && "Could not create FileID for predefines?");
+    setPredefinesFileID(FID);
 
-  // Start parsing the predefines.
-  EnterSourceFile(FID, nullptr, SourceLocation());
+    // Start parsing the predefines.
+    EnterSourceFile(FID, nullptr, SourceLocation());
+  }
 
   if (!PPOpts->PCHThroughHeader.empty()) {
     // Lookup and save the FileID for the through header. If it isn't found
