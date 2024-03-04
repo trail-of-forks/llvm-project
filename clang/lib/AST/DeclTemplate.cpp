@@ -1074,6 +1074,14 @@ ClassTemplateSpecializationDecl::getSpecializedTemplate() const {
 
 SourceRange
 ClassTemplateSpecializationDecl::getSourceRange() const {
+  // NOTE(pag): The walk-to-pattern path (TSK_Undeclared / TSK_ImplicitInstantiation
+  //            below) is problematic, where it can often find stuff that is part
+  //            of a different pattern. Bypass when lexical template instantiation
+  //            is requested.
+  if (getASTContext().getLangOpts().LexicalTemplateInstantiation) {
+    return CXXRecordDecl::getSourceRange();
+  }
+
   switch (getSpecializationKind()) {
   case TSK_Undeclared:
   case TSK_ImplicitInstantiation: {
