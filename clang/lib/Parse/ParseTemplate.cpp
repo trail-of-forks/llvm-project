@@ -518,10 +518,14 @@ bool Parser::ParseTemplateParameters(
   }
 
   if (Callbacks) {
+    if (RAngleLoc == Tok.getLocation()) {
+      RAngleTok = Tok;
+    }
+
     Callbacks->Event(LAngleTok, PPCallbacks::LAngleToken,
                      reinterpret_cast<uintptr_t>(&LAngleLoc));
 
-    if (Tok.is(clang::tok::greater)) {
+    if (RAngleTok.is(clang::tok::greater)) {
       Callbacks->Event(RAngleTok, PPCallbacks::RAngleToken,
                        reinterpret_cast<uintptr_t>(&RAngleLoc));
     }
