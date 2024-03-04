@@ -520,8 +520,11 @@ bool Parser::ParseTemplateParameters(
   if (Callbacks) {
     Callbacks->Event(LAngleTok, PPCallbacks::LAngleToken,
                      reinterpret_cast<uintptr_t>(&LAngleLoc));
-    Callbacks->Event(RAngleTok, PPCallbacks::RAngleToken,
-                     reinterpret_cast<uintptr_t>(&RAngleLoc));
+
+    if (Tok.is(clang::tok::greater)) {
+      Callbacks->Event(RAngleTok, PPCallbacks::RAngleToken,
+                       reinterpret_cast<uintptr_t>(&RAngleLoc));
+    }
   }
 
   return false;

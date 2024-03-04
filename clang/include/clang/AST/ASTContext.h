@@ -825,6 +825,7 @@ public:
   /// redeclaration.
   mutable llvm::DenseMap<const Decl *, comments::FullComment *> ParsedComments;
 
+public:
   /// Attaches \p Comment to \p OriginalD and to its redeclaration chain
   /// and removes the redeclaration chain from the set of commentless chains.
   ///
@@ -846,7 +847,6 @@ public:
   /// without looking into cache.
   RawComment *getRawCommentForDeclNoCache(const Decl *D) const;
 
-public:
   void addComment(const RawComment &RC);
 
   /// Return the documentation comment attached to a given declaration.
