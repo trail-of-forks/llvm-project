@@ -5857,13 +5857,6 @@ void Sema::InstantiateFunctionDefinition(SourceLocation PointOfInstantiation,
   const FunctionDecl *PatternDecl = Function->getTemplateInstantiationPattern();
   assert(PatternDecl && "instantiating a non-template");
 
-  if (Function->getNameAsString() == "get" &&
-      Function->isInStdNamespace() &&
-      Function->getLocation().getRawEncoding() == 30368585u &&
-      Function->getReturnType().getAsString() == "class llvm::StringRef &") {
-    (void) Function->getLocation();
-  }
-
   const FunctionDecl *PatternDef = PatternDecl->getDefinition();
   Stmt *Pattern = nullptr;
   if (PatternDef) {

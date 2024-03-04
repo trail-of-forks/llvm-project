@@ -1021,47 +1021,51 @@ ClassTemplateSpecializationDecl::getSpecializedTemplate() const {
   return SpecializedTemplate.get<ClassTemplateDecl*>();
 }
 
-// NOTE(pag): The `else` case is particularly problematic, e.g. with the
-//            `decay` template for instance.
+SourceRange
+ClassTemplateSpecializationDecl::getSourceRange() const {
+  
+  // NOTE(pag): The `else` case is problematic, where it can often find stuff
+  //            that is part of a different pattern.
+  if (getASTContext().getLangOpts().LexicalTemplateInstantiation) {
+    return CXXRecordDecl::getSourceRange();
+  }
 
-// SourceRange
-// ClassTemplateSpecializationDecl::getSourceRange() const {
-//   if (ExplicitInfo) {
-//     SourceLocation Begin = getTemplateKeywordLoc();
-//     if (Begin.isValid()) {
-//       // Here we have an explicit (partial) specialization or instantiation.
-//       assert(getSpecializationKind() == TSK_ExplicitSpecialization ||
-//              getSpecializationKind() == TSK_ExplicitInstantiationDeclaration ||
-//              getSpecializationKind() == TSK_ExplicitInstantiationDefinition);
-//       if (getExternLoc().isValid())
-//         Begin = getExternLoc();
-//       SourceLocation End = getBraceRange().getEnd();
-//       if (End.isInvalid())
-//         End = getTypeAsWritten()->getTypeLoc().getEndLoc();
-//       return SourceRange(Begin, End);
-//     }
-//     // An implicit instantiation of a class template partial specialization
-//     // uses ExplicitInfo to record the TypeAsWritten, but the source
-//     // locations should be retrieved from the instantiation pattern.
-//     using CTPSDecl = ClassTemplatePartialSpecializationDecl;
-//     auto *ctpsd = const_cast<CTPSDecl *>(cast<CTPSDecl>(this));
-//     CTPSDecl *inst_from = ctpsd->getInstantiatedFromMember();
-//     assert(inst_from != nullptr);
-//     return inst_from->getSourceRange();
-//   }
-//   else {
-//     // No explicit info available.
-//     llvm::PointerUnion<ClassTemplateDecl *,
-//                        ClassTemplatePartialSpecializationDecl *>
-//       inst_from = getInstantiatedFrom();
-//     if (inst_from.isNull())
-//       return getSpecializedTemplate()->getSourceRange();
-//     if (const auto *ctd = inst_from.dyn_cast<ClassTemplateDecl *>())
-//       return ctd->getSourceRange();
-//     return inst_from.get<ClassTemplatePartialSpecializationDecl *>()
-//       ->getSourceRange();
-//   }
-// }
+  if (ExplicitInfo) {
+    SourceLocation Begin = getTemplateKeywordLoc();
+    if (Begin.isValid()) {
+      // Here we have an explicit (partial) specialization or instantiation.
+      assert(getSpecializationKind() == TSK_ExplicitSpecialization ||
+             getSpecializationKind() == TSK_ExplicitInstantiationDeclaration ||
+             getSpecializationKind() == TSK_ExplicitInstantiationDefinition);
+      if (getExternLoc().isValid())
+        Begin = getExternLoc();
+      SourceLocation End = getBraceRange().getEnd();
+      if (End.isInvalid())
+        End = getTypeAsWritten()->getTypeLoc().getEndLoc();
+      return SourceRange(Begin, End);
+    }
+    // An implicit instantiation of a class template partial specialization
+    // uses ExplicitInfo to record the TypeAsWritten, but the source
+    // locations should be retrieved from the instantiation pattern.
+    using CTPSDecl = ClassTemplatePartialSpecializationDecl;
+    auto *ctpsd = const_cast<CTPSDecl *>(cast<CTPSDecl>(this));
+    CTPSDecl *inst_from = ctpsd->getInstantiatedFromMember();
+    assert(inst_from != nullptr);
+    return inst_from->getSourceRange();
+  }
+  else {
+    // No explicit info available.
+    llvm::PointerUnion<ClassTemplateDecl *,
+                       ClassTemplatePartialSpecializationDecl *>
+      inst_from = getInstantiatedFrom();
+    if (inst_from.isNull())
+      return getSpecializedTemplate()->getSourceRange();
+    if (const auto *ctd = inst_from.dyn_cast<ClassTemplateDecl *>())
+      return ctd->getSourceRange();
+    return inst_from.get<ClassTemplatePartialSpecializationDecl *>()
+      ->getSourceRange();
+  }
+}
 
 //===----------------------------------------------------------------------===//
 // ConceptDecl Implementation
