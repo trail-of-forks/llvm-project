@@ -2247,7 +2247,7 @@ Decl *TemplateDeclInstantiator::VisitFunctionDecl(
     Function->setFunctionTemplateSpecialization(FunctionTemplate,
                             TemplateArgumentList::CreateCopy(SemaRef.Context,
                                                              Innermost),
-                                                InsertPos);
+                                                /*InsertPosi=*/nullptr);
   } else if (isFriend && D->isThisDeclarationADefinition()) {
     // Do not connect the friend to the template unless it's actually a
     // definition. We don't want non-template functions to be marked as being
