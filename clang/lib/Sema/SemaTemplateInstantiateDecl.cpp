@@ -2369,7 +2369,7 @@ Decl *TemplateDeclInstantiator::VisitFunctionDecl(
     Function->setFunctionTemplateSpecialization(FunctionTemplate,
                             TemplateArgumentList::CreateCopy(SemaRef.Context,
                                                              Innermost),
-                                                InsertPos);
+                                                /*InsertPos=*/nullptr);
   } else if (FunctionRewriteKind == RewriteKind::None) {
     if (isFriend && D->isThisDeclarationADefinition()) {
       // Do not connect the friend to the template unless it's actually a
