@@ -480,8 +480,10 @@ void FunctionTemplateDecl::mergePrevDecl(FunctionTemplateDecl *Prev) {
   }
 
   // Ensure we don't leak any important state.
-  assert(ThisCommon->Specializations.size() == 0 &&
-         "Can't merge incompatible declarations!");
+  if (!getLangOpts().LexicalTemplateInstantiation || ThisCommon != PrevCommon) {
+    assert(ThisCommon->Specializations.size() == 0 &&
+           "Can't merge incompatible declarations!");
+  }
 
   Base::Common = PrevCommon;
 }
@@ -1023,6 +1025,13 @@ ClassTemplateSpecializationDecl::getSpecializedTemplate() const {
 
 SourceRange
 ClassTemplateSpecializationDecl::getSourceRange() const {
+  
+  // NOTE(pag): The `else` case is problematic, where it can often find stuff
+  //            that is part of a different pattern.
+  if (getASTContext().getLangOpts().LexicalTemplateInstantiation) {
+    return CXXRecordDecl::getSourceRange();
+  }
+
   if (ExplicitInfo) {
     SourceLocation Begin = getTemplateKeywordLoc();
     if (Begin.isValid()) {
