@@ -15908,7 +15908,7 @@ void Sema::DefineImplicitLambdaToFunctionPointerConversion(
   FunctionDecl *Invoker =
       CallOp->hasCXXExplicitFunctionObjectParameter() || CallOp->isStatic()
           ? CallOp
-          : Lambda->getLambdaStaticInvoker(CC);
+          : Lambda->getLambdaStaticInvokerByCC(CC);
 
   if (auto *TemplateArgs = Conv->getTemplateSpecializationArgs()) {
     CallOp = InstantiateFunctionDeclaration(

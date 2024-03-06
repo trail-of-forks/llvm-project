@@ -1603,7 +1603,7 @@ CXXMethodDecl *CXXRecordDecl::getLambdaCallOperator() const {
 CXXMethodDecl* CXXRecordDecl::getLambdaStaticInvoker() const {
   CXXMethodDecl *CallOp = getLambdaCallOperator();
   CallingConv CC = CallOp->getType()->castAs<FunctionType>()->getCallConv();
-  return getLambdaStaticInvoker(CC);
+  return getLambdaStaticInvokerByCC(CC);
 }
 
 static DeclContext::lookup_result
@@ -1620,7 +1620,7 @@ static CXXMethodDecl *getInvokerAsMethod(NamedDecl *ND) {
   return cast<CXXMethodDecl>(ND);
 }
 
-CXXMethodDecl *CXXRecordDecl::getLambdaStaticInvoker(CallingConv CC) const {
+CXXMethodDecl *CXXRecordDecl::getLambdaStaticInvokerByCC(CallingConv CC) const {
   if (!isLambda())
     return nullptr;
   DeclContext::lookup_result Invoker = getLambdaStaticInvokers(*this);

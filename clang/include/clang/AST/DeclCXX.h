@@ -1049,7 +1049,9 @@ public:
   /// attribute. Otherwise, it will return the calling convention specified for
   /// the lambda.
   CXXMethodDecl *getLambdaStaticInvoker() const;
-  CXXMethodDecl *getLambdaStaticInvoker(CallingConv CC) const;
+
+  // PASTA PATCH: Rename to getLambdaStaticInvokerByCC to enable wrapping
+  CXXMethodDecl *getLambdaStaticInvokerByCC(CallingConv CC) const;
 
   /// Retrieve the generic lambda's template parameter list.
   /// Returns null if the class does not represent a lambda or a generic
