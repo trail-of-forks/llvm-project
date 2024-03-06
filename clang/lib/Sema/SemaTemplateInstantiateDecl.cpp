@@ -5958,7 +5958,8 @@ void Sema::InstantiateFunctionDefinition(SourceLocation PointOfInstantiation,
   Function->setVisibleDespiteOwningModule();
 
   // Copy the inner loc start from the pattern.
-  assert(Function->getLocation() == PatternDecl->getLocation());
+  assert(!getLangOpts().LexicalTemplateInstantiation ||
+         Function->getLocation() == PatternDecl->getLocation());
   Function->setLocation(PatternDecl->getLocation());
   Function->setInnerLocStart(PatternDecl->getInnerLocStart());
 
