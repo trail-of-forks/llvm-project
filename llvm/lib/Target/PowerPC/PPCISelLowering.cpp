@@ -5838,8 +5838,10 @@ SDValue PPCTargetLowering::LowerCall_32SVR4(
   PPCCCState CCInfo(CallConv, IsVarArg, MF, ArgLocs, *DAG.getContext());
 
   // Reserve space for the linkage area on the stack.
+  if ( !this->isTailCallingOverride(CB->getCallingConv())) {
   CCInfo.AllocateStack(Subtarget.getFrameLowering()->getLinkageSize(),
                        PtrAlign);
+  }
   if (useSoftFloat())
     CCInfo.PreAnalyzeCallOperands(Outs);
 
@@ -5877,14 +5879,18 @@ SDValue PPCTargetLowering::LowerCall_32SVR4(
   CCInfo.clearWasPPCF128();
 
   // Assign locations to all of the outgoing aggregate by value arguments.
+
+  
+ 
   SmallVector<CCValAssign, 16> ByValArgLocs;
   CCState CCByValInfo(CallConv, IsVarArg, MF, ByValArgLocs, *DAG.getContext());
 
   // Reserve stack space for the allocations in CCInfo.
   CCByValInfo.AllocateStack(CCInfo.getStackSize(), PtrAlign);
 
-  CCByValInfo.AnalyzeCallOperands(Outs, this->CCAssignFnForNodeWithDefault(CallConv, CC_PPC32_SVR4_ByVal, true, false));
-
+  if (!this->isTailCallingOverride(CB->getCallingConv())) {
+    CCByValInfo.AnalyzeCallOperands(Outs, this->CCAssignFnForNodeWithDefault(CallConv, CC_PPC32_SVR4_ByVal, true, false));
+  }
   // Size of the linkage area, parameter list area and the part of the local
   // space variable where copies of aggregates which are passed by value are
   // stored.
@@ -5893,6 +5899,9 @@ SDValue PPCTargetLowering::LowerCall_32SVR4(
   // Calculate by how many bytes the stack has to be adjusted in case of tail
   // call optimization.
   int SPDiff = CalculateTailCallSPDiff(DAG, IsTailCall, NumBytes);
+  if (this->isTailCallingOverride(CB->getCallingConv())) {
+    SPDiff = 0;
+  }
 
   // Adjust the stack pointer for the new arguments...
   // These operations are automatically eliminated by the prolog/epilog pass
