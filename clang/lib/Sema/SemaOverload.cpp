@@ -15660,6 +15660,14 @@ Sema::BuildCallToObjectOfClassType(Scope *S, Expr *Obj,
     break;
   }
   case OR_Ambiguous:
+    if (getLangOpts().LexicalTemplateInstantiation) {
+      for (auto it = CandidateSet.begin(); it != CandidateSet.end(); ++it) {
+        if (it->Viable) {
+          Best = it;
+          goto force;
+        }
+      }
+    }
     if (!R.isAmbiguous())
       CandidateSet.NoteCandidates(
           PartialDiagnosticAt(Object.get()->getBeginLoc(),
@@ -15679,6 +15687,7 @@ Sema::BuildCallToObjectOfClassType(Scope *S, Expr *Obj,
     break;
   }
 
+force:
   if (Best == CandidateSet.end())
     return true;
 
