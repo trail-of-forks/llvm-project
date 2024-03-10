@@ -503,9 +503,11 @@ bool Preprocessor::HandleEndOfFile(Token &Result, bool isEndOfMacro) {
     if (!isEndOfMacro && CurPPLexer) {
       ExitedFID = CurPPLexer->getFileID();
 
-      assert(PredefinesFileID.isValid() &&
-             "HandleEndOfFile is called before PredefinesFileId is set");
-      ExitedFromPredefinesFile = (PredefinesFileID == ExitedFID);
+      if (getLangOpts().EnablePredefines) {
+        assert(PredefinesFileID.isValid() &&
+               "HandleEndOfFile is called before PredefinesFileId is set");
+        ExitedFromPredefinesFile = (PredefinesFileID == ExitedFID);
+      }
     }
 
     if (LeavingSubmodule) {
