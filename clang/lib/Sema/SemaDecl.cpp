@@ -18232,12 +18232,6 @@ void Sema::ActOnStartCXXMemberDeclarations(Scope *S, Decl *TagD,
                                           : FinalAttr::Keyword_final));
   }
 
-  // If AccessControl flag is set to false, return early.
-  // No need to inject the class object for access control check
-  if (!getLangOpts().AccessControl) {
-    return;
-  }
-
   // C++ [class]p2:
   //   [...] The class-name is also inserted into the scope of the
   //   class itself; this is known as the injected-class-name. For
@@ -18256,6 +18250,8 @@ void Sema::ActOnStartCXXMemberDeclarations(Scope *S, Decl *TagD,
   PushOnScopeChains(InjectedClassName, S);
   assert(InjectedClassName->isInjectedClassName() &&
          "Broken injected-class-name");
+
+  InjectedClassName->RemappedDecl = Record;
 }
 
 void Sema::ActOnTagFinishDefinition(Scope *S, Decl *TagD,
