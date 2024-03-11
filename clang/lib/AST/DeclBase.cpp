@@ -1011,8 +1011,13 @@ Decl *Decl::castFromDeclContext (const DeclContext *D) {
   case Decl::NAME:                                                             \
     return static_cast<NAME##Decl *>(const_cast<DeclContext *>(D));
 #include "clang/AST/DeclNodes.inc"
-  default:
-    llvm_unreachable("a decl that inherits DeclContext isn't handled");
+    default:
+#define DECL(NAME, BASE)
+#define DECL_CONTEXT_BASE(NAME)                  \
+      if (DK >= first##NAME && DK <= last##NAME) \
+        return static_cast<NAME##Decl *>(const_cast<DeclContext *>(D));
+#include "clang/AST/DeclNodes.inc"
+      return nullptr;
   }
 }
 
@@ -1024,8 +1029,13 @@ DeclContext *Decl::castToDeclContext(const Decl *D) {
   case Decl::NAME:                                                             \
     return static_cast<NAME##Decl *>(const_cast<Decl *>(D));
 #include "clang/AST/DeclNodes.inc"
-  default:
-    llvm_unreachable("a decl that inherits DeclContext isn't handled");
+    default:
+#define DECL(NAME, BASE)
+#define DECL_CONTEXT_BASE(NAME)                                   \
+      if (DK >= first##NAME && DK <= last##NAME)                  \
+        return static_cast<NAME##Decl *>(const_cast<Decl *>(D));
+#include "clang/AST/DeclNodes.inc"
+      return nullptr;
   }
 }
 
