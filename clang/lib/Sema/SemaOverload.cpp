@@ -15080,6 +15080,14 @@ Sema::BuildCallToObjectOfClassType(Scope *S, Expr *Obj,
     break;
   }
   case OR_Ambiguous:
+    if (getLangOpts().LexicalTemplateInstantiation) {
+      for (auto it = CandidateSet.begin(); it != CandidateSet.end(); ++it) {
+        if (it->Viable) {
+          Best = it;
+          goto force;
+        }
+      }
+    }
     CandidateSet.NoteCandidates(
         PartialDiagnosticAt(Object.get()->getBeginLoc(),
                             PDiag(diag::err_ovl_ambiguous_object_call)
@@ -15098,6 +15106,7 @@ Sema::BuildCallToObjectOfClassType(Scope *S, Expr *Obj,
     break;
   }
 
+force:
   if (Best == CandidateSet.end())
     return true;
 
