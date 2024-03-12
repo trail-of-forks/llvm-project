@@ -7429,10 +7429,7 @@ void Sema::PerformDeferredTypeCompletions(void) {
     auto Tpl = CurrSpec.dyn_cast<ClassTemplateDecl *>();
 
     if (PSpec) {
-      if (PSpec->isThisDeclarationADefinition() &&
-          Pending.Decl->getLocation() == PSpec->getLocation()) {
-        TransferLexicalInfo(PSpec, Pending.Decl);
-      }
+      TransferLexicalInfo(PSpec, Pending.Decl);
 
     } else if (Tpl) {
       if (Tpl->isThisDeclarationADefinition() &&
