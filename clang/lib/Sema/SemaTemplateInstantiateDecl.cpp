@@ -7325,7 +7325,7 @@ NamedDecl *Sema::FindInstantiatedDecl(SourceLocation Loc, NamedDecl *D,
   return D;
 }
 
-static void CheckLocation(ClassTemplateSpecializationDecl *Decl) {
+static void CheckLocation(TagDecl *Decl) {
   auto loc = Decl->getLocation().getRawEncoding();
   auto begin_loc = Decl->getSourceRange().getBegin().getRawEncoding();
   auto end_loc = Decl->getSourceRange().getEnd().getRawEncoding();
@@ -7333,7 +7333,7 @@ static void CheckLocation(ClassTemplateSpecializationDecl *Decl) {
   assert(loc <= end_loc);
 }
 
-static void CheckLocation(ClassTemplateDecl *Decl) {
+static void CheckLocation(TemplateDecl *Decl) {
   auto loc = Decl->getLocation().getRawEncoding();
   auto begin_loc = Decl->getSourceRange().getBegin().getRawEncoding();
   auto end_loc = Decl->getSourceRange().getEnd().getRawEncoding();
@@ -7342,14 +7342,19 @@ static void CheckLocation(ClassTemplateDecl *Decl) {
 }
 
 namespace clang {
-void TransferLexicalInfo(ClassTemplateSpecializationDecl *From,
-                         ClassTemplateSpecializationDecl *To) {
+void TransferLexicalInfo(TagDecl *From, TagDecl *To) {
   CheckLocation(From);
   To->Decl::setLocation(From->Decl::getLocation());
   To->TypeDecl::setBeginLoc(From->TypeDecl::getBeginLoc());
   To->setBraceRange(From->getBraceRange());
   To->setLocation(From->getLocation());
   To->setLexicalDeclContext(From->getLexicalDeclContext());
+}
+
+void TransferLexicalInfo(ClassTemplateSpecializationDecl *From,
+                         ClassTemplateSpecializationDecl *To) {
+  CheckLocation(From);
+  TransferLexicalInfo(dyn_cast<TagDecl>(From), dyn_cast<TagDecl>(To));
   To->setExternLoc(From->getExternLoc());
   To->setTemplateKeywordLoc(From->getTemplateKeywordLoc());
   To->setTypeAsWritten(From->getTypeAsWritten());
@@ -7359,12 +7364,15 @@ void TransferLexicalInfo(ClassTemplateDecl *From,
                          ClassTemplateSpecializationDecl *To) {
   auto FromPattern = From->getTemplatedDecl();
   CheckLocation(From);
-  To->Decl::setLocation(FromPattern->Decl::getLocation());
-  To->TypeDecl::setBeginLoc(FromPattern->TypeDecl::getBeginLoc());
-  To->setBraceRange(FromPattern->getBraceRange());
-  To->setLocation(FromPattern->getLocation());
-  To->setLexicalDeclContext(FromPattern->getLexicalDeclContext());
+  TransferLexicalInfo(dyn_cast<TagDecl>(FromPattern), dyn_cast<TagDecl>(To));
   To->setTemplateKeywordLoc(From->getTemplateParameters()->getTemplateLoc());
+  CheckLocation(To);
+}
+
+void TransferLexicalInfo(ClassTemplateDecl *From, TagDecl *To) {
+  CheckLocation(From);
+  auto FromPattern = From->getTemplatedDecl();
+  TransferLexicalInfo(FromPattern, To);
   CheckLocation(To);
 }
 
@@ -7432,9 +7440,19 @@ void Sema::PerformDeferredTypeCompletions(void) {
       TransferLexicalInfo(PSpec, Pending.Decl);
 
     } else if (Tpl) {
-      if (Tpl->isThisDeclarationADefinition() &&
-          Pending.Decl->getLocation() == Tpl->getLocation()) {
-        TransferLexicalInfo(Tpl, Pending.Decl);
+      if (Pending.Decl->getLocation() == Tpl->getLocation()) {
+
+        // If this declaration is also a definition, transfer the lexical
+        // info from ClassTemplate to Pending specialization node.
+        if (Tpl->isThisDeclarationADefinition()) {
+          TransferLexicalInfo(Tpl, Pending.Decl);
+
+        // If the specialization node is not explicit and also not out of line
+        // it could be a forward declaration with specialization node. In that
+        // case transfer the lexical info to the specialization node
+        } else if (!Explicit && !Pending.Decl->isOutOfLine()) {
+          TransferLexicalInfo(Tpl, Pending.Decl);
+        }
       }
     }
 
