@@ -3222,6 +3222,24 @@ namespace clang {
   }
 }
 
+static void UpdateReamappedDecl(ClassTemplateDecl *From, ClassTemplateDecl *To) {
+  auto *FromTemplateDecl = From->getTemplatedDecl();
+  auto *ToTemplatedDecl = To->getTemplatedDecl();
+  if (FromTemplateDecl && ToTemplatedDecl) {
+    ToTemplatedDecl->RemappedDecl = FromTemplateDecl->RemappedDecl;
+    // Also transfer Lexical Info
+    TransferLexicalInfo(From, ToTemplatedDecl);
+  }
+}
+
+static void UpdateReamappedDecl(TemplateDecl *From, TemplateDecl *To) {
+  auto *FromTemplateDecl = From->getTemplatedDecl();
+  auto *ToTemplatedDecl = To->getTemplatedDecl();
+  if (FromTemplateDecl && ToTemplatedDecl) {
+    ToTemplatedDecl->RemappedDecl = FromTemplateDecl->RemappedDecl;
+  }
+}
+
 /// Instantiate the definition of a class from a given pattern.
 ///
 /// \param PointOfInstantiation The point of instantiation within the
@@ -3387,6 +3405,33 @@ Sema::InstantiateClass(SourceLocation PointOfInstantiation,
         if (MD->isConstexpr() && !MD->getFriendObjectKind() &&
             (MD->isVirtualAsWritten() || Instantiation->getNumBases()))
           MightHaveConstexprVirtualFunctions = true;
+
+      } else if (auto *ClassTemplate = dyn_cast<ClassTemplateDecl>(NewMember)) {
+
+        // If the specialization class memeber is a template, transfer the lexical info
+        // from the pattern and update the remapped decl
+        UpdateReamappedDecl(dyn_cast<ClassTemplateDecl>(Member), ClassTemplate);
+
+        // Handle other template decl like FunctionTemplate, TypeAliasTemplate & VarTemplateDecl. In these
+        // cases we update the ReamappedDecl but does not transfer lexical info from the pattern.
+        // TODO(kumarak): Check if we need to transfer lexical info from pattern ??
+      } else if (auto *TDecl = dyn_cast<TemplateDecl>(NewMember)) {
+        UpdateReamappedDecl(dyn_cast<TemplateDecl>(Member), TDecl);
+
+        // A friend decl could be template, identify if they are template decl and update
+        // remappeddecl and transfer the lexical info incase of ClassTemplate.
+      } else if (auto *FDecl = dyn_cast<FriendDecl>(NewMember)) {
+        auto *NDecl = FDecl->getFriendDecl();
+        auto *PatternNDecl =  dyn_cast<FriendDecl>(Member)->getFriendDecl();
+
+        // ClassTemplateDecl
+        if (auto *ClassTemplate = dyn_cast<ClassTemplateDecl>(NDecl)) {
+           UpdateReamappedDecl(dyn_cast<ClassTemplateDecl>(PatternNDecl), ClassTemplate);
+
+        // TemplateDecl
+        } else if (auto *TDecl = dyn_cast<TemplateDecl>(NDecl)) {
+           UpdateReamappedDecl(dyn_cast<TemplateDecl>(PatternNDecl), TDecl);
+        }
       }
 
       if (NewMember->isInvalidDecl())
