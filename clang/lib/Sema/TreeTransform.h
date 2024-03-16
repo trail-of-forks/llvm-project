@@ -48,11 +48,15 @@ using namespace llvm::omp;
 namespace clang {
 using namespace sema;
 
+void TransferLexicalInfo(TagDecl *From, TagDecl *To);
+
 void TransferLexicalInfo(ClassTemplateSpecializationDecl *From,
                          ClassTemplateSpecializationDecl *To);
 
 void TransferLexicalInfo(ClassTemplateDecl *From,
                          ClassTemplateSpecializationDecl *To);
+
+void TransferLexicalInfo(ClassTemplateDecl *From, TagDecl *To);
 
 /// A semantic tree transformation that allows one to transform one
 /// abstract syntax tree into another.
