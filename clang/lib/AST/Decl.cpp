@@ -2442,6 +2442,10 @@ bool VarDecl::isOutOfLine() const {
   if (!isStaticDataMember())
     return false;
 
+  if (getASTContext().getLangOpts().LexicalTemplateInstantiation) {
+    return false;
+  }
+
   // If this static data member was instantiated from a static data member of
   // a class template, check whether that static data member was defined
   // out-of-line.
@@ -4316,6 +4320,10 @@ SourceLocation FunctionDecl::getPointOfInstantiation() const {
 bool FunctionDecl::isOutOfLine() const {
   if (Decl::isOutOfLine())
     return true;
+
+  if (getASTContext().getLangOpts().LexicalTemplateInstantiation) {
+    return false;
+  }
 
   // If this function was instantiated from a member function of a
   // class template, check whether that member function was defined out-of-line.
