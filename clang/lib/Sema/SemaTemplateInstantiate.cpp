@@ -3425,11 +3425,11 @@ Sema::InstantiateClass(SourceLocation PointOfInstantiation,
         auto *PatternNDecl =  dyn_cast<FriendDecl>(Member)->getFriendDecl();
 
         // ClassTemplateDecl
-        if (auto *ClassTemplate = dyn_cast<ClassTemplateDecl>(NDecl)) {
+        if (auto *ClassTemplate = dyn_cast_or_null<ClassTemplateDecl>(NDecl)) {
            UpdateReamappedDecl(dyn_cast<ClassTemplateDecl>(PatternNDecl), ClassTemplate);
 
         // TemplateDecl
-        } else if (auto *TDecl = dyn_cast<TemplateDecl>(NDecl)) {
+        } else if (auto *TDecl = dyn_cast_or_null<TemplateDecl>(NDecl)) {
            UpdateReamappedDecl(dyn_cast<TemplateDecl>(PatternNDecl), TDecl);
         }
       }
