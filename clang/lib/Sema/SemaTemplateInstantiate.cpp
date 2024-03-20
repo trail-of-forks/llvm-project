@@ -3995,8 +3995,7 @@ Sema::InstantiateClassMembers(SourceLocation PointOfInstantiation,
           // instantiated now, and its linkage might have changed.
           Consumer.HandleTopLevelDecl(DeclGroupRef(Function));
         } else if (TSK == TSK_ExplicitInstantiationDefinition) {
-          if (getLangOpts().LexicalTemplateInstantiation &&
-              Function->isOutOfLine()) {
+          if (getLangOpts().LexicalTemplateInstantiation) {
             PendingInstantiations.emplace_back(Function, PointOfInstantiation);
           } else {
             InstantiateFunctionDefinition(PointOfInstantiation, Function);
