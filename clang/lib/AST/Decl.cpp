@@ -2192,6 +2192,15 @@ SourceRange VarDecl::getSourceRange() const {
     if (InitEnd.isValid() && InitEnd != getLocation())
       return SourceRange(getOuterLocStart(), InitEnd);
   }
+
+  // If init is implicit, check if EndRange < loc. If yes
+  // adjust it to include loc
+  if (getLangOpts().LexicalTemplateInstantiation) {
+    SourceRange range = DeclaratorDecl::getSourceRange();
+    if (range.getEnd() < getLocation()) {
+      return SourceRange(range.getBegin(), getLocation());
+    }
+  }
   return DeclaratorDecl::getSourceRange();
 }
 
