@@ -5159,6 +5159,9 @@ bool Sema::DeduceReturnType(FunctionDecl *FD, SourceLocation Loc,
                             bool Diagnose) {
   assert(FD->getReturnType()->isUndeducedType());
 
+  if (getLangOpts().LexicalTemplateInstantiation)
+    MarkFunctionReferenced(Loc, FD);
+
   // For a lambda's conversion operator, deduce any 'auto' or 'decltype(auto)'
   // within the return type from the call operator's type.
   if (isLambdaConversionOperator(FD)) {

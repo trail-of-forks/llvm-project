@@ -17454,7 +17454,8 @@ Decl *Sema::BuildStaticAssertDeclaration(SourceLocation StaticAssertLoc,
       FoldKind = AllowFold;
     }
 
-    if (!Failed && VerifyIntegerConstantExpression(
+    if (!Failed && !getLangOpts().LexicalTemplateInstantiation &&
+        VerifyIntegerConstantExpression(
                        BaseExpr, &Cond,
                        diag::err_static_assert_expression_is_not_constant,
                        FoldKind).isInvalid())
@@ -17474,7 +17475,8 @@ Decl *Sema::BuildStaticAssertDeclaration(SourceLocation StaticAssertLoc,
     bool InTemplateDefinition =
         getLangOpts().CPlusPlus && CurContext->isDependentContext();
 
-    if (!Failed && !Cond && !InTemplateDefinition) {
+    if (!Failed && !Cond && !InTemplateDefinition &&
+        !getLangOpts().LexicalTemplateInstantiation) {
       SmallString<256> MsgBuffer;
       llvm::raw_svector_ostream Msg(MsgBuffer);
       bool HasMessage = AssertMessage;

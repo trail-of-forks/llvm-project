@@ -9946,7 +9946,8 @@ bool Sema::CheckFunctionTemplateSpecialization(
     //                later gets updated to the specialization. However if the method
     //                isOutOfLine, there is no need to update the location since the
     //                specialization will act as a redeclaration in the AST.
-    if (!(getLangOpts().LexicalTemplateInstantiation && Specialization->isOutOfLine())) {
+    if (!(getLangOpts().LexicalTemplateInstantiation &&
+        Specialization->isOutOfLine())) {
       Specialization->setLocation(FD->getLocation());
     }
     Specialization->setLexicalDeclContext(FD->getLexicalDeclContext());
@@ -10502,23 +10503,37 @@ DeclResult Sema::ActOnExplicitInstantiation(
   // If we have something like `extern template foo<bar>;`, then we want to
   // create a specialization that "overlaps" with the pattern as a definition,
   // and have the extern one be a redeclaration.
-  if ((!PrevDecl || !PrevDecl->getDefinition()) &&
-      ExternLoc.isValid() &&
-      getLangOpts().LexicalTemplateInstantiation) {
+  //
+  // Extern templates require the definition of the template to be visible, so
+  // if we don't yet have a definition for this specialization, or no prior
+  // specialization, then we can go and make one now based off of the defintion
+  // pattern.
+  if (getLangOpts().LexicalTemplateInstantiation && ExternLoc.isValid() &&
+      (!PrevDecl || !PrevDecl->getDefinition())) {
 
-    ParsedAttributesView EmptyAttr;
-    DeclResult Res = ActOnExplicitInstantiation(
-        S, {}, TemplateLoc, TagSpec, KWLoc, SS, TemplateD, TemplateNameLoc,
-        LAngleLoc, TemplateArgsIn, RAngleLoc, EmptyAttr);
+    auto Pattern = ClassTemplate->getTemplatedDecl()->getDefinition();
+    auto PatternTpl = Pattern->getDescribedClassTemplate();
 
-    if (!Res.isInvalid()) {
-      auto Added = cast<ClassTemplateSpecializationDecl>(Res.get());
-      TransferLexicalInfo(ClassTemplate, Added);
+    // Create a new class template specialization declaration node for
+    // this explicit specialization.
+    PrevDecl = ClassTemplateSpecializationDecl::Create(
+        Context, Kind, PatternTpl->getDeclContext(),
+        PatternTpl->getTemplateParameters()->getTemplateLoc(),
+        Pattern->getLocation(),
+        PatternTpl, CanonicalConverted, PrevDecl);
 
-      // Recalculate the insert pos if we added our definition.
+    SetNestedNameSpecifier(*this, PrevDecl, SS);
+
+    PrevDecl->setTemplateKeywordLoc(
+        PatternTpl->getTemplateParameters()->getTemplateLoc());
+    PrevDecl->setBraceRange(Pattern->getBraceRange());
+    PrevDecl->setTemplateSpecializationKind(TSK);
+    PrevDecl->setLexicalDeclContext(PatternTpl->getLexicalDeclContext());
+    PatternTpl->getLexicalDeclContext()->addDecl(PrevDecl);
+
+    if (InsertPos) {
+      ClassTemplate->AddSpecialization(PrevDecl, InsertPos);
       InsertPos = nullptr;
-      PrevDecl =
-          ClassTemplate->findSpecialization(CanonicalConverted, InsertPos);
     }
   }
 
@@ -10632,7 +10647,7 @@ DeclResult Sema::ActOnExplicitInstantiation(
   CurContext->addDecl(Specialization);
 
   // Syntax is now OK, so return if it has no other effect on semantics.
-  if (HasNoEffect) {
+  if (HasNoEffect && !getLangOpts().LexicalTemplateInstantiation) {
     // Set the template specialization kind.
     Specialization->setTemplateSpecializationKind(TSK);
     return Specialization;

@@ -337,9 +337,13 @@ void Decl::setDeclContext(DeclContext *DC) {
   DeclCtx = DC;
 }
 
+extern "C" void CheckNewLDC(Decl *D, DeclContext *DC);
+
 void Decl::setLexicalDeclContext(DeclContext *DC) {
   if (DC == getLexicalDeclContext())
     return;
+
+  CheckNewLDC(this, DC);
 
   if (isInSemaDC()) {
     setDeclContextsImpl(getDeclContext(), DC, getASTContext());

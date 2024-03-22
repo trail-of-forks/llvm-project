@@ -13902,6 +13902,7 @@ static ExprResult FinishOverloadedCallExpr(Sema &SemaRef, Scope *S, Expr *Fn,
                                            bool AllowTypoCorrection) {
   switch (OverloadResult) {
   case OR_Success: {
+  force:
     FunctionDecl *FDecl = (*Best)->Function;
     SemaRef.CheckUnresolvedLookupAccess(ULE, (*Best)->FoundDecl);
     if (SemaRef.DiagnoseUseOfDecl(FDecl, ULE->getNameLoc()))
@@ -13950,6 +13951,29 @@ static ExprResult FinishOverloadedCallExpr(Sema &SemaRef, Scope *S, Expr *Fn,
   }
 
   case OR_Ambiguous:
+    if (SemaRef.getLangOpts().LexicalTemplateInstantiation) {
+
+      // Prefer definitions.
+      for (auto it = CandidateSet->begin(); it != CandidateSet->end(); ++it) {
+        if (!it->Viable) {
+          continue;
+        }
+        FunctionDecl *FDecl = it->Function;
+        if (FDecl->isOutOfLine() || FDecl->getDefinition() == FDecl ||
+            FDecl->willHaveBody() || FDecl->hasSkippedBody()) {
+          *Best = it;
+          goto force;
+        }
+      }
+
+      // Fall back on anything viable.
+      for (auto it = CandidateSet->begin(); it != CandidateSet->end(); ++it) {
+        if (it->Viable) {
+          *Best = it;
+          goto force;
+        }
+      }
+    }
     CandidateSet->NoteCandidates(
         PartialDiagnosticAt(Fn->getBeginLoc(),
                             SemaRef.PDiag(diag::err_ovl_ambiguous_call)
@@ -15380,6 +15404,7 @@ ExprResult Sema::BuildCallToMemberFunction(Scope *S, Expr *MemExprE,
       // DiagnoseUseOfDecl to accept both the FoundDecl and the decl
       // being used.
       if (Method != FoundDecl.getDecl() &&
+          !getLangOpts().LexicalTemplateInstantiation &&
           DiagnoseUseOfOverloadedDecl(Method, UnresExpr->getNameLoc()))
         break;
       Succeeded = true;
@@ -15661,6 +15686,23 @@ Sema::BuildCallToObjectOfClassType(Scope *S, Expr *Obj,
   }
   case OR_Ambiguous:
     if (getLangOpts().LexicalTemplateInstantiation) {
+      // Prefer definitions.
+      for (auto it = CandidateSet.begin(); it != CandidateSet.end(); ++it) {
+        if (!it->Viable) {
+          continue;
+        }
+        FunctionDecl *FDecl = it->Function;
+        if (!FDecl) {
+          continue;
+        }
+        if (FDecl->isOutOfLine() || FDecl->getDefinition() == FDecl ||
+            FDecl->willHaveBody() || FDecl->hasSkippedBody()) {
+          Best = it;
+          goto force;
+        }
+      }
+
+      // Fall back on first viable thing.
       for (auto it = CandidateSet.begin(); it != CandidateSet.end(); ++it) {
         if (it->Viable) {
           Best = it;
