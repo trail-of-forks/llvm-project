@@ -10233,7 +10233,9 @@ static void completeMemberSpecializationImpl(Sema &S, DeclT *OrigD,
   // multiple modules, or a declaration and later definition of a member type),
   // should we update all of them?
   OrigD->setTemplateSpecializationKind(TSK_ExplicitSpecialization);
-  OrigD->setLocation(Loc);
+
+  if (!S.getLangOpts().LexicalTemplateInstantiation)
+    OrigD->setLocation(Loc);
 }
 
 void Sema::CompleteMemberSpecialization(NamedDecl *Member,
