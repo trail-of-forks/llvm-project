@@ -3566,9 +3566,6 @@ FunctionDecl *Sema::createMemberSpecializationForDefinition(
     return nullptr;
   }
 
-  // if (Function->isStatic())
-  //   return nullptr;
-
   const FunctionDecl *PatternDecl = Function->getTemplateInstantiationPattern();
   assert(PatternDecl && "instantiating a non-template");
 
@@ -3616,7 +3613,11 @@ FunctionDecl *Sema::createMemberSpecializationForDefinition(
   MissingFunctionDef->setTemplateSpecializationKind(
       Function->getTemplateSpecializationKindForInstantiation(), PointOfInstantiation);
   MissingFunctionDef->setIneligibleOrNotSelected(Function->isIneligibleOrNotSelected());
+
+   // Fix source location and source range for definition node
   MissingFunctionDef->setLocation(PatternDef->getLocation());
+  MissingFunctionDef->setInnerLocStart(PatternDef->getInnerLocStart());
+  MissingFunctionDef->setRangeEnd(PatternDef->getSourceRange().getEnd());
   if (auto tsi = MissingFunctionDef->getTypeSourceInfo()) {
     tsi->getTypeLoc().initialize(Context, PatternDef->getLocation());
   }
@@ -3633,10 +3634,6 @@ FunctionDecl *Sema::createMethodTemplateSpecializationForDefinition(
     assert(false && "Should be called for Function Template specialization");
     return nullptr;
   }
-
-  // // TODO(kumarak): Not handling static and explicitly inlined method
-  // if (Function->isStatic())
-  //   return nullptr;
 
   FunctionDecl *PatternDecl = Function->getTemplateInstantiationPattern();
   assert(PatternDecl && "instantiating a non-template");
@@ -3898,7 +3895,12 @@ FunctionDecl *Sema::createFunctionTemplateSpecializationForDefinition(
       Function->getTemplateSpecializationKindForInstantiation(),
       PointOfInstantiation);
   NewFD->setReferenced(Function->isReferenced());
+
+  // Fix source location and source range for definition node
   NewFD->setLocation(PatternDef->getLocation());
+  NewFD->setInnerLocStart(PatternDef->getInnerLocStart());
+  NewFD->setRangeEnd(PatternDef->getSourceRange().getEnd());
+
   if (auto tsi = NewFD->getTypeSourceInfo()) {
     tsi->getTypeLoc().initialize(Context, PatternDef->getLocation());
   }
