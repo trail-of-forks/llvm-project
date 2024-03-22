@@ -1028,6 +1028,9 @@ void Sema::CompleteLambdaCallOperator(
   // lexical context of the Method. Do so.
   Method->setLexicalDeclContext(LSI->Lambda);
   if (TemplateParams) {
+    if (getLangOpts().LexicalTemplateInstantiation)
+      Method->setLexicalDeclContext(DC);
+
     FunctionTemplateDecl *TemplateMethod =
         Method->getDescribedFunctionTemplate();
     assert(TemplateMethod &&
@@ -2103,7 +2106,9 @@ ExprResult Sema::BuildLambdaExpr(SourceLocation StartLoc, SourceLocation EndLoc,
     ContainsUnexpandedParameterPack = LSI->ContainsUnexpandedParameterPack;
     IsGenericLambda = Class->isGenericLambda();
 
-    CallOperator->setLexicalDeclContext(Class);
+    if (!getLangOpts().LexicalTemplateInstantiation)
+      CallOperator->setLexicalDeclContext(Class);
+
     Decl *TemplateOrNonTemplateCallOperatorDecl =
         CallOperator->getDescribedFunctionTemplate()
         ? CallOperator->getDescribedFunctionTemplate()
@@ -2111,7 +2116,8 @@ ExprResult Sema::BuildLambdaExpr(SourceLocation StartLoc, SourceLocation EndLoc,
 
     // FIXME: Is this really the best choice? Keeping the lexical decl context
     // set as CurContext seems more faithful to the source.
-    TemplateOrNonTemplateCallOperatorDecl->setLexicalDeclContext(Class);
+    if (!getLangOpts().LexicalTemplateInstantiation)
+      TemplateOrNonTemplateCallOperatorDecl->setLexicalDeclContext(Class);
 
     PopExpressionEvaluationContext();
 
