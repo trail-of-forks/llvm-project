@@ -3578,9 +3578,12 @@ FunctionDecl *Sema::createMemberSpecializationForDefinition(
   MissingFunctionDef->setLocation(PatternDef->getLocation());
   MissingFunctionDef->setInnerLocStart(PatternDef->getInnerLocStart());
   MissingFunctionDef->setRangeEnd(PatternDef->getSourceRange().getEnd());
-  if (auto tsi = MissingFunctionDef->getTypeSourceInfo()) {
-    tsi->getTypeLoc().initialize(Context, PatternDef->getLocation());
-  }
+  
+  TypeSourceInfo *TSI = Context.getTrivialTypeSourceInfo(
+      MissingFunctionDef->getType());
+  MissingFunctionDef->setTypeSourceInfo(TSI);
+  assert(TSI != PatternDef->getTypeSourceInfo());
+  TSI->getTypeLoc().initialize(Context, PatternDef->getLocation());
 
   return MissingFunctionDef;
 }
@@ -3642,12 +3645,13 @@ FunctionDecl *Sema::createMethodTemplateSpecializationForDefinition(
   assert(InstTemplate &&
            "VisitFunctionDecl/CXXMethodDecl didn't create a template!");
 
-  if (!InstTemplate->getInstantiatedFromMemberTemplate())
-    InstTemplate->setInstantiatedFromMemberTemplate(
-        FunctionTemplate->getInstantiatedFromMemberTemplate());
+  // if (InstTemplate != FunctionTemplate &&
+  //     !InstTemplate->getInstantiatedFromMemberTemplate())
+  //   InstTemplate->setInstantiatedFromMemberTemplate(
+  //       FunctionTemplate->getInstantiatedFromMemberTemplate());
 
   InstantiateAttrs(TemplateArgs, FunctionTemplate, InstTemplate);
-  InstTemplate->setDeclContext(FunctionTemplate->getDeclContext());
+  // InstTemplate->setDeclContext(FunctionTemplate->getDeclContext());
 
   NewMethod->setLexicalDeclContext(
       const_cast<DeclContext *>(PatternDef->getLexicalDeclContext()));
@@ -3664,9 +3668,10 @@ FunctionDecl *Sema::createMethodTemplateSpecializationForDefinition(
   NewMethod->setInnerLocStart(PatternDef->getInnerLocStart());
   NewMethod->setRangeEnd(PatternDef->getSourceRange().getEnd());
 
-  if (auto tsi = NewMethod->getTypeSourceInfo()) {
-    tsi->getTypeLoc().initialize(Context, PatternDef->getLocation());
-  }
+  TypeSourceInfo *TSI = Context.getTrivialTypeSourceInfo(NewMethod->getType());
+  NewMethod->setTypeSourceInfo(TSI);
+  assert(TSI != PatternDef->getTypeSourceInfo());
+  TSI->getTypeLoc().initialize(Context, PatternDef->getLocation());
 
   NewMethod->setInstantiationIsPending(Method->instantiationIsPending());
   NewMethod->setTemplateSpecializationKind(
@@ -3860,9 +3865,10 @@ FunctionDecl *Sema::createFunctionTemplateSpecializationForDefinition(
   NewFD->setInnerLocStart(PatternDef->getInnerLocStart());
   NewFD->setRangeEnd(PatternDef->getSourceRange().getEnd());
 
-  if (auto tsi = NewFD->getTypeSourceInfo()) {
-    tsi->getTypeLoc().initialize(Context, PatternDef->getLocation());
-  }
+  TypeSourceInfo *TSI = Context.getTrivialTypeSourceInfo(NewFD->getType());
+  NewFD->setTypeSourceInfo(TSI);
+  assert(TSI != PatternDef->getTypeSourceInfo());
+  TSI->getTypeLoc().initialize(Context, PatternDef->getLocation());
 
   return NewFD;
 }

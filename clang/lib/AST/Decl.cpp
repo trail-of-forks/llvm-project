@@ -3925,6 +3925,8 @@ FunctionDecl::setInstantiationOfMemberFunction(ASTContext &C,
     = new (C) MemberSpecializationInfo(FD, TSK);
   TemplateOrSpecialization = Info;
 }
+
+#ifndef NDEBUG
 extern "C" void CheckNewLDC(Decl *D, DeclContext *DC) {
   if (auto FD = dyn_cast<FunctionDecl>(D)) {
     if (auto TPL = FD->getDescribedFunctionTemplate()) {
@@ -3936,6 +3938,8 @@ extern "C" void CheckNewLDC(Decl *D, DeclContext *DC) {
     }
   }
 }
+#endif
+
 FunctionTemplateDecl *FunctionDecl::getDescribedFunctionTemplate() const {
   return dyn_cast_or_null<FunctionTemplateDecl>(
       TemplateOrSpecialization.dyn_cast<NamedDecl *>());
