@@ -334,6 +334,7 @@ void PrettyStackTraceDecl::print(raw_ostream &OS) const {
 Decl::~Decl() = default;
 
 void Decl::setDeclContext(DeclContext *DC) {
+  assert(!getDeclContext() || isInSemaDC());
   DeclCtx = DC;
 }
 
@@ -343,7 +344,9 @@ void Decl::setLexicalDeclContext(DeclContext *DC) {
   if (DC == getLexicalDeclContext())
     return;
 
+#ifndef NDEBUG
   CheckNewLDC(this, DC);
+#endif
 
   if (isInSemaDC()) {
     setDeclContextsImpl(getDeclContext(), DC, getASTContext());
@@ -368,8 +371,12 @@ void Decl::setLexicalDeclContext(DeclContext *DC) {
 void Decl::setDeclContextsImpl(DeclContext *SemaDC, DeclContext *LexicalDC,
                                ASTContext &Ctx) {
   if (SemaDC == LexicalDC) {
+    assert(!getDeclContext() || isInSemaDC());
     DeclCtx = SemaDC;
   } else {
+#ifndef NDEBUG
+    CheckNewLDC(this, LexicalDC);
+#endif
     auto *MDC = new (Ctx) Decl::MultipleDC();
     MDC->SemanticDC = SemaDC;
     MDC->LexicalDC = LexicalDC;
