@@ -1658,8 +1658,10 @@ static NamedDecl* getLambdaCallOperatorHelper(const CXXRecordDecl &RD) {
 
   DeclContext::lookup_result Calls = RD.lookup(Name);
   assert(!Calls.empty() && "Missing lambda call operator!");
-  assert(allLookupResultsAreTheSame(Calls) &&
-         "More than one lambda call operator!");
+  if (!RD.getLangOpts().LexicalTemplateInstantiation) {
+    assert(allLookupResultsAreTheSame(Calls) &&
+           "More than one lambda call operator!");
+  }
 
   // FIXME: If we have multiple call operators, we might be in a situation
   // where we merged this lambda with one from another module; in that
