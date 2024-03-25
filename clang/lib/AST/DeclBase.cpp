@@ -338,7 +338,16 @@ void Decl::setDeclContext(DeclContext *DC) {
   DeclCtx = DC;
 }
 
+#ifndef NDEBUG
+extern "C" void CheckSetLocation(clang::SourceLocation OldLoc,
+                                 clang::SourceLocation NewLoc) {
+  (void) OldLoc;
+  (void) NewLoc;
+}
+
 extern "C" void CheckNewLDC(Decl *D, DeclContext *DC);
+
+#endif
 
 void Decl::setLexicalDeclContext(DeclContext *DC) {
   if (DC == getLexicalDeclContext())

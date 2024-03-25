@@ -41,6 +41,11 @@
 
 namespace clang {
 
+#ifndef NDEBUG
+extern "C" void CheckSetLocation(clang::SourceLocation OldLoc,
+                                 clang::SourceLocation NewLoc);
+#endif
+
 class ASTContext;
 class ASTMutationListener;
 class Attr;
@@ -449,7 +454,12 @@ public:
   }
 
   SourceLocation getLocation() const { return Loc; }
-  void setLocation(SourceLocation L) { Loc = L; }
+  void setLocation(SourceLocation L) {
+#ifndef NDEBUG
+    CheckSetLocation(Loc, L);
+#endif
+    Loc = L;
+  }
 
   Kind getKind() const { return static_cast<Kind>(DeclKind); }
   const char *getDeclKindName() const;
