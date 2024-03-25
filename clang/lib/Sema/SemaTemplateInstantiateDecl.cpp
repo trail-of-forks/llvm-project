@@ -7520,11 +7520,13 @@ void Sema::PerformDeferredTypeCompletions(void) {
     if (Explicit) {
       for (auto Redecl_ : Pending.Decl->redecls()) {
         auto Redecl = cast<ClassTemplateSpecializationDecl>(Redecl_);
-        if (Redecl == Explicit || Redecl->isCompleteDefinition()) {
+        if (Redecl == Explicit || Redecl->isCompleteDefinition()
+            || (Redecl->getSpecializationKind() != TSK_Undeclared)) {
           continue;
         }
 
-        assert(Redecl->getSpecializationKind() == TSK_Undeclared);
+        // Note(kumarak) Update RemappedDecl to Explcit if specialization kind
+        //               is Undeclared. Also transfer the lexical info.
         Redecl->RemappedDecl = Explicit;
         TransferLexicalInfo(Explicit, Redecl);
       }
