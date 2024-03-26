@@ -3686,10 +3686,10 @@ FunctionDecl *Sema::createMethodTemplateSpecializationForDefinition(
   assert(InstTemplate &&
            "VisitFunctionDecl/CXXMethodDecl didn't create a template!");
 
-  // if (InstTemplate != FunctionTemplate &&
-  //     !InstTemplate->getInstantiatedFromMemberTemplate())
-  //   InstTemplate->setInstantiatedFromMemberTemplate(
-  //       FunctionTemplate->getInstantiatedFromMemberTemplate());
+  if (InstTemplate != FunctionTemplate &&
+      !InstTemplate->getInstantiatedFromMemberTemplate())
+    InstTemplate->setInstantiatedFromMemberTemplate(
+        FunctionTemplate->getInstantiatedFromMemberTemplate());
 
   InstantiateAttrs(TemplateArgs, FunctionTemplate, InstTemplate);
   // InstTemplate->setDeclContext(FunctionTemplate->getDeclContext());
@@ -5921,7 +5921,7 @@ void Sema::InstantiateFunctionDefinition(SourceLocation PointOfInstantiation,
                   Function, PointOfInstantiation)) {
                 Function = NewFunctionDef;
               }
-            } else {
+            } else if (!Function->isOutOfLine()) {
               if (auto NewFunctionDef = createMethodTemplateSpecializationForDefinition(
                   Function, PointOfInstantiation)) {
                 Function = NewFunctionDef;

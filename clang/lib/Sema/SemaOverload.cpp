@@ -13439,6 +13439,13 @@ static void AddOverloadedCallCandidate(Sema &S,
     if (!isa<FunctionProtoType>(Func->getType()->getAs<FunctionType>()))
       return;
 
+    // For out-of-line function templates, then we want to go find the
+    // originals.
+    if (S.getLangOpts().LexicalTemplateInstantiation &&
+        Func->isOutOfLine()) {
+      Func = Func->getCanonicalDecl();
+    }
+
     S.AddOverloadCandidate(Func, FoundDecl, Args, CandidateSet,
                            /*SuppressUserConversions=*/false,
                            PartialOverloading);
@@ -13447,6 +13454,14 @@ static void AddOverloadedCallCandidate(Sema &S,
 
   if (FunctionTemplateDecl *FuncTemplate
       = dyn_cast<FunctionTemplateDecl>(Callee)) {
+
+    // For out-of-line function templates, then we want to go find the
+    // originals.
+    if (S.getLangOpts().LexicalTemplateInstantiation &&
+        FuncTemplate->isOutOfLine()) {
+      FuncTemplate = FuncTemplate->getCanonicalDecl();
+    }
+
     S.AddTemplateOverloadCandidate(FuncTemplate, FoundDecl,
                                    ExplicitTemplateArgs, Args, CandidateSet,
                                    /*SuppressUserConversions=*/false,
