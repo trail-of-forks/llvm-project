@@ -3418,9 +3418,6 @@ Sema::InstantiateClass(SourceLocation PointOfInstantiation,
       } else if (auto *TDecl = dyn_cast<TemplateDecl>(NewMember)) {
         UpdateReamappedDecl(dyn_cast<TemplateDecl>(Member), TDecl);
 
-      } else if (auto *RDecl = dyn_cast<CXXRecordDecl>(NewMember)) {
-        TransferLexicalInfo(dyn_cast<TagDecl>(Member), RDecl);
-
         // A friend decl could be template, identify if they are template decl and update
         // remappeddecl and transfer the lexical info incase of ClassTemplate.
       } else if (auto *FDecl = dyn_cast<FriendDecl>(NewMember)) {
@@ -3434,10 +3431,6 @@ Sema::InstantiateClass(SourceLocation PointOfInstantiation,
         // TemplateDecl
         } else if (auto *TDecl = dyn_cast_or_null<TemplateDecl>(NDecl)) {
            UpdateReamappedDecl(dyn_cast<TemplateDecl>(PatternNDecl), TDecl);
-
-        // CXXRecordDecl
-        } else if (auto *RDecl = dyn_cast<CXXRecordDecl>(NewMember)) {
-          TransferLexicalInfo(dyn_cast<TagDecl>(Member), RDecl);
         }
       }
 
