@@ -1687,7 +1687,8 @@ SubstNonTypeTemplateParmPackExpr::SubstNonTypeTemplateParmPackExpr(
     const TemplateArgument &ArgPack, Decl *AssociatedDecl, unsigned Index)
     : Expr(SubstNonTypeTemplateParmPackExprClass, T, ValueKind, OK_Ordinary),
       AssociatedDecl(AssociatedDecl), Arguments(ArgPack.pack_begin()),
-      NumArguments(ArgPack.pack_size()), Index(Index), NameLoc(NameLoc) {
+      NumArguments(ArgPack.pack_size()), Index(Index), NameLoc(NameLoc),
+      AsArgument(llvm::ArrayRef(Arguments, NumArguments)) {
   assert(AssociatedDecl != nullptr);
   setDependence(ExprDependence::TypeValueInstantiation |
                 ExprDependence::UnexpandedPack);
@@ -1697,10 +1698,6 @@ NonTypeTemplateParmDecl *
 SubstNonTypeTemplateParmPackExpr::getParameterPack() const {
   return cast<NonTypeTemplateParmDecl>(
       getReplacedTemplateParameterList(getAssociatedDecl())->asArray()[Index]);
-}
-
-TemplateArgument SubstNonTypeTemplateParmPackExpr::getArgumentPack() const {
-  return TemplateArgument(llvm::ArrayRef(Arguments, NumArguments));
 }
 
 FunctionParmPackExpr::FunctionParmPackExpr(QualType T, VarDecl *ParamPack,

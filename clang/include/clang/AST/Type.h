@@ -5380,6 +5380,9 @@ class SubstTemplateTypeParmPackType : public Type, public llvm::FoldingSetNode {
   /// parameter pack is instantiated with.
   const TemplateArgument *Arguments;
 
+  alignas(8) char AsArgumentStorage[24];
+  const TemplateArgument * const AsArgument;
+
   llvm::PointerIntPair<Decl *, 1, bool> AssociatedDeclAndFinal;
 
   SubstTemplateTypeParmPackType(QualType Canon, Decl *AssociatedDecl,
@@ -5411,7 +5414,7 @@ public:
   bool isSugared() const { return false; }
   QualType desugar() const { return QualType(this, 0); }
 
-  TemplateArgument getArgumentPack() const;
+  const TemplateArgument &getArgumentPack() const;
 
   void Profile(llvm::FoldingSetNodeID &ID);
   static void Profile(llvm::FoldingSetNodeID &ID, const Decl *AssociatedDecl,

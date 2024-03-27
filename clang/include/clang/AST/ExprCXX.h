@@ -4428,7 +4428,6 @@ class SubstNonTypeTemplateParmPackExpr : public Expr {
   /// A pointer to the set of template arguments that this
   /// parameter pack is instantiated with.
   const TemplateArgument *Arguments;
-
   /// The number of template arguments in \c Arguments.
   unsigned NumArguments : 16;
 
@@ -4436,6 +4435,9 @@ class SubstNonTypeTemplateParmPackExpr : public Expr {
 
   /// The location of the non-type template parameter pack reference.
   SourceLocation NameLoc;
+
+  // This parameter pack, as an argument.
+  TemplateArgument AsArgument;
 
   explicit SubstNonTypeTemplateParmPackExpr(EmptyShell Empty)
       : Expr(SubstNonTypeTemplateParmPackExprClass, Empty) {}
@@ -4462,7 +4464,9 @@ public:
 
   /// Retrieve the template argument pack containing the substituted
   /// template arguments.
-  TemplateArgument getArgumentPack() const;
+  inline const TemplateArgument &getArgumentPack() const {
+    return AsArgument;
+  }
 
   SourceLocation getBeginLoc() const LLVM_READONLY { return NameLoc; }
   SourceLocation getEndLoc() const LLVM_READONLY { return NameLoc; }

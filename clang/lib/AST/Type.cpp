@@ -3985,7 +3985,11 @@ SubstTemplateTypeParmPackType::SubstTemplateTypeParmPackType(
            TypeDependence::DependentInstantiation |
                TypeDependence::UnexpandedPack),
       Arguments(ArgPack.pack_begin()),
+      AsArgument(
+          new (memset(AsArgumentStorage, 0, sizeof(AsArgumentStorage)))
+              TemplateArgument(llvm::ArrayRef(Arguments, ArgPack.pack_size()))),
       AssociatedDeclAndFinal(AssociatedDecl, Final) {
+  static_assert(sizeof(*AsArgument) == sizeof(AsArgumentStorage));
   SubstTemplateTypeParmPackTypeBits.Index = Index;
   SubstTemplateTypeParmPackTypeBits.NumArgs = ArgPack.pack_size();
   assert(AssociatedDecl != nullptr);
@@ -4008,8 +4012,8 @@ IdentifierInfo *SubstTemplateTypeParmPackType::getIdentifier() const {
   return getReplacedParameter()->getIdentifier();
 }
 
-TemplateArgument SubstTemplateTypeParmPackType::getArgumentPack() const {
-  return TemplateArgument(llvm::ArrayRef(Arguments, getNumArgs()));
+const TemplateArgument &SubstTemplateTypeParmPackType::getArgumentPack() const {
+  return *AsArgument;
 }
 
 void SubstTemplateTypeParmPackType::Profile(llvm::FoldingSetNodeID &ID) {
