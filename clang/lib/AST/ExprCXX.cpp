@@ -603,6 +603,14 @@ SourceRange CXXOperatorCallExpr::getSourceRangeImpl() const {
     return SourceRange(getArg(0)->getBeginLoc(), getRParenLoc());
   } else if (getNumArgs() == 1) {
     return SourceRange(getOperatorLoc(), getArg(0)->getEndLoc());
+  } else if (Kind == OO_Spaceship) {
+    auto first = getArg(0)->getBeginLoc();
+    auto second = getArg(1)->getEndLoc();
+    if (first.getRawEncoding() < second.getRawEncoding()) {
+      return SourceRange(first, second);
+    } else {
+      return SourceRange(second, first);
+    }
   } else if (getNumArgs() == 2) {
     return SourceRange(getArg(0)->getBeginLoc(), getArg(1)->getEndLoc());
   } else {
