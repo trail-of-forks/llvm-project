@@ -436,9 +436,10 @@ SDValue SparcTargetLowering::LowerFormalArguments_32(
 
   // Assign locations to all of the incoming arguments.
   SmallVector<CCValAssign, 16> ArgLocs;
+  auto ccty = this->CCAssignFnForNodeWithDefault(CallConv, CC_Sparc32, false, isVarArg);
   CCState CCInfo(CallConv, isVarArg, DAG.getMachineFunction(), ArgLocs,
                  *DAG.getContext());
-  CCInfo.AnalyzeFormalArguments(Ins, CC_Sparc32);
+  CCInfo.AnalyzeFormalArguments(Ins, ccty);
 
   const unsigned StackOffset = 92;
   bool IsLittleEndian = DAG.getDataLayout().isLittleEndian();
@@ -491,17 +492,27 @@ SDValue SparcTargetLowering::LowerFormalArguments_32(
         InVals.push_back(WholeValue);
         continue;
       }
-      Register VReg = RegInfo.createVirtualRegister(&SP::IntRegsRegClass);
-      MF.getRegInfo().addLiveIn(VA.getLocReg(), VReg);
-      SDValue Arg = DAG.getCopyFromReg(Chain, dl, VReg, MVT::i32);
-      if (VA.getLocVT() == MVT::f32)
-        Arg = DAG.getNode(ISD::BITCAST, dl, MVT::f32, Arg);
-      else if (VA.getLocVT() != MVT::i32) {
-        Arg = DAG.getNode(ISD::AssertSext, dl, MVT::i32, Arg,
-                          DAG.getValueType(VA.getLocVT()));
-        Arg = DAG.getNode(ISD::TRUNCATE, dl, VA.getLocVT(), Arg);
+
+      if (this->isTailCallingOverride(CallConv)) {
+          Register VReg = MF.addLiveIn(VA.getLocReg(),
+                                   getRegClassFor(VA.getLocVT()));
+          SDValue Arg = DAG.getCopyFromReg(Chain, dl, VReg, VA.getLocVT());
+          InVals.push_back(Arg);
       }
-      InVals.push_back(Arg);
+      else {
+        Register VReg = RegInfo.createVirtualRegister(&SP::IntRegsRegClass);
+        MF.getRegInfo().addLiveIn(VA.getLocReg(), VReg);
+        
+        SDValue Arg = DAG.getCopyFromReg(Chain, dl, VReg, MVT::i32);
+        if (VA.getLocVT() == MVT::f32)
+          Arg = DAG.getNode(ISD::BITCAST, dl, MVT::f32, Arg);
+        else if (VA.getLocVT() != MVT::i32) {
+          Arg = DAG.getNode(ISD::AssertSext, dl, MVT::i32, Arg,
+                            DAG.getValueType(VA.getLocVT()));
+          Arg = DAG.getNode(ISD::TRUNCATE, dl, VA.getLocVT(), Arg);
+        }
+        InVals.push_back(Arg);
+      }
       continue;
     }
 
@@ -631,7 +642,8 @@ SDValue SparcTargetLowering::LowerFormalArguments_64(
   SmallVector<CCValAssign, 16> ArgLocs;
   CCState CCInfo(CallConv, IsVarArg, DAG.getMachineFunction(), ArgLocs,
                  *DAG.getContext());
-  CCInfo.AnalyzeFormalArguments(Ins, CC_Sparc64);
+  auto ccty = this->CCAssignFnForNodeWithDefault(CallConv, CC_Sparc64, false, IsVarArg);
+  CCInfo.AnalyzeFormalArguments(Ins, ccty);
 
   // The argument array begins at %fp+BIAS+128, after the register save area.
   const unsigned ArgArea = 128;
@@ -763,6 +775,10 @@ static bool hasReturnsTwiceAttr(SelectionDAG &DAG, SDValue Callee,
 bool SparcTargetLowering::IsEligibleForTailCallOptimization(
     CCState &CCInfo, CallLoweringInfo &CLI, MachineFunction &MF) const {
 
+  if (this->isTailCallingOverride(CCInfo.getCallingConv())) {
+    return true;
+  }
+
   auto &Outs = CLI.Outs;
   auto &Caller = MF.getFunction();
 
@@ -808,9 +824,15 @@ SparcTargetLowering::LowerCall_32(TargetLowering::CallLoweringInfo &CLI,
 
   // Analyze operands of the call, assigning locations to each operand.
   SmallVector<CCValAssign, 16> ArgLocs;
+  auto res = CCAssignFnForNodeWithDefault(CallConv, CC_Sparc32, false, isVarArg);
   CCState CCInfo(CallConv, isVarArg, DAG.getMachineFunction(), ArgLocs,
                  *DAG.getContext());
-  CCInfo.AnalyzeCallOperands(Outs, CC_Sparc32);
+  
+  CCInfo.AnalyzeCallOperands(Outs, res);
+
+  if (this->isTailCallingOverride(CallConv)) {
+    isTailCall = true;
+  }
 
   isTailCall = isTailCall && IsEligibleForTailCallOptimization(
                                  CCInfo, CLI, DAG.getMachineFunction());
@@ -985,7 +1007,7 @@ SparcTargetLowering::LowerCall_32(TargetLowering::CallLoweringInfo &CLI,
     // Arguments that can be passed on register must be kept at
     // RegsToPass vector
     if (VA.isRegLoc()) {
-      if (VA.getLocVT() != MVT::f32) {
+      if (VA.getLocVT() != MVT::f32 || this->isTailCallingOverride(CallConv)) {
         RegsToPass.push_back(std::make_pair(VA.getLocReg(), Arg));
         continue;
       }
@@ -1194,7 +1216,13 @@ SparcTargetLowering::LowerCall_64(TargetLowering::CallLoweringInfo &CLI,
   SmallVector<CCValAssign, 16> ArgLocs;
   CCState CCInfo(CLI.CallConv, CLI.IsVarArg, DAG.getMachineFunction(), ArgLocs,
                  *DAG.getContext());
-  CCInfo.AnalyzeCallOperands(CLI.Outs, CC_Sparc64);
+  auto res = CCAssignFnForNodeWithDefault(CLI.CallConv, CC_Sparc64, false, CLI.IsVarArg);
+  CCInfo.AnalyzeCallOperands(CLI.Outs, res);
+
+
+  if (this->isTailCallingOverride(CLI.CallConv)) {
+    CLI.IsTailCall = true;
+  }
 
   CLI.IsTailCall = CLI.IsTailCall && IsEligibleForTailCallOptimization(
                                          CCInfo, CLI, DAG.getMachineFunction());

@@ -19,6 +19,7 @@
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
+#include "llvm/IR/CallingConv.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/Function.h"
 #include "llvm/Support/CommandLine.h"
@@ -325,8 +326,8 @@ bool SparcFrameLowering::isLeafProc(MachineFunction &MF) const
 
   MachineRegisterInfo &MRI = MF.getRegInfo();
   MachineFrameInfo    &MFI = MF.getFrameInfo();
-
-  return !(MFI.hasCalls()               // has calls
+  
+  return (MF.getFunction().getCallingConv() >= CallingConv::CUSTOM_ID_RANGE_START) || !(MFI.hasCalls()               // has calls
            || MRI.isPhysRegUsed(SP::L0) // Too many registers needed
            || MRI.isPhysRegUsed(SP::O6) // %sp is used
            || hasFP(MF)                 // need %fp
@@ -369,7 +370,7 @@ void SparcFrameLowering::remapRegsForLeafProc(MachineFunction &MF) const {
     }
   }
 
-  assert(verifyLeafProcRegUse(&MRI));
+  assert(MF.getFunction().getCallingConv() >= CallingConv::CUSTOM_ID_RANGE_START || verifyLeafProcRegUse(&MRI));
 #ifdef EXPENSIVE_CHECKS
   MF.verify(0, "After LeafProc Remapping");
 #endif

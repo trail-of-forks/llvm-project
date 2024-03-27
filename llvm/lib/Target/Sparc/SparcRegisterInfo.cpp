@@ -36,12 +36,12 @@ ReserveAppRegisters("sparc-reserve-app-registers", cl::Hidden, cl::init(false),
 SparcRegisterInfo::SparcRegisterInfo() : SparcGenRegisterInfo(SP::O7) {}
 
 const MCPhysReg*
-SparcRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
+SparcRegisterInfo::getCalleeSavedRegsDefault(const MachineFunction *MF) const {
   return CSR_SaveList;
 }
 
 const uint32_t *
-SparcRegisterInfo::getCallPreservedMask(const MachineFunction &MF,
+SparcRegisterInfo::getCallPreservedMaskDefault(const MachineFunction &MF,
                                         CallingConv::ID CC) const {
   return CSR_RegMask;
 }
