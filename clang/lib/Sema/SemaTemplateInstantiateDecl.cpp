@@ -5221,6 +5221,11 @@ TemplateDeclInstantiator::InstantiateClassTemplatePartialSpecialization(
   // specializations.
   ClassTemplate->AddPartialSpecialization(InstPartialSpec,
                                           /*InsertPos=*/nullptr);
+
+  if (SemaRef.getLangOpts().LexicalTemplateInstantiation) {
+    InstPartialSpec->RemappedDecl = PartialSpec;
+  }
+
   return InstPartialSpec;
 }
 
