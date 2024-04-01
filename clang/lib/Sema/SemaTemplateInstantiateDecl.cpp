@@ -5493,6 +5493,10 @@ TemplateDeclInstantiator::InstantiateVarTemplatePartialSpecialization(
   SemaRef.BuildVariableInstantiation(InstPartialSpec, PartialSpec, TemplateArgs,
                                      LateAttrs, Owner, StartingScope);
 
+  if (SemaRef.getLangOpts().LexicalTemplateInstantiation) {
+    InstPartialSpec->RemappedDecl = PartialSpec;
+  }
+
   return InstPartialSpec;
 }
 
