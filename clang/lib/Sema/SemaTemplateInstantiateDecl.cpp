@@ -3730,18 +3730,16 @@ FunctionDecl *Sema::createFriendFunctionTemplateSpecializationForDefinition(
     return nullptr;
   }
 
-  // if (Function->isStatic() || Function->isInlined())
-  //   return nullptr;
-
   const FunctionDecl *PatternDecl = Function->getTemplateInstantiationPattern();
   assert(PatternDecl && "instantiating a non-template");
   const FunctionDecl *PatternDef = PatternDecl->getDefinition();
 
   // Note: Friend template function will be out-of-line since the decl context
   //       will not be same as lexical context. Check the lexical context of
-  //       the pattern definition to see if they are same as function lexical
+  //       the pattern definition to see if they are same as pattern decl lexical
   //       context. If yes then they are not out-of-line; return null
-  if (PatternDef->getLexicalDeclContext() == Function->getLexicalDeclContext())
+  //
+  if (PatternDef->getLexicalDeclContext() == PatternDecl->getLexicalDeclContext())
     return nullptr;
 
   FunctionTemplateDecl *PatternDefTemplate = PatternDef->getDescribedFunctionTemplate();
