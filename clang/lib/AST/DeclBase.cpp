@@ -354,7 +354,8 @@ void Decl::setLexicalDeclContext(DeclContext *DC) {
     return;
 
 #ifndef NDEBUG
-  CheckNewLDC(this, DC);
+  if (getLangOpts().LexicalTemplateInstantiation)
+    CheckNewLDC(this, DC);
 #endif
 
   if (isInSemaDC()) {
@@ -384,7 +385,8 @@ void Decl::setDeclContextsImpl(DeclContext *SemaDC, DeclContext *LexicalDC,
     DeclCtx = SemaDC;
   } else {
 #ifndef NDEBUG
-    CheckNewLDC(this, LexicalDC);
+    if (getLangOpts().LexicalTemplateInstantiation)
+      CheckNewLDC(this, LexicalDC);
 #endif
     auto *MDC = new (Ctx) Decl::MultipleDC();
     MDC->SemanticDC = SemaDC;
