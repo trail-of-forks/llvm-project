@@ -302,6 +302,7 @@ bool Sema::CheckEquivalentExceptionSpec(FunctionDecl *Old, FunctionDecl *New) {
   if (!getLangOpts().CXXExceptions && !getLangOpts().CPlusPlus17)
     return false;
 
+
   OverloadedOperatorKind OO = New->getDeclName().getCXXOverloadedOperator();
   bool IsOperatorNew = OO == OO_New || OO == OO_Array_New;
   bool MissingExceptionSpecification = false;
@@ -395,6 +396,11 @@ bool Sema::CheckEquivalentExceptionSpec(FunctionDecl *Old, FunctionDecl *New) {
         NewProto->getReturnType(), NewProto->getParamTypes(),
         NewProto->getExtProtoInfo().withExceptionSpec(ESI)));
   }
+
+  // NOTE(kumarak): If it reaches here and fail to set the exception specification
+  //                return false and exit if Lexical template instantiation flag is set.
+  if (getLangOpts().LexicalTemplateInstantiation)
+    return false;
 
   if (getLangOpts().MSVCCompat && isDynamicExceptionSpec(ESI.Type)) {
     DiagID = diag::ext_missing_exception_specification;
