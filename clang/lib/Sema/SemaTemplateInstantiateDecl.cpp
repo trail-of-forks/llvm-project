@@ -3612,6 +3612,7 @@ FunctionDecl *Sema::createMemberSpecializationForDefinition(
   MissingFunctionDef->setAccess(Function->getAccess());
   MissingFunctionDef->setTemplateSpecializationKind(
       Function->getTemplateSpecializationKindForInstantiation(), PointOfInstantiation);
+  Function->setTemplateSpecializationKind(TSK_ImplicitInstantiation);
   MissingFunctionDef->setIneligibleOrNotSelected(Function->isIneligibleOrNotSelected());
 
    // Fix source location and source range for definition node
