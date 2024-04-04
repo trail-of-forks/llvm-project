@@ -10493,15 +10493,15 @@ DeclResult Sema::ActOnExplicitInstantiation(
   ClassTemplateSpecializationDecl *PrevDecl =
       ClassTemplate->findSpecialization(CanonicalConverted, InsertPos);
 
-  // If we have something like `extern template foo<bar>;`, then we want to
-  // create a specialization that "overlaps" with the pattern as a definition,
-  // and have the extern one be a redeclaration.
+  // If we have something like `extern template foo<bar>;` or `template foo<bar>;`,
+  // then we want to create a specialization that "overlaps" with the pattern as
+  // a definition,and have the extern one be a redeclaration.
   //
   // Extern templates require the definition of the template to be visible, so
   // if we don't yet have a definition for this specialization, or no prior
   // specialization, then we can go and make one now based off of the defintion
   // pattern.
-  if (getLangOpts().LexicalTemplateInstantiation && ExternLoc.isValid() &&
+  if (getLangOpts().LexicalTemplateInstantiation &&
       (!PrevDecl || !PrevDecl->getDefinition())) {
 
     auto Pattern = ClassTemplate->getTemplatedDecl()->getDefinition();
@@ -10520,7 +10520,7 @@ DeclResult Sema::ActOnExplicitInstantiation(
     PrevDecl->setTemplateKeywordLoc(
         PatternTpl->getTemplateParameters()->getTemplateLoc());
     PrevDecl->setBraceRange(Pattern->getBraceRange());
-    PrevDecl->setTemplateSpecializationKind(TSK);
+    PrevDecl->setTemplateSpecializationKind(TSK_ImplicitInstantiation);
     PrevDecl->setLexicalDeclContext(PatternTpl->getLexicalDeclContext());
     PatternTpl->getLexicalDeclContext()->addDecl(PrevDecl);
 
