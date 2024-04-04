@@ -3839,8 +3839,9 @@ FunctionDecl *Sema::createMethodTemplateSpecializationForDefinition(
   TSI->getTypeLoc().initialize(Context, PatternDef->getLocation());
 
   NewMethod->setInstantiationIsPending(Method->instantiationIsPending());
-  NewMethod->setTemplateSpecializationKind(
-      Method->getTemplateSpecializationKindForInstantiation(), PointOfInstantiation);
+  auto TSK = Method->getTemplateSpecializationKindForInstantiation();
+  NewMethod->setTemplateSpecializationKind(TSK, PointOfInstantiation);
+  Method->setTemplateSpecializationKind(TSK_ImplicitInstantiation);
 
   return NewMethod;
 }
