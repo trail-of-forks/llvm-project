@@ -9830,6 +9830,7 @@ Sema::ActOnFunctionDeclarator(Scope *S, Declarator &D, DeclContext *DC,
                                                         NewFD);
         FunctionTemplate->setLexicalDeclContext(CurContext);
         NewFD->setDescribedFunctionTemplate(FunctionTemplate);
+        assert(NewFD->isOutOfLine() == FunctionTemplate->isOutOfLine());
 
         // For source fidelity, store the other template param lists.
         if (TemplateParamLists.size() > 1) {
@@ -14225,7 +14226,7 @@ void Sema::CheckCompleteVariableDeclaration(VarDecl *var) {
       HasConstInit = var->checkForConstantInitialization(Notes);
     }
 
-    if (HasConstInit) {
+    if (HasConstInit || getLangOpts().LexicalTemplateInstantiation) {
       // FIXME: Consider replacing the initializer with a ConstantExpr.
     } else if (var->isConstexpr()) {
       SourceLocation DiagLoc = var->getLocation();

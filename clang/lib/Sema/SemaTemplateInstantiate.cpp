@@ -3360,6 +3360,13 @@ Sema::InstantiateClass(SourceLocation PointOfInstantiation,
         }
       }
 
+      // Set TagDecl brace range if it is invalid.
+      if (auto *TDecl = dyn_cast<TagDecl>(NewMember)) {
+        if (TDecl->getBraceRange().isInvalid()) {
+          TDecl->setBraceRange(dyn_cast<TagDecl>(Member)->getBraceRange());
+        }
+      }
+
       if (NewMember->isInvalidDecl())
         Instantiation->setInvalidDecl();
     } else {

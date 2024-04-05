@@ -2138,6 +2138,15 @@ SourceRange VarDecl::getSourceRange() const {
     if (InitEnd.isValid() && InitEnd != getLocation())
       return SourceRange(getOuterLocStart(), InitEnd);
   }
+
+  // If init is implicit, check if EndRange < loc. If yes
+  // adjust it to include loc
+  if (getLangOpts().LexicalTemplateInstantiation) {
+    SourceRange range = DeclaratorDecl::getSourceRange();
+    if (range.getEnd() < getLocation()) {
+      return SourceRange(range.getBegin(), getLocation());
+    }
+  }
   return DeclaratorDecl::getSourceRange();
 }
 
@@ -3916,6 +3925,20 @@ FunctionDecl::setInstantiationOfMemberFunction(ASTContext &C,
     = new (C) MemberSpecializationInfo(FD, TSK);
   TemplateOrSpecialization = Info;
 }
+
+#ifndef NDEBUG
+extern "C" void CheckNewLDC(Decl *D, DeclContext *DC) {
+  if (auto FD = dyn_cast<FunctionDecl>(D)) {
+    if (auto TPL = FD->getDescribedFunctionTemplate()) {
+      assert(DC == TPL->getLexicalDeclContext());
+    }
+  } else if (auto TPL = dyn_cast<FunctionTemplateDecl>(D)) {
+    if (auto FD = TPL->getTemplatedDecl()) {
+      assert(DC == FD->getLexicalDeclContext());
+    }
+  }
+}
+#endif
 
 FunctionTemplateDecl *FunctionDecl::getDescribedFunctionTemplate() const {
   return dyn_cast_or_null<FunctionTemplateDecl>(

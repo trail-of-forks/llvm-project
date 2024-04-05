@@ -602,6 +602,14 @@ SourceRange CXXOperatorCallExpr::getSourceRangeImpl() const {
     return SourceRange(getArg(0)->getBeginLoc(), getRParenLoc());
   } else if (getNumArgs() == 1) {
     return SourceRange(getOperatorLoc(), getArg(0)->getEndLoc());
+  } else if (Kind == OO_Spaceship) {
+    auto first = getArg(0)->getBeginLoc();
+    auto second = getArg(1)->getEndLoc();
+    if (first.getRawEncoding() < second.getRawEncoding()) {
+      return SourceRange(first, second);
+    } else {
+      return SourceRange(second, first);
+    }
   } else if (getNumArgs() == 2) {
     return SourceRange(getArg(0)->getBeginLoc(), getArg(1)->getEndLoc());
   } else {
@@ -1668,7 +1676,8 @@ SubstNonTypeTemplateParmPackExpr::SubstNonTypeTemplateParmPackExpr(
     const TemplateArgument &ArgPack, Decl *AssociatedDecl, unsigned Index)
     : Expr(SubstNonTypeTemplateParmPackExprClass, T, ValueKind, OK_Ordinary),
       AssociatedDecl(AssociatedDecl), Arguments(ArgPack.pack_begin()),
-      NumArguments(ArgPack.pack_size()), Index(Index), NameLoc(NameLoc) {
+      NumArguments(ArgPack.pack_size()), Index(Index), NameLoc(NameLoc),
+      AsArgument(llvm::ArrayRef(Arguments, NumArguments)) {
   assert(AssociatedDecl != nullptr);
   setDependence(ExprDependence::TypeValueInstantiation |
                 ExprDependence::UnexpandedPack);
@@ -1678,10 +1687,6 @@ NonTypeTemplateParmDecl *
 SubstNonTypeTemplateParmPackExpr::getParameterPack() const {
   return cast<NonTypeTemplateParmDecl>(
       getReplacedTemplateParameterList(getAssociatedDecl())->asArray()[Index]);
-}
-
-TemplateArgument SubstNonTypeTemplateParmPackExpr::getArgumentPack() const {
-  return TemplateArgument(llvm::ArrayRef(Arguments, NumArguments));
 }
 
 FunctionParmPackExpr::FunctionParmPackExpr(QualType T, VarDecl *ParamPack,
