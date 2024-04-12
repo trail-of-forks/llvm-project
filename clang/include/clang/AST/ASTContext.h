@@ -177,6 +177,9 @@ struct TypeInfoChars {
   }
 };
 
+// Checks the duplicate unqualified type
+bool isDuplicateType(const clang::Type *T1, const clang::Type *T2);
+
 /// Holds long-lived AST nodes (such as types and decls) that can be
 /// referred to throughout the semantic analysis of a file.
 class ASTContext : public RefCountedBase<ASTContext> {
@@ -2551,10 +2554,17 @@ public:
 
   /// Determine whether the given types \p T1 and \p T2 are equivalent.
   bool hasSameType(QualType T1, QualType T2) const {
-    return getCanonicalType(T1) == getCanonicalType(T2);
+    if (getCanonicalType(T1) == getCanonicalType(T2)) {
+      return true;
+    }
+    if (T1.getQualifiers() == T2.getQualifiers()) {
+      return isDuplicateType(T1.getTypePtr(), T2.getTypePtr());
+    } 
+    return false;
   }
   bool hasSameType(const Type *T1, const Type *T2) const {
-    return getCanonicalType(T1) == getCanonicalType(T2);
+    return (getCanonicalType(T1) == getCanonicalType(T2)) ||
+            isDuplicateType(T1, T2);
   }
 
   /// Determine whether the given expressions \p X and \p Y are equivalent.
@@ -2578,8 +2588,8 @@ public:
   /// Determine whether the given types are equivalent after
   /// cvr-qualifiers have been removed.
   bool hasSameUnqualifiedType(QualType T1, QualType T2) const {
-    return getCanonicalType(T1).getTypePtr() ==
-           getCanonicalType(T2).getTypePtr();
+    return hasSameType(getCanonicalType(T1).getTypePtr(),
+                   getCanonicalType(T2).getTypePtr());
   }
 
   bool hasSameNullabilityTypeQualifier(QualType SubT, QualType SuperT,

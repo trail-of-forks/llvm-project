@@ -112,8 +112,25 @@ enum FloatingRank {
   Ibm128Rank
 };
 
-/// \returns The locations that are relevant when searching for Doc comments
-/// related to \p D.
+// Note(kumarak): Utility function to check if the underlying
+//                RecordDecl is same. If they are same, then
+//                it is duplicate type.
+namespace clang {
+bool
+isDuplicateType(const clang::Type *Ty1, const clang::Type *Ty2) {
+  if (Ty1 && Ty2 && Ty1->isRecordType() && Ty2->isRecordType()) {
+    return Ty1->getAsRecordDecl() == Ty2->getAsRecordDecl();
+  }
+
+  // TODO (kumark): Function ony check duplicate for RecordType
+  //                Should it be extended to other types as well??
+  return false;
+}
+} //namespace clang
+
+
+/// \returns location that is relevant when searching for Doc comments related
+/// to \p D.
 static SmallVector<SourceLocation, 2>
 getDeclLocsForCommentSearch(const Decl *D, SourceManager &SourceMgr) {
   assert(D);
