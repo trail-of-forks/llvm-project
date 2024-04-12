@@ -255,7 +255,15 @@ Sema::createLambdaClosureType(SourceRange IntroducerRange, TypeSourceInfo *Info,
   CXXRecordDecl *Class = CXXRecordDecl::CreateLambda(
       Context, DC, Info, IntroducerRange.getBegin(), LambdaDependencyKind,
       IsGenericLambda, CaptureDefault);
-  DC->addDecl(Class);
+
+  if (getLangOpts().LexicalTemplateInstantiation) {
+    auto TU = Context.getTranslationUnitDecl();
+    Class->setLexicalDeclContext(TU);
+    TU->addDecl(Class);
+
+  } else {
+    DC->addDecl(Class);
+  }
 
   return Class;
 }
@@ -2182,10 +2190,12 @@ ExprResult Sema::BuildLambdaExpr(SourceLocation StartLoc, SourceLocation EndLoc,
 
   // Fixup the source range of the class to match that of the lambda expression
   // itself.
-  Class->setBeginLoc(Lambda->getSourceRange().getBegin());
-  if (auto CS = Lambda->getCompoundStmtBody()) {
-    Class->setBraceRange(clang::SourceRange(
-        CS->getLBracLoc(), CS->getRBracLoc()));
+  if (getLangOpts().LexicalTemplateInstantiation) {
+    Class->setBeginLoc(Lambda->getSourceRange().getBegin());
+    if (auto CS = Lambda->getCompoundStmtBody()) {
+      Class->setBraceRange(clang::SourceRange(
+          CS->getLBracLoc(), CS->getRBracLoc()));
+    }
   }
 
   // If the lambda expression's call operator is not explicitly marked constexpr
