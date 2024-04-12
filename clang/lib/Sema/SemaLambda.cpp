@@ -2179,6 +2179,15 @@ ExprResult Sema::BuildLambdaExpr(SourceLocation StartLoc, SourceLocation EndLoc,
                                           ExplicitParams, ExplicitResultType,
                                           CaptureInits, EndLoc,
                                           ContainsUnexpandedParameterPack);
+
+  // Fixup the source range of the class to match that of the lambda expression
+  // itself.
+  Class->setBeginLoc(Lambda->getSourceRange().getBegin());
+  if (auto CS = Lambda->getCompoundStmtBody()) {
+    Class->setBraceRange(clang::SourceRange(
+        CS->getLBracLoc(), CS->getRBracLoc()));
+  }
+
   // If the lambda expression's call operator is not explicitly marked constexpr
   // and we are not in a dependent context, analyze the call operator to infer
   // its constexpr-ness, suppressing diagnostics while doing so.
