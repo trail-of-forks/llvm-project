@@ -440,8 +440,8 @@ SDValue SparcTargetLowering::LowerFormalArguments_32(
   CCState CCInfo(CallConv, isVarArg, DAG.getMachineFunction(), ArgLocs,
                  *DAG.getContext());
   CCInfo.AnalyzeFormalArguments(Ins, ccty);
-
-  const unsigned StackOffset = 92;
+  // TODO(Ian): this  might break things... we should really move stack objects out of here
+  const unsigned StackOffset = isTailCallingOverride(CallConv) ? 0 : 92;
   bool IsLittleEndian = DAG.getDataLayout().isLittleEndian();
 
   unsigned InIdx = 0;
