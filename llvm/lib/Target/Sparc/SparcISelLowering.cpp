@@ -882,7 +882,7 @@ SparcTargetLowering::LowerCall_32(TargetLowering::CallLoweringInfo &CLI,
   SmallVector<std::pair<unsigned, SDValue>, 8> RegsToPass;
   SmallVector<SDValue, 8> MemOpChains;
 
-  const unsigned StackOffset = 92;
+  const unsigned StackOffset = isTailCallingOverride(CLI.CallConv) ? 0 : 92;
   bool hasStructRetAttr = false;
   unsigned SRetArgSize = 0;
   // Walk the register/memloc assignments, inserting copies/loads.
