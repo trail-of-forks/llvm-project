@@ -1806,6 +1806,10 @@ Decl *TemplateDeclInstantiator::VisitClassTemplateDecl(ClassTemplateDecl *D) {
                                 D->getIdentifier(), InstParams, RecordInst);
   RecordInst->setDescribedClassTemplate(Inst);
 
+  if (SemaRef.getLangOpts().LexicalTemplateInstantiation) {
+    Inst->RemappedDecl = D->RemappedDecl;
+  }
+
   if (isFriend) {
     assert(!Owner->isDependentContext());
     Inst->setLexicalDeclContext(Owner);
@@ -1937,6 +1941,10 @@ Decl *TemplateDeclInstantiator::VisitVarTemplateDecl(VarTemplateDecl *D) {
       VarInst);
   VarInst->setDescribedVarTemplate(Inst);
   Inst->setPreviousDecl(PrevVarTemplate);
+
+  if (SemaRef.getLangOpts().LexicalTemplateInstantiation) {
+    Inst->RemappedDecl = D->RemappedDecl;
+  }
 
   Inst->setAccess(D->getAccess());
   if (!PrevVarTemplate)
@@ -2349,10 +2357,16 @@ Decl *TemplateDeclInstantiator::VisitFunctionDecl(
     // which means substituting int for T, but leaving "f" as a friend function
     // template.
     // Build the function template itself.
-    FunctionTemplate = FunctionTemplateDecl::Create(SemaRef.Context, DC,
-                                                    Function->getLocation(),
-                                                    Function->getDeclName(),
-                                                    TemplateParams, Function);
+    auto NewFunctionTemplate = FunctionTemplateDecl::Create(
+        SemaRef.Context, DC, Function->getLocation(), Function->getDeclName(),
+        TemplateParams, Function);
+    
+    if (FunctionTemplate && SemaRef.getLangOpts().LexicalTemplateInstantiation) {
+      NewFunctionTemplate->RemappedDecl = FunctionTemplate->RemappedDecl;
+    }
+
+    FunctionTemplate = NewFunctionTemplate;
+
     Function->setDescribedFunctionTemplate(FunctionTemplate);
 
     FunctionTemplate->setLexicalDeclContext(LexicalDC);
@@ -2765,10 +2779,16 @@ Decl *TemplateDeclInstantiator::VisitCXXMethodDecl(
     // We are instantiating the member template "f" within X<int>, which means
     // substituting int for T, but leaving "f" as a member function template.
     // Build the function template itself.
-    FunctionTemplate = FunctionTemplateDecl::Create(SemaRef.Context, Record,
-                                                    Method->getLocation(),
-                                                    Method->getDeclName(),
-                                                    TemplateParams, Method);
+    auto NewFunctionTemplate = FunctionTemplateDecl::Create(
+        SemaRef.Context, Record, Method->getLocation(), Method->getDeclName(),
+        TemplateParams, Method);
+    
+    if (FunctionTemplate && SemaRef.getLangOpts().LexicalTemplateInstantiation) {
+      NewFunctionTemplate->RemappedDecl = FunctionTemplate->RemappedDecl;
+    }
+
+    FunctionTemplate = NewFunctionTemplate;
+
     if (isFriend) {
       FunctionTemplate->setLexicalDeclContext(Owner);
       FunctionTemplate->setObjectOfFriendDecl();
@@ -3420,10 +3440,17 @@ Decl *TemplateDeclInstantiator::CreateFunctionTemplateInstantiation(
   // We are instantiating the member template "f" within X<int>, which means
   // substituting int for T, but leaving "f" as a member function template.
   // Build the function template itself.
-  FunctionTemplateDecl *FunctionTemplate = FunctionTemplateDecl::Create(SemaRef.Context, Record,
-                                                  Method->getLocation(),
-                                                  Method->getDeclName(),
-                                                  TemplateParams, Method);
+  FunctionTemplateDecl *FunctionTemplate = Method->getDescribedFunctionTemplate();
+  FunctionTemplateDecl *NewFunctionTemplate = FunctionTemplateDecl::Create(
+      SemaRef.Context, Record, Method->getLocation(), Method->getDeclName(),
+      TemplateParams, Method);
+
+  if (FunctionTemplate && SemaRef.getLangOpts().LexicalTemplateInstantiation) {
+    NewFunctionTemplate->RemappedDecl = FunctionTemplate->RemappedDecl;
+  }
+
+  FunctionTemplate = NewFunctionTemplate;
+
   if (isFriend) {
     FunctionTemplate->setLexicalDeclContext(Owner);
     FunctionTemplate->setObjectOfFriendDecl();
