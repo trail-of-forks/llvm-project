@@ -10504,7 +10504,10 @@ DeclResult Sema::ActOnExplicitInstantiation(
   if (getLangOpts().LexicalTemplateInstantiation &&
       (!PrevDecl || !PrevDecl->getDefinition())) {
 
-    auto Pattern = ClassTemplate->getTemplatedDecl()->getDefinition();
+    auto Pattern = ClassTemplate->getTemplatedDecl();
+    if (auto PatternDef = Pattern->getDefinition()) {
+      Pattern = PatternDef;
+    }
     auto PatternTpl = Pattern->getDescribedClassTemplate();
 
     // Create a new class template specialization declaration node for
