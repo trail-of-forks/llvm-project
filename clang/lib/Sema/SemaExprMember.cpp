@@ -725,6 +725,23 @@ static bool LookupMemberExprInRecord(Sema &SemaRef, LookupResult &R,
 
   SemaRef.LookupParsedName(R, /*S=*/nullptr, &SS, ObjectType);
 
+  // NOTE(kumarak): If LookupParsedName found nothing through the qualified
+  //                lookup and the scope specifier resolves to an incomplete
+  //                TagDecl that nevertheless has a definition, retry the
+  //                lookup against the definition. This preserves the
+  //                pre-LLVM-20 behavior of the manual SS-handling block which
+  //                substituted DC with TagDecl::getDefinition() before
+  //                calling LookupQualifiedName.
+  if (R.empty() && !R.wasNotFoundInCurrentInstantiation() && SS.isSet()) {
+    if (DeclContext *SSDC = SemaRef.computeDeclContext(SS, false)) {
+      if (auto *Tag = dyn_cast<TagDecl>(SSDC)) {
+        if (!Tag->isCompleteDefinition() && Tag->getDefinition()) {
+          SemaRef.LookupQualifiedName(R, Tag->getDefinition());
+        }
+      }
+    }
+  }
+
   if (!R.empty() || R.wasNotFoundInCurrentInstantiation())
     return false;
 
