@@ -3579,6 +3579,7 @@ CXXRecordDecl *Sema::createCXXRecordSpecializationForDefinition(
     TemplateDeclInstantiator DeclInstantiator(*this, LexicalDC, TemplateArgs);
     if (auto *NewRD = cast_or_null<CXXRecordDecl>(DeclInstantiator.Visit(Pattern))) {
       NewRD->setLexicalDeclContext(LexicalDC);
+      NewRD->setDeclContext(RD->getDeclContext());
       NewRD->setPreviousDecl(RD);
       return NewRD;
     }

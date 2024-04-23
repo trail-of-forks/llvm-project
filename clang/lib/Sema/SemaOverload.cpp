@@ -4395,7 +4395,7 @@ CompareStandardConversionSequences(Sema &S, SourceLocation Loc,
     Qualifiers T1Quals, T2Quals;
     QualType UnqualT1 = S.Context.getUnqualifiedArrayType(T1, T1Quals);
     QualType UnqualT2 = S.Context.getUnqualifiedArrayType(T2, T2Quals);
-    if (UnqualT1 == UnqualT2) {
+    if ((UnqualT1 == UnqualT2) || S.Context.hasSameType(UnqualT1, UnqualT2)) {
       // Objective-C++ ARC: If the references refer to objects with different
       // lifetimes, prefer bindings that don't change lifetime.
       if (SCS1.ObjCLifetimeConversionBinding !=
@@ -4527,7 +4527,7 @@ CompareQualificationConversions(Sema &S,
 
   // If the types are the same, we won't learn anything by unwrapping
   // them.
-  if (UnqualT1 == UnqualT2)
+  if (UnqualT1 == UnqualT2 || S.Context.hasSameType(UnqualT1, UnqualT2))
     return ImplicitConversionSequence::Indistinguishable;
 
   // Don't ever prefer a standard conversion sequence that uses the deprecated
@@ -4816,7 +4816,7 @@ Sema::CompareReferenceRelationship(SourceLocation Loc,
   // conversions, ObjC pointer conversions, and function pointer conversions.
   // (Qualification conversions are checked last.)
   QualType ConvertedT2;
-  if (UnqualT1 == UnqualT2) {
+  if (Context.hasSameType(UnqualT1, UnqualT2) || (UnqualT1 == UnqualT2)) {
     // Nothing to do.
   } else if (isCompleteType(Loc, OrigT2) &&
              IsDerivedFrom(Loc, UnqualT2, UnqualT1))
@@ -4838,7 +4838,7 @@ Sema::CompareReferenceRelationship(SourceLocation Loc,
   bool PreviousToQualsIncludeConst = true;
   bool TopLevel = true;
   do {
-    if (T1 == T2)
+    if ((T1 == T2) || Context.hasSameType(T1, T2))
       break;
 
     // We will need a qualification conversion.
@@ -5015,7 +5015,8 @@ TryReferenceInit(Sema &S, Expr *Init, QualType DeclType,
   // If the initializer is the address of an overloaded function, try
   // to resolve the overloaded function. If all goes well, T2 is the
   // type of the resulting function.
-  if (S.Context.getCanonicalType(T2) == S.Context.OverloadTy) {
+  if ((S.Context.getCanonicalType(T2) == S.Context.OverloadTy) ||
+      S.Context.hasSameType(T2.getTypePtr(), S.Context.OverloadTy->getTypePtr())) {
     DeclAccessPair Found;
     if (FunctionDecl *Fn = S.ResolveAddressOfOverloadedFunction(Init, DeclType,
                                                                 false, Found))
@@ -7906,7 +7907,7 @@ void Sema::AddConversionCandidate(
   QualType FromCanon
     = Context.getCanonicalType(From->getType().getUnqualifiedType());
   QualType ToCanon = Context.getCanonicalType(ToType).getUnqualifiedType();
-  if (FromCanon == ToCanon ||
+  if (Context.hasSameType(FromCanon, ToCanon) ||
       IsDerivedFrom(CandidateSet.getLocation(), FromCanon, ToCanon)) {
     Candidate.Viable = false;
     Candidate.FailureKind = ovl_fail_trivial_conversion;
@@ -11139,7 +11140,8 @@ static void DiagnoseBadConversion(Sema &S, OverloadCandidate *Cand,
   SourceRange ToParamRange =
       !isObjectArgument ? Fn->getParamDecl(I)->getSourceRange() : SourceRange();
 
-  if (FromTy == S.Context.OverloadTy) {
+  if (FromTy == S.Context.OverloadTy || 
+      S.Context.hasSameType(FromTy.getTypePtr(), S.Context.OverloadTy.getTypePtr())) {
     assert(FromExpr && "overload set argument came from implicit argument?");
     Expr *E = FromExpr->IgnoreParens();
     if (isa<UnaryOperator>(E))
