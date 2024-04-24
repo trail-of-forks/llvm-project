@@ -6036,7 +6036,8 @@ void Sema::InstantiateFunctionDefinition(SourceLocation PointOfInstantiation,
   Function->setInnerLocStart(PatternDecl->getInnerLocStart());
 
   if (getLangOpts().LexicalTemplateInstantiation &&
-      !Function->isReferenced()) {
+      !Function->isReferenced() &&
+      !Function->getType()->isUndeducedType()) {
     Function->setHasSkippedBody(true);
     return;
   }
