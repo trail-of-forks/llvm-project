@@ -3915,12 +3915,16 @@ static void handleInitPriorityAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
   // Only perform the priority check if the attribute is outside of a system
   // header. Values <= 100 are reserved for the implementation, and libc++
   // benefits from being able to specify values in that range.
-  if ((prioritynum < 101 || prioritynum > 65535) &&
-      !S.getSourceManager().isInSystemHeader(AL.getLoc())) {
-    S.Diag(AL.getLoc(), diag::err_attribute_argument_out_of_range)
-        << E->getSourceRange() << AL << 101 << 65535;
-    AL.setInvalid();
-    return;
+
+  // Disable attribute priority check if LexicalTemplateInstantiation is enabled
+  if (!S.getLangOpts().LexicalTemplateInstantiation) {
+    if ((prioritynum < 101 || prioritynum > 65535) &&
+        !S.getSourceManager().isInSystemHeader(AL.getLoc())) {
+      S.Diag(AL.getLoc(), diag::err_attribute_argument_out_of_range)
+          << E->getSourceRange() << AL << 101 << 65535;
+      AL.setInvalid();
+      return;
+    }
   }
   D->addAttr(::new (S.Context) InitPriorityAttr(S.Context, AL, prioritynum));
 }

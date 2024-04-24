@@ -15897,6 +15897,16 @@ void Sema::DefineImplicitLambdaToFunctionPointerConversion(
                             SourceLocation CurrentLocation,
                             CXXConversionDecl *Conv) {
   SynthesizedFunctionScope Scope(*this, Conv);
+
+  // NOTE(kumarak): If the return type of Conversion method is
+  //                is deduced type, return it from here. The
+  //                CallOp or invoker for this lambda conversion
+  //                does get specialized at later point. The
+  //                check here avoid assert.
+  if (getLangOpts().LexicalTemplateInstantiation &&
+      Conv->getReturnType()->isUndeducedType())
+    return;
+
   assert(!Conv->getReturnType()->isUndeducedType());
 
   QualType ConvRT = Conv->getType()->castAs<FunctionType>()->getReturnType();
