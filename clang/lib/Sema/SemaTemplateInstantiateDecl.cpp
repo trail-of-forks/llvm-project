@@ -2448,6 +2448,12 @@ Decl *TemplateDeclInstantiator::VisitFunctionDecl(
       PrincipalDecl->isInIdentifierNamespace(Decl::IDNS_Ordinary))
     PrincipalDecl->setNonMemberOperator();
 
+  if (SemaRef.getLangOpts().LexicalTemplateInstantiation &&
+      !Function->getDescribedFunctionTemplate() &&
+      !LexicalDC->containsDecl(Function)) {
+    LexicalDC->addHiddenDecl(Function);
+  }
+
   // // If the template declaration has a body, then try to force a deferred
   // // instantiation.
   // if (!Function->doesThisDeclarationHaveABody() &&
