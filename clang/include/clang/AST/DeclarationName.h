@@ -41,6 +41,8 @@ class TypeSourceInfo;
 
 using CanQualType = CanQual<Type>;
 
+void *getUniqueOpaquePtr(QualType Ty);
+
 namespace detail {
 
 /// CXXSpecialNameExtra records the type associated with one of the "special"
@@ -66,7 +68,7 @@ class alignas(IdentifierInfoAlignment) CXXSpecialNameExtra
 
 public:
   void Profile(llvm::FoldingSetNodeID &ID) {
-    ID.AddPointer(Type.getAsOpaquePtr());
+    ID.AddPointer(getUniqueOpaquePtr(Type));
   }
 };
 

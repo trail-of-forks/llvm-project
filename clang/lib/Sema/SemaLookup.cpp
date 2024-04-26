@@ -2415,6 +2415,17 @@ bool Sema::LookupQualifiedName(LookupResult &R, DeclContext *LookupCtx,
   if (!R.getLookupName())
     return false;
 
+        // NOTE: The check here makes sure we are looking into the definition
+      //       of a CXXRecordDecl instead of declaration node not having
+      //       complete definition.
+  if (getLangOpts().LexicalTemplateInstantiation && isa<CXXRecordDecl>(LookupCtx)) {
+    if (!cast<CXXRecordDecl>(LookupCtx)->isCompleteDefinition() &&
+        !cast<CXXRecordDecl>(LookupCtx)->isBeingDefined() &&
+        cast<CXXRecordDecl>(LookupCtx)->hasDefinition()) {
+      LookupCtx = cast<TagDecl>(LookupCtx)->getDefinition();
+    }
+  }
+
   // Make sure that the declaration context is complete.
   assert((!isa<TagDecl>(LookupCtx) ||
           LookupCtx->isDependentContext() ||
