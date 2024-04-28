@@ -1992,7 +1992,14 @@ Decl *TemplateDeclInstantiator::VisitCXXRecordDecl(CXXRecordDecl *D) {
   if (TypedefNameDecl *TND = SemaRef.Context.getTypedefNameForUnnamedTagDecl(D))
     SemaRef.Context.addTypedefNameForUnnamedTagDecl(Record, TND);
 
-  Owner->addDecl(Record);
+  if (SemaRef.getLangOpts().LexicalTemplateInstantiation && D->isLambda()) {
+    auto TU = SemaRef.Context.getTranslationUnitDecl();
+    Record->setLexicalDeclContext(TU);
+    TU->addDecl(Record);
+
+  } else {
+    Owner->addDecl(Record);
+  }
 
   // DR1484 clarifies that the members of a local class are instantiated as part
   // of the instantiation of their enclosing entity.
