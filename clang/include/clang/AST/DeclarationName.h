@@ -41,7 +41,8 @@ class TypeSourceInfo;
 
 using CanQualType = CanQual<Type>;
 
-void *getUniqueOpaquePtr(QualType Ty);
+// The utility function to get Opaque pointer from the type.
+void *getOpaquePtrFromType(QualType Ty);
 
 namespace detail {
 
@@ -68,7 +69,7 @@ class alignas(IdentifierInfoAlignment) CXXSpecialNameExtra
 
 public:
   void Profile(llvm::FoldingSetNodeID &ID) {
-    ID.AddPointer(getUniqueOpaquePtr(Type));
+    ID.AddPointer(getOpaquePtrFromType(Type));
   }
 };
 
