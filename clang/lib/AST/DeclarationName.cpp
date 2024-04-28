@@ -301,12 +301,24 @@ DeclarationNameTable::getCXXDeductionGuideName(TemplateDecl *Template) {
   return DeclarationName(Name);
 }
 
+namespace clang {
+  // The utility function to get Opaque pointers from type. If 
+  // the qual type is of RecordType then it will get the canonical
+  // decl of the CXXRecord else it will return the opque type ptr.
+  void *getOpaquePtrFromType(QualType Ty) {
+    if (auto *Record = Ty->getAsCXXRecordDecl()) {
+      return Record->getCanonicalDecl();
+    }
+    return Ty.getAsOpaquePtr();
+  }
+} // namespace clang
+
 DeclarationName DeclarationNameTable::getCXXConstructorName(CanQualType Ty) {
   // The type of constructors is unqualified.
   Ty = Ty.getUnqualifiedType();
   // Do we already have this C++ constructor name ?
   llvm::FoldingSetNodeID ID;
-  ID.AddPointer(Ty.getAsOpaquePtr());
+  ID.AddPointer(getOpaquePtrFromType(Ty));
   void *InsertPos = nullptr;
   if (auto *Name = CXXConstructorNames.FindNodeOrInsertPos(ID, InsertPos))
     return {Name, DeclarationName::StoredCXXConstructorName};
@@ -322,7 +334,7 @@ DeclarationName DeclarationNameTable::getCXXDestructorName(CanQualType Ty) {
   Ty = Ty.getUnqualifiedType();
   // Do we already have this C++ destructor name ?
   llvm::FoldingSetNodeID ID;
-  ID.AddPointer(Ty.getAsOpaquePtr());
+  ID.AddPointer(getOpaquePtrFromType(Ty));
   void *InsertPos = nullptr;
   if (auto *Name = CXXDestructorNames.FindNodeOrInsertPos(ID, InsertPos))
     return {Name, DeclarationName::StoredCXXDestructorName};
@@ -337,7 +349,7 @@ DeclarationName
 DeclarationNameTable::getCXXConversionFunctionName(CanQualType Ty) {
   // Do we already have this C++ conversion function name ?
   llvm::FoldingSetNodeID ID;
-  ID.AddPointer(Ty.getAsOpaquePtr());
+  ID.AddPointer(getOpaquePtrFromType(Ty));
   void *InsertPos = nullptr;
   if (auto *Name =
           CXXConversionFunctionNames.FindNodeOrInsertPos(ID, InsertPos))
