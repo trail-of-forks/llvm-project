@@ -207,7 +207,6 @@ namespace clang {
 
 raw_ostream &operator<<(raw_ostream &OS, DeclarationName N) {
   LangOptions LO;
-  OS << N.getAsOpaquePtr() << "\t";
   N.print(OS, PrintingPolicy(LO));
   return OS;
 }
