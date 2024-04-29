@@ -1037,6 +1037,7 @@ Decl *Decl::castFromDeclContext (const DeclContext *D) {
       if (DK >= first##NAME && DK <= last##NAME) \
         return static_cast<NAME##Decl *>(const_cast<DeclContext *>(D));
 #include "clang/AST/DeclNodes.inc"
+#undef DECL_CONTEXT_BASE
       return nullptr;
   }
 }
@@ -1055,6 +1056,7 @@ DeclContext *Decl::castToDeclContext(const Decl *D) {
       if (DK >= first##NAME && DK <= last##NAME)                  \
         return static_cast<NAME##Decl *>(const_cast<Decl *>(D));
 #include "clang/AST/DeclNodes.inc"
+#undef DECL_CONTEXT_BASE
       return nullptr;
   }
 }
