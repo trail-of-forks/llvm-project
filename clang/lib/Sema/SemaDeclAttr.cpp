@@ -4132,29 +4132,6 @@ static void handleTransparentUnionAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
 static void
 handleUnknownAttrAsAnnotateAttr(Sema &S, Decl *D, const ParsedAttr &AL);
 
-static void handleAnnotateAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
-
-  // PASTA PATCH (ported from llvmorg-18.1.4 9cc843aba481): if the annotation
-  // came from an unknown-attribute path that produced non-Expr args (e.g.
-  // identifier arguments), funnel through handleUnknownAttrAsAnnotateAttr so
-  // PASTA can still surface the attribute instead of dropping it.
-  if (S.getLangOpts().UnknownAttrAnnotate) {
-    for (unsigned Idx = 0; Idx < AL.getNumArgs(); Idx++) {
-      if (!AL.isArgExpr(Idx)) {
-        handleUnknownAttrAsAnnotateAttr(S, D, AL);
-        return;
-      }
-    }
-  }
-
-  // LLVM 20: Sema::AddAnnotationAttr was removed; use CreateAnnotationAttr +
-  // addAttr directly. CreateAnnotationAttr(AL) handles the first-arg
-  // string-literal check and the remaining-arg collection internally.
-  if (auto *Attr = S.CreateAnnotationAttr(AL))
-    D->addAttr(Attr);
-}
-
-
 static Expr *identifierToStringLiteral(ASTContext &Ctx,
                                        const IdentifierInfo *II,
                                        clang::SourceLocation Loc) {
@@ -4198,6 +4175,28 @@ handleUnknownAttrAsAnnotateAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
   // and addAttr directly.
   if (auto *Attr =
           S.CreateAnnotationAttr(AL, AL.getAttrName()->getName(), Args))
+    D->addAttr(Attr);
+}
+
+static void handleAnnotateAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
+
+  // PASTA PATCH (ported from llvmorg-18.1.4 9cc843aba481): if the annotation
+  // came from an unknown-attribute path that produced non-Expr args (e.g.
+  // identifier arguments), funnel through handleUnknownAttrAsAnnotateAttr so
+  // PASTA can still surface the attribute instead of dropping it.
+  if (S.getLangOpts().UnknownAttrAnnotate) {
+    for (unsigned Idx = 0; Idx < AL.getNumArgs(); Idx++) {
+      if (!AL.isArgExpr(Idx)) {
+        handleUnknownAttrAsAnnotateAttr(S, D, AL);
+        return;
+      }
+    }
+  }
+
+  // LLVM 20: Sema::AddAnnotationAttr was removed; use CreateAnnotationAttr +
+  // addAttr directly. CreateAnnotationAttr(AL) handles the first-arg
+  // string-literal check and the remaining-arg collection internally.
+  if (auto *Attr = S.CreateAnnotationAttr(AL))
     D->addAttr(Attr);
 }
 
