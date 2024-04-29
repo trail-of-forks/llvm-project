@@ -4324,33 +4324,6 @@ void Sema::AddAnnotationAttr(Decl *D, const AttributeCommonInfo &CI,
   }
 }
 
-static void handleAnnotateAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
-
-  if (S.getLangOpts().UnknownAttrAnnotate) {
-    for (unsigned Idx = 0; Idx < AL.getNumArgs(); Idx++) {
-      if (!AL.isArgExpr(Idx)) {
-        handleUnknownAttrAsAnnotateAttr(S, D, AL);
-        return;
-      }
-    }
-  }
-
-  // Make sure that there is a string literal as the annotation's first
-  // argument.
-  StringRef Str;
-  if (!S.checkStringLiteralArgumentAttr(AL, 0, Str))
-    return;
-
-  llvm::SmallVector<Expr *, 4> Args;
-  Args.reserve(AL.getNumArgs() - 1);
-  for (unsigned Idx = 1; Idx < AL.getNumArgs(); Idx++) {
-    assert(!AL.isArgIdent(Idx));
-    Args.push_back(AL.getArgAsExpr(Idx));
-  }
-
-  S.AddAnnotationAttr(D, AL, Str, Args);
-}
-
 static Expr *identifierToStringLiteral(ASTContext &Ctx,
                                        const IdentifierInfo *II,
                                        clang::SourceLocation Loc) {
@@ -4384,6 +4357,33 @@ handleUnknownAttrAsAnnotateAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
   Info.IsStmt = 0;
   Info.AttrKind = ParsedAttr::AT_Annotate;
   S.AddAnnotationAttr(D, AL, AL.getAttrName()->getName(), Args);
+}
+
+static void handleAnnotateAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
+
+  if (S.getLangOpts().UnknownAttrAnnotate) {
+    for (unsigned Idx = 0; Idx < AL.getNumArgs(); Idx++) {
+      if (!AL.isArgExpr(Idx)) {
+        handleUnknownAttrAsAnnotateAttr(S, D, AL);
+        return;
+      }
+    }
+  }
+
+  // Make sure that there is a string literal as the annotation's first
+  // argument.
+  StringRef Str;
+  if (!S.checkStringLiteralArgumentAttr(AL, 0, Str))
+    return;
+
+  llvm::SmallVector<Expr *, 4> Args;
+  Args.reserve(AL.getNumArgs() - 1);
+  for (unsigned Idx = 1; Idx < AL.getNumArgs(); Idx++) {
+    assert(!AL.isArgIdent(Idx));
+    Args.push_back(AL.getArgAsExpr(Idx));
+  }
+
+  S.AddAnnotationAttr(D, AL, Str, Args);
 }
 
 static void handleAlignValueAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
