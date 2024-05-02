@@ -5570,7 +5570,7 @@ def working_directory_EQ : Joined<["-"], "working-directory=">,
   Visibility<[ClangOption, CC1Option]>,
   Alias<working_directory>;
 
-// PASTA patches.
+// PASTA options.
 def fattr_types_have_attrs : Flag<["-"], "fattr-types-have-attrs">,
   Visibility<[CC1Option]>,
   HelpText<"Store attributes in attributed types">,

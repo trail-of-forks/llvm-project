@@ -4457,6 +4457,15 @@ bool Sema::CheckUnaryExprOrTypeTraitOperand(Expr *E,
       (ExprKind == UETT_SizeOf || ExprKind == UETT_DataSizeOf ||
        ExprKind == UETT_AlignOf || ExprKind == UETT_PreferredAlignOf ||
        ExprKind == UETT_VecStep);
+
+    // Fake support for XNU-specific unary expr/type traits.
+  IsUnevaluatedOperand =
+      IsUnevaluatedOperand ||
+      ExprKind == UETT_PtrAuthTypeDiscriminator ||
+      ExprKind == UETT_XNUTypeSignature ||
+      ExprKind == UETT_XNUTypeSummary ||
+      ExprKind == UETT_TMOTypeGetMetadata;
+
   if (IsUnevaluatedOperand) {
     ExprResult Result = CheckUnevaluatedOperand(E);
     if (Result.isInvalid())
@@ -4854,9 +4863,16 @@ ExprResult Sema::CreateUnaryExprOrTypeTraitExpr(TypeSourceInfo *TInfo,
       TInfo->getType()->isVariablyModifiedType())
     TInfo = TransformToPotentiallyEvaluated(TInfo);
 
+  // Fake support for the XNU type signature by returning an empty string
+  // literal as a stand-in for a type signature.
+  QualType RetTy = Context.getSizeType();
+  if (ExprKind == UETT_XNUTypeSignature) {
+    RetTy = Context.getStringLiteralArrayType(Context.CharTy, 0u);
+  }
+
   // C99 6.5.3.4p4: the type (an unsigned integer type) is size_t.
   return new (Context) UnaryExprOrTypeTraitExpr(
-      ExprKind, TInfo, Context.getSizeType(), OpLoc, R.getEnd());
+      ExprKind, TInfo, RetTy, OpLoc, R.getEnd());
 }
 
 /// Build a sizeof or alignof expression given an expression
@@ -4869,6 +4885,9 @@ Sema::CreateUnaryExprOrTypeTraitExpr(Expr *E, SourceLocation OpLoc,
     return ExprError();
 
   E = PE.get();
+
+  // We want a string literal array return type for the signature.
+  QualType RetTy = Context.getSizeType();
 
   // Verify that the operand is valid.
   bool isInvalid = false;
@@ -4886,6 +4905,16 @@ Sema::CreateUnaryExprOrTypeTraitExpr(Expr *E, SourceLocation OpLoc,
     isInvalid = true;
   } else if (ExprKind == UETT_VectorElements) {
     isInvalid = CheckUnaryExprOrTypeTraitOperand(E, UETT_VectorElements);
+
+  // Fake support for these XNU/Apple-specific extensions.
+  } else if (ExprKind == UETT_PtrAuthTypeDiscriminator ||
+             ExprKind == UETT_XNUTypeSummary ||
+             ExprKind == UETT_TMOTypeGetMetadata) {
+
+  // Alter the return type to be a string literal holding a type signature.
+  } else if (ExprKind == UETT_XNUTypeSignature) {
+    RetTy = Context.getStringLiteralArrayType(Context.CharTy, 0u);
+
   } else {
     isInvalid = CheckUnaryExprOrTypeTraitOperand(E, UETT_SizeOf);
   }
@@ -4901,7 +4930,7 @@ Sema::CreateUnaryExprOrTypeTraitExpr(Expr *E, SourceLocation OpLoc,
 
   // C99 6.5.3.4p4: the type (an unsigned integer type) is size_t.
   return new (Context) UnaryExprOrTypeTraitExpr(
-      ExprKind, E, Context.getSizeType(), OpLoc, E->getSourceRange().getEnd());
+      ExprKind, E, RetTy, OpLoc, E->getSourceRange().getEnd());
 }
 
 /// ActOnUnaryExprOrTypeTraitExpr - Handle @c sizeof(type) and @c sizeof @c
