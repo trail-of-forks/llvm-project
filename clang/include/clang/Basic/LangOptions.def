@@ -345,7 +345,7 @@ LANGOPT(FastRelaxedMath , 1, 0, "OpenCL fast relaxed math")
 BENIGN_LANGOPT(CLNoSignedZero , 1, 0, "Permit Floating Point optimization without regard to signed zeros")
 COMPATIBLE_LANGOPT(CLUnsafeMath , 1, 0, "Unsafe Floating Point Math")
 
-// PASTA-specific options.
+// PASTA PATCHES.
 LANGOPT(AttrTypesHaveAttrs, 1, 0, "Should attribute types store attributes?")
 LANGOPT(UnknownAttrAnnotate, 1, 0, "Unknown attributes are treated as annotation or annotation type attributes during semantic analysis")
 

@@ -29,7 +29,6 @@
 #include "clang/Lex/ModuleLoader.h"
 #include "clang/Lex/ModuleMap.h"
 #include "clang/Lex/PPCallbacks.h"
-#include "clang/Lex/PPCallbacksEventKind.h"
 #include "clang/Lex/PPEmbedParameters.h"
 #include "clang/Lex/Token.h"
 #include "clang/Lex/TokenLexer.h"
@@ -809,9 +808,6 @@ private:
   /// Actions invoked when some preprocessor activity is
   /// encountered (e.g. a file is \#included, etc).
   std::unique_ptr<PPCallbacks> Callbacks;
-
-  // Post-`Lex()` actions help us catch deferred macro expansions.
-  std::function<void(const Token &)> PostLexAction;
 
   struct MacroExpandsInfo {
     Token Tok;
@@ -1640,7 +1636,7 @@ public:
   /// Process directives while skipping until the through header or
   /// #pragma hdrstop is found.
   void HandleSkippedDirectiveWhileUsingPCH(Token &Result,
-                                           const Token &SavedHash);
+                                           SourceLocation HashLoc);
 
   /// Enter the specified FileID as the main source file,
   /// which implicitly adds the builtin defines etc.
@@ -2491,7 +2487,15 @@ private:
     CurPPLexer = nullptr;
   }
 
-  void PopIncludeMacroStack();
+  void PopIncludeMacroStack() {
+    CurLexer = std::move(IncludeMacroStack.back().TheLexer);
+    CurPPLexer = IncludeMacroStack.back().ThePPLexer;
+    CurTokenLexer = std::move(IncludeMacroStack.back().TheTokenLexer);
+    CurDirLookup  = IncludeMacroStack.back().TheDirLookup;
+    CurLexerSubmodule = IncludeMacroStack.back().TheSubmodule;
+    CurLexerCallback = IncludeMacroStack.back().CurLexerCallback;
+    IncludeMacroStack.pop_back();
+  }
 
   void PropagateLineStartLeadingSpaceInfo(Token &Result);
 
@@ -2555,7 +2559,7 @@ private:
   /// \p FoundElse is false, then \#else directives are ok, if not, then we have
   /// already seen one so a \#else directive is a duplicate.  When this returns,
   /// the caller can lex the first valid token.
-  void SkipExcludedConditionalBlock(const Token &HashTok,
+  void SkipExcludedConditionalBlock(SourceLocation HashTokenLoc,
                                     SourceLocation IfTokenLoc,
                                     bool FoundNonSkipPortion, bool FoundElse,
                                     SourceLocation ElseLoc = SourceLocation());
@@ -2652,7 +2656,7 @@ private:
   /// After reading "MACRO(", this method is invoked to read all of the formal
   /// arguments specified for the macro invocation.  Returns null on error.
   MacroArgs *ReadMacroCallArgumentList(Token &MacroName, MacroInfo *MI,
-                                       Token &MacroEndTok);
+                                       SourceLocation &MacroEnd);
 
   /// If an identifier token is read that is to be expanded
   /// as a builtin macro, handle it and return the next token as 'Tok'.
@@ -2719,12 +2723,12 @@ private:
   /// Handle*Directive - implement the various preprocessor directives.  These
   /// should side-effect the current preprocessor object so that the next call
   /// to Lex() will return the appropriate token next.
-  void HandleLineDirective(const Token &HashTok);
-  void HandleDigitDirective(const Token &HashTok, Token &Tok);
-  void HandleUserDiagnosticDirective(const Token &HashTok, Token &Tok, bool isWarning);
-  void HandleIdentSCCSDirective(const Token &HashTok, Token &Tok);
-  void HandleMacroPublicDirective(const Token &HashTok, Token &Tok);
-  void HandleMacroPrivateDirective(const Token &HashTok);
+  void HandleLineDirective();
+  void HandleDigitDirective(Token &Tok);
+  void HandleUserDiagnosticDirective(Token &Tok, bool isWarning);
+  void HandleIdentSCCSDirective(Token &Tok);
+  void HandleMacroPublicDirective(Token &Tok);
+  void HandleMacroPrivateDirective();
 
   /// An additional notification that can be produced by a header inclusion or
   /// import to tell the parser what happened.
@@ -2762,7 +2766,7 @@ private:
                                 StringRef BinaryContents);
 
   // File inclusion.
-  void HandleIncludeDirective(const Token &HashTok, Token &Tok,
+  void HandleIncludeDirective(SourceLocation HashLoc, Token &Tok,
                               ConstSearchDirIterator LookupFrom = nullptr,
                               const FileEntry *LookupFromFile = nullptr);
   ImportAction
@@ -2770,9 +2774,9 @@ private:
                               Token &FilenameTok, SourceLocation EndLoc,
                               ConstSearchDirIterator LookupFrom = nullptr,
                               const FileEntry *LookupFromFile = nullptr);
-  void HandleIncludeNextDirective(const Token &HashTok, Token &Tok);
-  void HandleIncludeMacrosDirective(const Token &HashTok, Token &Tok);
-  void HandleImportDirective(const Token &HashTok, Token &Tok);
+  void HandleIncludeNextDirective(SourceLocation HashLoc, Token &Tok);
+  void HandleIncludeMacrosDirective(SourceLocation HashLoc, Token &Tok);
+  void HandleImportDirective(SourceLocation HashLoc, Token &Tok);
   void HandleMicrosoftImportDirective(Token &Tok);
 
 public:
@@ -2839,9 +2843,8 @@ private:
   void replayPreambleConditionalStack();
 
   // Macro handling.
-  void HandleDefineDirective(const Token &HashTok, Token &Tok, 
-                             bool ImmediatelyAfterHeaderGuard);
-  void HandleUndefDirective(const Token &HashTok);
+  void HandleDefineDirective(Token &Tok, bool ImmediatelyAfterHeaderGuard);
+  void HandleUndefDirective();
 
   // Conditional Inclusion.
   void HandleIfdefDirective(Token &Result, const Token &HashToken,
@@ -3022,47 +3025,20 @@ private:
   /// Helper functions to forward lexing to the actual lexer. They all share the
   /// same signature.
   static bool CLK_Lexer(Preprocessor &P, Token &Result) {
-    auto InputRawLoc = Result.getLocation().getRawEncoding();
-    auto ReturnedToken = P.CurLexer->Lex(Result);
-
-    // Visibility into all tokens.
-    if (ReturnedToken && P.Callbacks)
-      P.Callbacks->Event(Result, PPCallbacks::TokenFromLexer, InputRawLoc);
-
-    return ReturnedToken;
+    return P.CurLexer->Lex(Result);
   }
   static bool CLK_TokenLexer(Preprocessor &P, Token &Result) {
-    auto InputRawLoc = Result.getLocation().getRawEncoding();
-    auto ReturnedToken =P.CurTokenLexer->Lex(Result);
-
-    // Visibility into all tokens.
-    if (ReturnedToken && P.Callbacks)
-      P.Callbacks->Event(Result, PPCallbacks::TokenFromTokenLexer, InputRawLoc);
-
-    return ReturnedToken;
+    return P.CurTokenLexer->Lex(Result);
   }
   static bool CLK_CachingLexer(Preprocessor &P, Token &Result) {
-    auto InputRawLoc = Result.getLocation().getRawEncoding();
     P.CachingLex(Result);
-    auto ReturnedToken = true;
-    // Visibility into all tokens.
-    if (ReturnedToken && P.Callbacks)
-      P.Callbacks->Event(Result, PPCallbacks::TokenFromCachingLexer,
-                         InputRawLoc);
-    return ReturnedToken;
+    return true;
   }
   static bool CLK_DependencyDirectivesLexer(Preprocessor &P, Token &Result) {
     return P.CurLexer->LexDependencyDirectiveToken(Result);
   }
   static bool CLK_LexAfterModuleImport(Preprocessor &P, Token &Result) {
-    auto InputRawLoc = Result.getLocation().getRawEncoding();
-    auto ReturnedToken = P.LexAfterModuleImport(Result);
-
-    // Visibility into all tokens.
-    if (ReturnedToken && P.Callbacks)
-      P.Callbacks->Event(Result, PPCallbacks::TokenFromAfterModuleImportLexer,
-                      InputRawLoc);
-    return ReturnedToken;
+    return P.LexAfterModuleImport(Result);
   }
 };
 

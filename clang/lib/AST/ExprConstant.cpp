@@ -14870,14 +14870,6 @@ bool IntExprEvaluator::VisitUnaryExprOrTypeTraitExpr(
 
     return false;
   }
-
-  // Fake these XNU-specific type traits.
-  case UETT_XNUTypeSummary:
-  case UETT_TMOTypeGetMetadata:
-    return Success(0, E);
-
-  case UETT_XNUTypeSignature:
-    return false;
   }
 
   llvm_unreachable("unknown expr/type trait");

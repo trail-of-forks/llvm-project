@@ -6162,7 +6162,6 @@ static bool EvaluateBinaryTypeTrait(Sema &Self, TypeTrait BTT, const TypeSourceI
   }
   case BTT_IsSame:
     return Self.Context.hasSameType(LhsT, RhsT);
-  case BTT_XNUTypeCompatible:
   case BTT_TypeCompatible: {
     // GCC ignores cv-qualifiers on arrays for this builtin.
     Qualifiers LhsQuals, RhsQuals;

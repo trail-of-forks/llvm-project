@@ -5315,13 +5315,6 @@ recurse:
     };
 
     switch(SAE->getKind()) {
-
-    // Sort of support these.
-    case UETT_XNUTypeSummary:
-    case UETT_TMOTypeGetMetadata:
-    case UETT_XNUTypeSignature:
-      break;
-
     case UETT_SizeOf:
       Out << 's';
       MangleAlignofSizeofArg();

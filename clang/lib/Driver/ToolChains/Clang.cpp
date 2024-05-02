@@ -5247,7 +5247,7 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
   if (Args.hasArg(options::OPT_fclangir))
     CmdArgs.push_back("-fclangir");
 
-  // PASTA-specific command-line arguments.
+  // PASTA patches.
   if (const Arg *A = Args.getLastArg(options::OPT_funknown_attrs_as_annotate)) {
     CmdArgs.push_back("-funknown-attrs-as-annotate");
     A->claim();

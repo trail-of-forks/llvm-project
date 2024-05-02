@@ -4226,12 +4226,6 @@ QualType ASTContext::getVariableArrayDecayedType(QualType type) const {
                                   cat->getSizeExpr(),
                                   cat->getSizeModifier(),
                                   cat->getIndexTypeCVRQualifiers());
-
-    // If we returned an adjusted type above, then we want to desugar it to the
-    // internal type.
-    if (auto AT = dyn_cast<AdjustedType>(result.getTypePtr())) {
-      result = AT->getAdjustedType();
-    }
     break;
   }
 
@@ -7644,23 +7638,11 @@ const ArrayType *ASTContext::getAsArrayType(QualType T) const {
   // qualifiers into the array element type and return a new array type.
   QualType NewEltTy = getQualifiedType(ATy->getElementType(), qs);
 
-  if (const auto *CAT = dyn_cast<ConstantArrayType>(ATy)) {
-
-    // `getConstantArrayType` might return an adjusted type.
-    QualType result = getConstantArrayType(NewEltTy, CAT->getSize(),
+  if (const auto *CAT = dyn_cast<ConstantArrayType>(ATy))
+    return cast<ArrayType>(getConstantArrayType(NewEltTy, CAT->getSize(),
                                                 CAT->getSizeExpr(),
                                                 CAT->getSizeModifier(),
-                                           CAT->getIndexTypeCVRQualifiers());
-
-    // If we returned an adjusted type above, then we want to desugar it to the
-    // internal type.
-    if (auto AT = dyn_cast<AdjustedType>(result.getTypePtr())) {
-      result = AT->getAdjustedType();
-    }
-
-    return cast<ArrayType>(result);
-  }
-
+                                           CAT->getIndexTypeCVRQualifiers()));
   if (const auto *IAT = dyn_cast<IncompleteArrayType>(ATy))
     return cast<ArrayType>(getIncompleteArrayType(NewEltTy,
                                                   IAT->getSizeModifier(),

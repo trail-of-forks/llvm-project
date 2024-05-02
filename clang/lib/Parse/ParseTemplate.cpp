@@ -14,7 +14,6 @@
 #include "clang/AST/DeclTemplate.h"
 #include "clang/AST/ExprCXX.h"
 #include "clang/Basic/DiagnosticParse.h"
-#include "clang/Lex/PPCallbacksEventKind.h"
 #include "clang/Parse/Parser.h"
 #include "clang/Parse/RAIIObjectsForParser.h"
 #include "clang/Sema/DeclSpec.h"
@@ -1147,13 +1146,6 @@ bool Parser::ParseGreaterThanInTemplateList(SourceLocation LAngleLoc,
   if (PreventMergeWithNextToken)
     AfterGreaterLoc = PP.SplitToken(AfterGreaterLoc, Tok.getLength());
   Tok.setLocation(AfterGreaterLoc);
-
-  // We want to observe when tokens are split up so that we can have this
-  // reflected in PASTA's token lists.
-  if (PPCallbacks *Callbacks = PP.getPPCallbacks()) {
-    Callbacks->Event(Greater, PPCallbacks::BeginSplitToken, 0);
-    Callbacks->Event(Tok, PPCallbacks::EndSplitToken, 0);
-  }
 
   // Update the token cache to match what we just did if necessary.
   if (CachingTokens) {
