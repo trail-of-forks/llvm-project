@@ -4234,7 +4234,7 @@ bool Sema::CheckUnaryExprOrTypeTraitOperand(Expr *E,
        ExprKind == UETT_AlignOf || ExprKind == UETT_PreferredAlignOf ||
        ExprKind == UETT_VecStep);
 
-    // Fake support for XNU-specific unary expr/type traits.
+  // Fake support for XNU-specific unary expr/type traits.
   IsUnevaluatedOperand =
       IsUnevaluatedOperand ||
       ExprKind == UETT_XNUTypeSignature ||
