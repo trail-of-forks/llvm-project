@@ -3511,10 +3511,6 @@ QualType ASTContext::getConstantArrayType(QualType EltTy,
           EltTy->isIncompleteType() || EltTy->isConstantSizeType()) &&
          "Constant array of VLAs is illegal!");
 
-  // We only need the size as part of the type if it's instantiation-dependent.
-  //if (SizeExpr && !SizeExpr->isInstantiationDependent())
-  //  SizeExpr = nullptr;
-
   // Convert the array size into a canonical width matching the pointer size for
   // the target.
   llvm::APInt ArySize(ArySizeIn);

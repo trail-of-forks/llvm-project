@@ -4362,7 +4362,6 @@ LinkageInfo LinkageComputer::computeTypeLinkageInfo(const Type *T) {
   case Type::Class: \
     return computeTypeLinkageInfo(cast<Class ## Type>(T)->desugar());
 #include "clang/AST/TypeNodes.inc"
-    llvm_unreachable("didn't expect a non-canonical type here");
 
 #define TYPE(Class,Base)
 #define DEPENDENT_TYPE(Class,Base) case Type::Class:
