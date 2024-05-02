@@ -4356,13 +4356,9 @@ bool Type::hasUnnamedOrLocalType() const {
 LinkageInfo LinkageComputer::computeTypeLinkageInfo(const Type *T) {
   switch (T->getTypeClass()) {
 #define TYPE(Class,Base)
-
-// For Multiplier Issue #130, we use AdjustedTypes for arrays and so we go and
-// handle non-canonical types via desugarding where Clang normally does not.
-#define NON_CANONICAL_TYPE(Class,Base) \
-  case Type::Class: \
-    return computeTypeLinkageInfo(cast<Class ## Type>(T)->desugar());
+#define NON_CANONICAL_TYPE(Class,Base) case Type::Class:
 #include "clang/AST/TypeNodes.inc"
+    llvm_unreachable("didn't expect a non-canonical type here");
 
 #define TYPE(Class,Base)
 #define DEPENDENT_TYPE(Class,Base) case Type::Class:

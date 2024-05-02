@@ -1279,7 +1279,7 @@ namespace {
 
     void writeHasChildren(raw_ostream &OS) const override { OS << "true"; }
 
-    // Check the optionality of an attribute.
+    // PASTA PATCH: Check the optionality of an attribute.
     std::string getIsOmitted() const override {
       if (!isOptional()) {
         return this->SimpleArgument::getIsOmitted();

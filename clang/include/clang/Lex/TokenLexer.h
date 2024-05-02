@@ -13,7 +13,7 @@
 #ifndef LLVM_CLANG_LEX_TOKENLEXER_H
 #define LLVM_CLANG_LEX_TOKENLEXER_H
 
-#include "clang/Lex/Token.h"
+#include "clang/Basic/SourceLocation.h"
 #include "llvm/ADT/ArrayRef.h"
 
 namespace clang {
@@ -39,9 +39,6 @@ class TokenLexer {
 
   /// The current preprocessor object we are expanding for.
   Preprocessor &PP;
-
-  //The name token of the macro.
-  Token MacroNameTok;
 
   /// This is the pointer to an array of tokens that the macro is
   /// defined to, with arguments expanded for function-like macros.  If this is
@@ -99,12 +96,11 @@ class TokenLexer {
   /// should not be subject to further macro expansion.
   bool DisableMacroExpansion : 1;
 
-public:
-
   /// When true, the produced tokens have Token::IsReinjected flag set.
   /// See the flag documentation for details.
-  bool IsReinject;
+  bool IsReinject : 1;
 
+public:
   /// Create a TokenLexer for the specified macro with the specified actual
   /// arguments.  Note that this ctor takes ownership of the ActualArgs pointer.
   /// ILEnd specifies the location of the ')' for a function-like macro or the

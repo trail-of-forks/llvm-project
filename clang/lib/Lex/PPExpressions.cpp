@@ -25,7 +25,6 @@
 #include "clang/Lex/LiteralSupport.h"
 #include "clang/Lex/MacroInfo.h"
 #include "clang/Lex/PPCallbacks.h"
-#include "clang/Lex/PPCallbacksEventKind.h"
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Lex/Token.h"
 #include "llvm/ADT/APSInt.h"
@@ -102,32 +101,6 @@ struct DefinedTracker {
 /// EvaluateDefined - Process a 'defined(sym)' expression.
 static bool EvaluateDefined(PPValue &Result, Token &PeekTok, DefinedTracker &DT,
                             bool ValueLive, Preprocessor &PP) {
-
-  PPCallbacks *Callbacks = PP.getPPCallbacks();
-  Token SavedStart = PeekTok;
-  if (Callbacks)
-    Callbacks->Event(SavedStart, PPCallbacks::BeginDelayedSubstitution, 0);
-
-  auto Expand = [&] (void) {
-    if (Callbacks) {
-      Token ResultTok;
-      ResultTok.startToken();
-      ResultTok.setKind(tok::numeric_constant);
-      const char *ResultStr = Result.Val.getExtValue() ? "1" : "0";
-      PP.CreateString(ResultStr, ResultTok, SavedStart.getLocation(),
-                      PeekTok.getEndLoc());
-
-      Callbacks->Event(PeekTok, PPCallbacks::SwitchToSubstitution,
-                       reinterpret_cast<uintptr_t>(&SavedStart));
-
-      Callbacks->Event(ResultTok, PPCallbacks::TokenFromTokenLexer,
-                       SavedStart.getLocation().getRawEncoding());
-
-      Callbacks->Event(SavedStart, PPCallbacks::EndSubstitution,
-                       reinterpret_cast<uintptr_t>(&SavedStart));
-    }
-  };
-
   SourceLocation beginLoc(PeekTok.getLocation());
   Result.setBegin(beginLoc);
 
@@ -183,14 +156,12 @@ static bool EvaluateDefined(PPValue &Result, Token &PeekTok, DefinedTracker &DT,
       PP.Diag(LParenLoc, diag::note_matching) << tok::l_paren;
       return true;
     }
-    Expand();
     // Consume the ).
     PP.LexNonComment(PeekTok);
     Result.setEnd(PeekTok.getLocation());
   } else {
     // Consume identifier.
     Result.setEnd(PeekTok.getLocation());
-    Expand();
     PP.LexNonComment(PeekTok);
   }
 
