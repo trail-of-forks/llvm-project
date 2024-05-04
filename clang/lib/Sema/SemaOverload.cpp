@@ -31,6 +31,7 @@
 #include "clang/Sema/Initialization.h"
 #include "clang/Sema/Lookup.h"
 #include "clang/Sema/Overload.h"
+#include "clang/Sema/Ownership.h"
 #include "clang/Sema/SemaInternal.h"
 #include "clang/Sema/Template.h"
 #include "clang/Sema/TemplateDeduction.h"
@@ -2209,8 +2210,9 @@ static bool IsStandardConversion(Sema &S, Expr* From, QualType ToType,
   //   a conversion. [...]
   QualType CanonFrom = S.Context.getCanonicalType(FromType);
   QualType CanonTo = S.Context.getCanonicalType(ToType);
-  if (CanonFrom.getLocalUnqualifiedType()
-                                     == CanonTo.getLocalUnqualifiedType() &&
+  if ((CanonFrom.getLocalUnqualifiedType() == CanonTo.getLocalUnqualifiedType() ||
+      S.Context.hasSameUnqualifiedType(CanonFrom.getLocalUnqualifiedType(),
+                                   CanonTo.getLocalUnqualifiedType())) &&
       CanonFrom.getLocalQualifiers() != CanonTo.getLocalQualifiers()) {
     FromType = ToType;
     CanonFrom = CanonTo;
@@ -2218,7 +2220,7 @@ static bool IsStandardConversion(Sema &S, Expr* From, QualType ToType,
 
   SCS.setToType(2, FromType);
 
-  if (CanonFrom == CanonTo)
+  if (S.Context.hasSameType(CanonFrom, CanonTo) || CanonFrom == CanonTo)
     return true;
 
   // If we have not converted the argument type to the parameter type,
@@ -5924,11 +5926,14 @@ ExprResult Sema::PerformContextuallyConvertToBool(Expr *From) {
   if (checkPlaceholderForOverload(*this, From))
     return ExprError();
 
-  // Note(kumarak): If the canonical type contains auto then return ExprError.
-  //                auto type is a placeholder and Implicit cast will fail
-  //                if the check is not here raise diagnostic error.
-  auto CanonFromType = From->getType().getCanonicalType();
-  if (auto *autoType = CanonFromType->getContainedAutoType()) {
+  // TODO(kumarak): Hack patch need to be evaluated??
+  // Note: We don't expect an expression with undeduced auto type
+  //       land here since TryContextuallyConvertToBool does not
+  //       finds a candidate for them cause diagnostic error. Such
+  //       expressions may bypass checks previously in the callstack
+  //       and lands here. Retun ExprError in such case.
+  auto FromType = From->getType().getCanonicalType();
+  if (FromType->isUndeducedAutoType() || FromType->isUndeducedType()) {
     return ExprError();
   }
 
