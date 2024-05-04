@@ -5900,10 +5900,10 @@ static ImplicitConversionSequence TryObjectArgumentInitialization(
     SecondKind = ICK_Identity;
   } else if (S.IsDerivedFrom(Loc, FromType, ClassType)) {
     SecondKind = ICK_Derived_To_Base;
-  
+
   // We need to check if both types are same and previous check fails
   // because of the clang patches that breaks type deduplication.
-  } else if (S.Context.hasSameType(ClassTypeCanon, FromTypeCanon)) {
+  } else if (S.Context.hasSameUnqualifiedType(ClassTypeCanon, FromTypeCanon)) {
     SecondKind = ICK_Identity;
   } else if (!Method->isExplicitObjectMemberFunction()) {
     ICS.setBad(BadConversionSequence::unrelated_class,
