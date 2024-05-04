@@ -31,6 +31,7 @@
 #include "clang/Sema/Initialization.h"
 #include "clang/Sema/Lookup.h"
 #include "clang/Sema/Overload.h"
+#include "clang/Sema/Ownership.h"
 #include "clang/Sema/SemaInternal.h"
 #include "clang/Sema/Template.h"
 #include "clang/Sema/TemplateDeduction.h"
@@ -2102,8 +2103,9 @@ static bool IsStandardConversion(Sema &S, Expr* From, QualType ToType,
   //   a conversion. [...]
   QualType CanonFrom = S.Context.getCanonicalType(FromType);
   QualType CanonTo = S.Context.getCanonicalType(ToType);
-  if (CanonFrom.getLocalUnqualifiedType()
-                                     == CanonTo.getLocalUnqualifiedType() &&
+  if ((CanonFrom.getLocalUnqualifiedType() == CanonTo.getLocalUnqualifiedType() ||
+      S.Context.hasSameUnqualifiedType(CanonFrom.getLocalUnqualifiedType(),
+                                   CanonTo.getLocalUnqualifiedType())) &&
       CanonFrom.getLocalQualifiers() != CanonTo.getLocalQualifiers()) {
     FromType = ToType;
     CanonFrom = CanonTo;
@@ -2111,7 +2113,7 @@ static bool IsStandardConversion(Sema &S, Expr* From, QualType ToType,
 
   SCS.setToType(2, FromType);
 
-  if (CanonFrom == CanonTo)
+  if (S.Context.hasSameType(CanonFrom, CanonTo) || CanonFrom == CanonTo)
     return true;
 
   // If we have not converted the argument type to the parameter type,
@@ -5566,7 +5568,7 @@ TryObjectArgumentInitialization(Sema &S, SourceLocation Loc, QualType FromType,
     SecondKind = ICK_Derived_To_Base;
   // We need to check if both types are same and previous check fails
   // because of the clang patches that breaks type deduplication.
-  else if (S.Context.hasSameType(ClassTypeCanon, FromTypeCanon)) {
+  else if (S.Context.hasSameUnqualifiedType(ClassTypeCanon, FromTypeCanon)) {
     SecondKind = ICK_Identity;
   } else {
     ICS.setBad(BadConversionSequence::unrelated_class,
@@ -5744,6 +5746,17 @@ TryContextuallyConvertToBool(Sema &S, Expr *From) {
 ExprResult Sema::PerformContextuallyConvertToBool(Expr *From) {
   if (checkPlaceholderForOverload(*this, From))
     return ExprError();
+
+  // TODO(kumarak): Hack patch need to be evaluated??
+  // Note: We don't expect an expression with undeduced auto type
+  //       land here since TryContextuallyConvertToBool does not
+  //       finds a candidate for them cause diagnostic error. Such
+  //       expressions may bypass checks previously in the callstack
+  //       and lands here. Retun ExprError in such case.
+  auto FromType = From->getType();
+  if (FromType->isUndeducedAutoType() || FromType->isUndeducedType()) {
+    return ExprError();
+  }
 
   ImplicitConversionSequence ICS = TryContextuallyConvertToBool(*this, From);
   if (!ICS.isBad())

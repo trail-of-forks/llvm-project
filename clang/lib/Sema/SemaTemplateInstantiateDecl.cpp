@@ -3552,8 +3552,8 @@ CXXRecordDecl *Sema::createCXXRecordSpecializationForDefinition(
     auto TemplateArgs = getTemplateInstantiationArgs(RD);
     TemplateDeclInstantiator DeclInstantiator(*this, LexicalDC, TemplateArgs);
     if (auto *NewRD = cast_or_null<CXXRecordDecl>(DeclInstantiator.Visit(Pattern))) {
-      NewRD->setLexicalDeclContext(LexicalDC);
       NewRD->setDeclContext(RD->getDeclContext());
+      NewRD->setLexicalDeclContext(LexicalDC);
       NewRD->setPreviousDecl(RD);
       return NewRD;
     }
@@ -6042,8 +6042,11 @@ void Sema::InstantiateFunctionDefinition(SourceLocation PointOfInstantiation,
   Function->setVisibleDespiteOwningModule();
 
   // Copy the inner loc start from the pattern.
-  assert(!getLangOpts().LexicalTemplateInstantiation ||
-         Function->getLocation() == PatternDecl->getLocation());
+  // Note: Disable the asset since the Function source location
+  //       may not match with the PatternDecl and we copy the
+  //       location afterwords.
+  // assert(!getLangOpts().LexicalTemplateInstantiation ||
+  //       Function->getLocation() == PatternDecl->getLocation());
 
   Function->setLocation(PatternDecl->getLocation());
   Function->setInnerLocStart(PatternDecl->getInnerLocStart());

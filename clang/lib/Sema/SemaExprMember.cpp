@@ -685,15 +685,6 @@ static bool LookupMemberExprInRecord(Sema &SemaRef, LookupResult &R,
     }
   }
 
-  // NOTE(kumarak): The lookup context may not have complete definition
-  //                if they are canonical decl and generated from the
-  //                scope specification. If it does not have complete
-  //                definition then change DC to the definition node.
-  if (!cast<TagDecl>(DC)->isCompleteDefinition() &&
-      cast<TagDecl>(DC)->getDefinition()) {
-    DC = cast<TagDecl>(DC)->getDefinition();
-  }
-
   // The record definition is complete, now look up the member.
   SemaRef.LookupQualifiedName(R, DC, SS);
 
