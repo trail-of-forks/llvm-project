@@ -118,7 +118,9 @@ namespace clang {
 bool
 isDuplicateType(const clang::Type *Ty1, const clang::Type *Ty2) {
   if (Ty1 && Ty2 && Ty1->isRecordType() && Ty2->isRecordType()) {
-    return Ty1->getAsRecordDecl() == Ty2->getAsRecordDecl();
+    auto *canon_ty1 = Ty1->getAsRecordDecl()->getCanonicalDecl();
+    auto *canon_ty2 =  Ty2->getAsRecordDecl()->getCanonicalDecl();
+    return canon_ty1 == canon_ty2;
   }
 
   // TODO (kumark): Function ony check duplicate for RecordType

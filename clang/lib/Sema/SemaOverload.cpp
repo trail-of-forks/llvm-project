@@ -5566,7 +5566,7 @@ TryObjectArgumentInitialization(Sema &S, SourceLocation Loc, QualType FromType,
     SecondKind = ICK_Derived_To_Base;
   // We need to check if both types are same and previous check fails
   // because of the clang patches that breaks type deduplication.
-  else if (S.Context.hasSameType(ClassTypeCanon, FromTypeCanon)) {
+  else if (S.Context.hasSameUnqualifiedType(ClassTypeCanon, FromTypeCanon)) {
     SecondKind = ICK_Identity;
   } else {
     ICS.setBad(BadConversionSequence::unrelated_class,
