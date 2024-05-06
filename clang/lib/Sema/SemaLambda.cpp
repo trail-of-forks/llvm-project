@@ -1032,10 +1032,7 @@ void Sema::CompleteLambdaCallOperator(
       getGenericLambdaTemplateParameterList(LSI, *this);
 
   DeclContext *DC = Method->getLexicalDeclContext();
-
-  if (!getLangOpts().LexicalTemplateInstantiation)
-    Method->setLexicalDeclContext(LSI->Lambda);
-
+  Method->setLexicalDeclContext(LSI->Lambda);
   if (TemplateParams) {
     FunctionTemplateDecl *TemplateMethod =
         Method->getDescribedFunctionTemplate();
@@ -1043,13 +1040,8 @@ void Sema::CompleteLambdaCallOperator(
            "AddTemplateParametersToLambdaCallOperator should have been called");
 
     LSI->Lambda->addDecl(TemplateMethod);
-
-    if (getLangOpts().LexicalTemplateInstantiation)
-      TemplateMethod->setLexicalDeclContext(DC);
+    TemplateMethod->setLexicalDeclContext(DC);
   } else {
-    if (getLangOpts().LexicalTemplateInstantiation)
-      Method->setLexicalDeclContext(LSI->Lambda);
-
     LSI->Lambda->addDecl(Method);
   }
   LSI->Lambda->setLambdaIsGeneric(TemplateParams);
