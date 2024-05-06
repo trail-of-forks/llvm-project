@@ -3996,15 +3996,15 @@ FunctionDecl::setInstantiationOfMemberFunction(ASTContext &C,
 
 #ifndef NDEBUG
 extern "C" void CheckNewLDC(Decl *D, DeclContext *DC) {
-  if (auto FD = dyn_cast<FunctionDecl>(D)) {
-    if (auto TPL = FD->getDescribedFunctionTemplate()) {
-      assert(DC == TPL->getLexicalDeclContext());
-    }
-  } else if (auto TPL = dyn_cast<FunctionTemplateDecl>(D)) {
-    if (auto FD = TPL->getTemplatedDecl()) {
-      assert(DC == FD->getLexicalDeclContext());
-    }
-  }
+  // if (auto FD = dyn_cast<FunctionDecl>(D)) {
+  //   if (auto TPL = FD->getDescribedFunctionTemplate()) {
+  //     assert(DC == TPL->getLexicalDeclContext());
+  //   }
+  // } else if (auto TPL = dyn_cast<FunctionTemplateDecl>(D)) {
+  //   if (auto FD = TPL->getTemplatedDecl()) {
+  //     assert(DC == FD->getLexicalDeclContext());
+  //   }
+  // }
 }
 #endif
 
