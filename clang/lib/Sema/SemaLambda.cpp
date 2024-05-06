@@ -1032,21 +1032,24 @@ void Sema::CompleteLambdaCallOperator(
       getGenericLambdaTemplateParameterList(LSI, *this);
 
   DeclContext *DC = Method->getLexicalDeclContext();
-  // DeclContext::addDecl() assumes that the DeclContext we're adding to is the
-  // lexical context of the Method. Do so.
-  Method->setLexicalDeclContext(LSI->Lambda);
-  if (TemplateParams) {
-    if (getLangOpts().LexicalTemplateInstantiation)
-      Method->setLexicalDeclContext(DC);
 
+  if (!getLangOpts().LexicalTemplateInstantiation)
+    Method->setLexicalDeclContext(LSI->Lambda);
+
+  if (TemplateParams) {
     FunctionTemplateDecl *TemplateMethod =
         Method->getDescribedFunctionTemplate();
     assert(TemplateMethod &&
            "AddTemplateParametersToLambdaCallOperator should have been called");
 
     LSI->Lambda->addDecl(TemplateMethod);
-    TemplateMethod->setLexicalDeclContext(DC);
+
+    if (getLangOpts().LexicalTemplateInstantiation)
+      TemplateMethod->setLexicalDeclContext(DC);
   } else {
+    if (getLangOpts().LexicalTemplateInstantiation)
+      Method->setLexicalDeclContext(LSI->Lambda);
+
     LSI->Lambda->addDecl(Method);
   }
   LSI->Lambda->setLambdaIsGeneric(TemplateParams);
