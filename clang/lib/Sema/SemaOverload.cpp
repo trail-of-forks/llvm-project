@@ -2713,6 +2713,19 @@ bool Sema::IsPointerConversion(Expr *From, QualType FromType, QualType ToType,
     return true;
   }
 
+  // Note(kumarak): If the auto pointee type leaks into the implict cast, check
+  //                if FromPointeeType is undeduced and generate converted type
+  //                based on ToType. The patch avoids Diagnostic error due to
+  //                invalid cast from auto to another type.
+  if (getLangOpts().LexicalTemplateInstantiation) {
+    if (FromPointeeType->isUndeducedAutoType()) {
+      ConvertedType = BuildSimilarlyQualifiedPointerType(FromTypePtr,
+                                                       ToPointeeType,
+                                                      ToType, Context);
+      return true;
+    }
+  }
+
   return false;
 }
 
