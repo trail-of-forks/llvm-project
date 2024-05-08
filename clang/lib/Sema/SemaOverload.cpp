@@ -15472,6 +15472,16 @@ ExprResult Sema::CreateOverloadedArraySubscriptExpr(SourceLocation LLoc,
   return CreateBuiltinArraySubscriptExpr(Args[0], LLoc, Args[1], RLoc);
 }
 
+// It checks if the arguments contain undeduced auto type
+static bool checkForUndeducedAutoType(MultiExprArg Args) {
+  for (unsigned i = 0; i < Args.size(); ++i) {
+    if (Args[i]->getType()->isUndeducedAutoType()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 ExprResult Sema::BuildCallToMemberFunction(Scope *S, Expr *MemExprE,
                                            SourceLocation LParenLoc,
                                            MultiExprArg Args,
@@ -15552,6 +15562,14 @@ ExprResult Sema::BuildCallToMemberFunction(Scope *S, Expr *MemExprE,
   UnbridgedCastsSet UnbridgedCasts;
   if (checkArgPlaceholdersForOverload(*this, Args, UnbridgedCasts))
     return ExprError();
+
+  // Note(kumarak): If the template agument expression are of Auto type, it fail to find
+  //                the candidate for the overload. Check this early and return expr error
+  //                in such cases.
+  if (getLangOpts().LexicalTemplateInstantiation &&
+    checkForUndeducedAutoType(Args)) {
+    return ExprError();
+  }
 
   MemberExpr *MemExpr;
   CXXMethodDecl *Method = nullptr;
