@@ -4160,7 +4160,15 @@ StmtResult Sema::BuildReturnStmt(SourceLocation ReturnLoc, Expr *RetValExp,
 
     // In C++ the return statement is handled via a copy initialization,
     // the C version of which boils down to CheckSingleAssignmentConstraints.
-    if (!HasDependentReturnType && !RetValExp->isTypeDependent()) {
+
+    // Note(kumarak): If the Return value expression has undeduced auto types,
+    //                don't perform the copy operation instead force cast it
+    //                as unknown any types. Peforming copy operation on
+    //                from undeduced expression will cause diagnostic error.
+
+    auto HasUndeducedAutoType = getLangOpts().LexicalTemplateInstantiation &&
+                                      RetValExp->getType()->isUndeducedAutoType();
+    if (!HasDependentReturnType && !RetValExp->isTypeDependent() && !HasUndeducedAutoType) {
       // we have a non-void function with an expression, continue checking
       InitializedEntity Entity =
           InitializedEntity::InitializeResult(ReturnLoc, RetType);
