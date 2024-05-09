@@ -5924,6 +5924,14 @@ ExprResult Sema::PerformContextuallyConvertToBool(Expr *From) {
   if (checkPlaceholderForOverload(*this, From))
     return ExprError();
 
+  // Note(kumarak): If the canonical type contains auto then return ExprError.
+  //                auto type is a placeholder and Implicit cast will fail
+  //                if the check is not here raise diagnostic error.
+  auto CanonFromType = From->getType().getCanonicalType();
+  if (auto *autoType = CanonFromType->getContainedAutoType()) {
+    return ExprError();
+  }
+
   ImplicitConversionSequence ICS = TryContextuallyConvertToBool(*this, From);
   if (!ICS.isBad())
     return PerformImplicitConversion(From, Context.BoolTy, ICS, AA_Converting);
