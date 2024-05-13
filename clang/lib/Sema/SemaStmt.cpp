@@ -4179,7 +4179,7 @@ StmtResult Sema::BuildReturnStmt(SourceLocation ReturnLoc, Expr *RetValExp,
     //                from undeduced expression will cause diagnostic error.
 
     auto HasUndeducedAutoType = getLangOpts().LexicalTemplateInstantiation &&
-                                      RetValExp->getType()->isUndeducedAutoType();
+                                      RetValExp && RetValExp->getType()->isUndeducedAutoType();
     if (!HasDependentReturnType && !RetValExp->isTypeDependent() && !HasUndeducedAutoType) {
       // we have a non-void function with an expression, continue checking
       InitializedEntity Entity =
