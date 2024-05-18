@@ -16346,7 +16346,8 @@ Decl *Sema::ActOnFinishFunctionBody(Decl *dcl, Stmt *Body,
         DiagnoseReturnInConstructorExceptionHandler(cast<CXXTryStmt>(Body));
 
       // Verify that gotos and switch cases don't jump into scopes illegally.
-      if (FSI->NeedsScopeChecking() && !PP.isCodeCompletionEnabled())
+      if (FSI->NeedsScopeChecking() && !PP.isCodeCompletionEnabled() &&
+          !getLangOpts().LexicalTemplateInstantiation)
         DiagnoseInvalidJumps(Body);
 
       if (CXXDestructorDecl *Destructor = dyn_cast<CXXDestructorDecl>(dcl)) {

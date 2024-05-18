@@ -2425,6 +2425,12 @@ bool Sema::LookupQualifiedName(LookupResult &R, DeclContext *LookupCtx,
   if (!R.getLookupName())
     return false;
 
+  if (auto Tag = dyn_cast<TagDecl>(LookupCtx)) {
+    if (auto TagDef = Tag->getDefinition()) {
+      LookupCtx = TagDef;
+    }
+  }
+
   // Make sure that the declaration context is complete.
   assert((!isa<TagDecl>(LookupCtx) ||
           LookupCtx->isDependentContext() ||
