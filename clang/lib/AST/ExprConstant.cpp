@@ -3217,7 +3217,8 @@ static bool HandleSizeof(EvalInfo &Info, SourceLocation Loc, QualType Type,
     return true;
   }
 
-  if (Type->isDependentType()) {
+  if (Type->isDependentType() || Type->isUndeducedType() ||
+      Type->isUndeducedAutoType()) {
     Info.FFDiag(Loc);
     return false;
   }
