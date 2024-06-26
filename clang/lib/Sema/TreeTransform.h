@@ -11551,10 +11551,6 @@ TreeTransform<Derived>::TransformMemberExpr(MemberExpr *E) {
       return ExprError();
   }
 
-  // FIXME: Bogus source location for the operator
-  SourceLocation FakeOperatorLoc =
-      SemaRef.getLocForEndOfToken(E->getBase()->getSourceRange().getEnd());
-
   // FIXME: to do this check properly, we will need to preserve the
   // first-qualifier-in-scope here, just in case we had a dependent
   // base (and therefore couldn't do the check) and a
@@ -11567,7 +11563,7 @@ TreeTransform<Derived>::TransformMemberExpr(MemberExpr *E) {
       return ExprError();
   }
 
-  return getDerived().RebuildMemberExpr(Base.get(), FakeOperatorLoc,
+  return getDerived().RebuildMemberExpr(Base.get(), E->getOperatorLoc(),
                                         E->isArrow(),
                                         QualifierLoc,
                                         TemplateKWLoc,
