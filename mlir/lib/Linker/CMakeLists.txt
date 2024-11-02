@@ -1,0 +1,9 @@
+add_mlir_library(MLIRLinker
+  Linker.cpp
+
+  ADDITIONAL_HEADER_DIRS
+  ${MLIR_MAIN_INCLUDE_DIR}/mlir/Linker
+
+  LINK_LIBS PUBLIC
+  MLIRIR
+  )
