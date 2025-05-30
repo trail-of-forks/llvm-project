@@ -13,11 +13,13 @@ define i128 @test_ctselect_i128(i1 %cond, i128 %a, i128 %b) {
 ; X64-NEXT:    cmovneq %rsi, %rax
 ; X64-NEXT:    cmovneq %rdx, %r8
 ; X64-NEXT:    movq %r8, %rdx
-; X64:    retq
+; X64-NEXT:    retq
 ;
 ; X32-LABEL: test_ctselect_i128:
 ; X32:       # %bb.0:
-; X32:         movl {{[0-9]+}}(%esp), %eax
+; X32-NEXT:    pushl %edi
+; X32-NEXT:    pushl %esi
+; X32-NEXT:    movl {{[0-9]+}}(%esp), %eax
 ; X32-NEXT:    movl {{[0-9]+}}(%esp), %ecx
 ; X32-NEXT:    movl {{[0-9]+}}(%esp), %edx
 ; X32-NEXT:    movl {{[0-9]+}}(%esp), %esi
@@ -31,7 +33,9 @@ define i128 @test_ctselect_i128(i1 %cond, i128 %a, i128 %b) {
 ; X32-NEXT:    movl %ecx, {{[0-9]+}}(%eax)
 ; X32-NEXT:    movl %edi, {{[0-9]+}}(%eax)
 ; X32-NEXT:    movl %esi, (%eax)
-; X32:    retl $4
+; X32-NEXT:    popl %esi
+; X32-NEXT:    popl %edi
+; X32-NEXT:    retl $4
   %result = call i128 @llvm.ct.select.i128(i1 %cond, i128 %a, i128 %b)
   ret i128 %result
 }
@@ -43,14 +47,14 @@ define i1 @test_ctselect_i1(i1 %cond, i1 %a, i1 %b) {
 ; X64-NEXT:    movl %edx, %eax
 ; X64-NEXT:    testb $1, %dil
 ; X64-NEXT:    cmovnel %esi, %eax
-; X64:    retq
+; X64-NEXT:    retq
 ;
 ; X32-LABEL: test_ctselect_i1:
 ; X32:       # %bb.0:
 ; X32-NEXT:    movl {{[0-9]+}}(%esp), %eax
 ; X32-NEXT:    testb $1, {{[0-9]+}}(%esp)
 ; X32-NEXT:    cmovnel {{[0-9]+}}(%esp), %eax
-; X32:    retl
+; X32-NEXT:    retl
   %result = call i1 @llvm.ct.select.i1(i1 %cond, i1 %a, i1 %b)
   ret i1 %result
 }
@@ -283,7 +287,7 @@ define i32 @test_ctselect_deeply_nested(i1 %c1, i1 %c2, i1 %c3, i1 %c4, i32 %a, 
 ; X32-LABEL: test_ctselect_deeply_nested:
 ; X32:       # %bb.0:
 ; X32-NEXT:    pushl %esi
-; X32:         movl {{[0-9]+}}(%esp), %eax
+; X32-NEXT:    movl {{[0-9]+}}(%esp), %eax
 ; X32-NEXT:    movl {{[0-9]+}}(%esp), %ecx
 ; X32-NEXT:    movl {{[0-9]+}}(%esp), %edx
 ; X32-NEXT:    movl {{[0-9]+}}(%esp), %esi
@@ -296,7 +300,7 @@ define i32 @test_ctselect_deeply_nested(i1 %c1, i1 %c2, i1 %c3, i1 %c4, i32 %a, 
 ; X32-NEXT:    testb $1, {{[0-9]+}}(%esp)
 ; X32-NEXT:    cmovnel %ecx, %eax
 ; X32-NEXT:    popl %esi
-; X32:    retl
+; X32-NEXT:    retl
   %sel1 = call i32 @llvm.ct.select.i32(i1 %c1, i32 %a, i32 %b)
   %sel2 = call i32 @llvm.ct.select.i32(i1 %c2, i32 %sel1, i32 %c)
   %sel3 = call i32 @llvm.ct.select.i32(i1 %c3, i32 %sel2, i32 %d)

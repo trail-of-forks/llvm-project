@@ -24930,6 +24930,20 @@ static SDValue LowerSIGN_EXTEND_Mask(SDValue Op, const SDLoc &dl,
   return V;
 }
 
+/// Helper function to create a mask for LSB operations
+static SDValue createLSBMask(SDValue Input, EVT SplatVT, EVT CmpVT, SDLoc DL,
+                             SelectionDAG &DAG) {
+  SDValue Neg = Input;
+  if (CmpVT.bitsGT(SplatVT))
+    Neg = DAG.getNode(ISD::TRUNCATE, DL, SplatVT, Input);
+  else if (CmpVT.bitsLT(SplatVT))
+    Neg = DAG.getNode(
+        ISD::AND, DL, SplatVT,
+        DAG.getNode(ISD::ANY_EXTEND, DL, SplatVT, Input.getOperand(0)),
+        DAG.getConstant(1, DL, SplatVT));
+  return DAG.getNegative(Neg, DL, SplatVT);
+}
+
 SDValue X86TargetLowering::LowerCTSELECT(SDValue Op, SelectionDAG &DAG) const {
   SDValue Cond = Op.getOperand(0);
   SDValue Op1 = Op.getOperand(1);
@@ -25066,22 +25080,8 @@ SDValue X86TargetLowering::LowerCTSELECT(SDValue Op, SelectionDAG &DAG) const {
         EVT CmpVT = CmpOp0.getValueType();
         EVT SelectVT = Op1.getValueType();
 
-        /// function to create a mask for LSB operations
         auto SplatLSB = [&](EVT SplatVT) {
-          SDValue AdjustedValue;
-
-          if (CmpVT.bitsGT(SplatVT)) {
-            AdjustedValue = DAG.getNode(ISD::TRUNCATE, DL, SplatVT, CmpOp0);
-          } else if (CmpVT.bitsLT(SplatVT)) {
-            SDValue Extended =
-                DAG.getNode(ISD::ANY_EXTEND, DL, SplatVT, CmpOp0.getOperand(0));
-            AdjustedValue = DAG.getNode(ISD::AND, DL, SplatVT, Extended,
-                                        DAG.getConstant(1, DL, SplatVT));
-          } else {
-            AdjustedValue = CmpOp0;
-          }
-
-          return DAG.getNegative(AdjustedValue, DL, SplatVT);
+          return createLSBMask(CmpOp0, SplatVT, CmpVT, DL, DAG);
         };
 
         // CTSELECT (AND(X,1) == 0), 0, -1 -> NEG(AND(X,1))
