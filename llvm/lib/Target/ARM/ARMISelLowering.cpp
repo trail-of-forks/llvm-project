@@ -5275,11 +5275,19 @@ SDValue ARMTargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const {
 }
 
 SDValue ARMTargetLowering::LowerCTSELECT(SDValue Op, SelectionDAG &DAG) const {
+  const ARMSubtarget &Subtarget = DAG.getSubtarget<ARMSubtarget>();
+
+  SDLoc DL(Op);
   SDValue Cond = Op.getOperand(0);
   SDValue SelectTrue = Op.getOperand(1);
   SDValue SelectFalse = Op.getOperand(2);
   EVT VT = Op.getValueType();
-  SDLoc DL(Op);
+
+  // Fall back to IR select for subtargets that are not ARMv7 for now.
+  // One can also turn on CTSELECT using -mattr=+ctselect to test it.
+  if (!Subtarget.hasCtSelect()) {
+    return DAG.getNode(ISD::SELECT, DL, VT, Cond, SelectTrue, SelectFalse);
+  }
 
   SDValue Zero = DAG.getConstant(0, DL, Cond.getValueType());
   SDValue Val = DAG.getSetCC(DL, VT, Cond, Zero, ISD::SETNE);
