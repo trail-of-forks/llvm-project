@@ -5287,9 +5287,9 @@ SDValue ARMTargetLowering::LowerCTSELECT(SDValue Op, SelectionDAG &DAG) const {
 
   // Fall back to IR select for subtargets that are not ARMv7 for now.
   // Turn on CTSELECT for other subtargets using -mattr=+ctselect.
-  // if (!Subtarget.hasCtSelect()) {
-  //   return DAG.getNode(ISD::SELECT, DL, VT, Cond, SelectTrue, SelectFalse);
-  // }
+  if (!Subtarget.hasCtSelect()) {
+    return DAG.getNode(ISD::SELECT, DL, VT, Cond, SelectTrue, SelectFalse);
+  }
 
   // Emulate f32 select via use of integer registers.
   if (VT == MVT::f32) {
