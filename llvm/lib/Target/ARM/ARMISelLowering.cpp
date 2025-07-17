@@ -1456,10 +1456,12 @@ ARMTargetLowering::ARMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SELECT_CC, MVT::i32, Custom);
   setOperationAction(ISD::SELECT_CC, MVT::f32, Custom);
   setOperationAction(ISD::SELECT_CC, MVT::f64, Custom);
+  setOperationAction(ISD::CTSELECT,  MVT::i8,  Custom);
+  setOperationAction(ISD::CTSELECT,  MVT::i16, Custom);
   setOperationAction(ISD::CTSELECT,  MVT::i32, Custom);
-  setOperationAction(ISD::CTSELECT,  MVT::f32, Custom);
   setOperationAction(ISD::CTSELECT,  MVT::i64, Custom);
-  setOperationAction(ISD::CTSELECT,  MVT::f64, Custom);
+  setOperationAction(ISD::CTSELECT,  MVT::f32, Custom);
+  setOperationAction(ISD::CTSELECT,  MVT::f64, Expand);
   if (Subtarget->hasFullFP16()) {
     setOperationAction(ISD::SETCC,     MVT::f16, Expand);
     setOperationAction(ISD::SELECT,    MVT::f16, Custom);
@@ -5284,10 +5286,42 @@ SDValue ARMTargetLowering::LowerCTSELECT(SDValue Op, SelectionDAG &DAG) const {
   EVT VT = Op.getValueType();
 
   // Fall back to IR select for subtargets that are not ARMv7 for now.
-  // One can also turn on CTSELECT using -mattr=+ctselect to test it.
-  if (!Subtarget.hasCtSelect()) {
-    return DAG.getNode(ISD::SELECT, DL, VT, Cond, SelectTrue, SelectFalse);
+  // Turn on CTSELECT for other subtargets using -mattr=+ctselect.
+  // if (!Subtarget.hasCtSelect()) {
+  //   return DAG.getNode(ISD::SELECT, DL, VT, Cond, SelectTrue, SelectFalse);
+  // }
+
+  // Emulate f32 select via use of integer registers.
+  if (VT == MVT::f32) {
+    EVT IVT;
+    if (VT.isVector()) {
+      IVT = EVT::getVectorVT(*DAG.getContext(),
+                            EVT::getIntegerVT(*DAG.getContext(), VT.getScalarSizeInBits()),
+                            VT.getVectorElementCount());
+    } else {
+      IVT = EVT::getIntegerVT(*DAG.getContext(), VT.getSizeInBits());
+    }
+
+    SDValue TrueInt = DAG.getBitcast(IVT, SelectTrue);
+    SDValue FalseInt = DAG.getBitcast(IVT, SelectFalse);
+
+    SDValue Zero = DAG.getConstant(0, DL, Cond.getValueType());
+    SDValue Mask = DAG.getSetCC(DL, IVT, Cond, Zero, ISD::SETNE);
+    SDValue MaskNeg = DAG.getSetCC(DL, IVT, Cond, Zero, ISD::SETEQ);
+
+    SDValue TrueMasked = DAG.getNode(ISD::AND, DL, IVT, TrueInt, Mask);
+    SDValue FalseMasked = DAG.getNode(ISD::AND, DL, IVT, FalseInt, MaskNeg);
+    SDValue OutInt = DAG.getNode(ISD::OR, DL, IVT, TrueMasked, FalseMasked);
+
+    // Bitcast back to the original FP type.
+    return DAG.getBitcast(VT, OutInt);
+
+  // todo: split the f64 in half and i32 each half, then f64 them back together.
+  } else if (VT == MVT::f64) {
+     return DAG.getNode(ISD::SELECT, DL, VT, Cond, SelectTrue, SelectFalse);
   }
+
+  // todo: i64
 
   SDValue Zero = DAG.getConstant(0, DL, Cond.getValueType());
   SDValue Val = DAG.getSetCC(DL, VT, Cond, Zero, ISD::SETNE);
@@ -5296,6 +5330,7 @@ SDValue ARMTargetLowering::LowerCTSELECT(SDValue Op, SelectionDAG &DAG) const {
 
   SelectTrue = DAG.getNode(ISD::AND, DL, VT, SelectTrue, Mask);
   SelectFalse = DAG.getNode(ISD::AND, DL, VT, SelectFalse, MaskNeg);
+
   return DAG.getNode(ISD::OR, DL, VT, SelectTrue, SelectFalse);
 }
 

@@ -1,0 +1,19 @@
+; RUN: llc < %s -mtriple=armv7-none-eabi -verify-machineinstrs | FileCheck --check-prefixes=CT %s
+; RUN: llc < %s -mtriple=armv6-none-eabi -mattr=+ctselect -verify-machineinstrs | FileCheck --check-prefix=TEST-CT %s
+
+define i32 @ct_int32(i1 %cond, i32 %t, i32 %f) {
+; CT-LABEL: ct_int32:
+; CT: and
+; CT: and
+; CT: orr
+; CT-NOT: b{{eq|ne}}
+; CT-NOT: j
+; TEST-CT: and
+; TEST-CT: and
+; TEST-CT: orr
+; TEST-CT-NOT: b{{eq|ne}}
+; TEST-CT-NOT: j
+entry:
+  %sel = call i32 @llvm.ct.select.i32(i1 %cond, i32 %t, i32 %f)
+  ret i32 %sel
+}
