@@ -1459,7 +1459,7 @@ ARMTargetLowering::ARMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::CTSELECT,  MVT::i8,  Custom);
   setOperationAction(ISD::CTSELECT,  MVT::i16, Custom);
   setOperationAction(ISD::CTSELECT,  MVT::i32, Custom);
-  setOperationAction(ISD::CTSELECT,  MVT::i64, Custom);
+  setOperationAction(ISD::CTSELECT,  MVT::i64, Expand);
   setOperationAction(ISD::CTSELECT,  MVT::f32, Custom);
   setOperationAction(ISD::CTSELECT,  MVT::f64, Expand);
   if (Subtarget->hasFullFP16()) {
@@ -5320,8 +5320,6 @@ SDValue ARMTargetLowering::LowerCTSELECT(SDValue Op, SelectionDAG &DAG) const {
   } else if (VT == MVT::f64) {
      return DAG.getNode(ISD::SELECT, DL, VT, Cond, SelectTrue, SelectFalse);
   }
-
-  // todo: i64
 
   SDValue Zero = DAG.getConstant(0, DL, Cond.getValueType());
   SDValue Val = DAG.getSetCC(DL, VT, Cond, Zero, ISD::SETNE);
