@@ -1750,6 +1750,7 @@ const char *ARMTargetLowering::getTargetNodeName(unsigned Opcode) const {
     MAKE_CASE(ARMISD::BCC_i64)
     MAKE_CASE(ARMISD::FMSTAT)
     MAKE_CASE(ARMISD::CMOV)
+    MAKE_CASE(ARMISD::CTSELECT)
     MAKE_CASE(ARMISD::SSAT)
     MAKE_CASE(ARMISD::USAT)
     MAKE_CASE(ARMISD::ASRL)
