@@ -428,7 +428,11 @@ def SDT_AArch64cbz : SDTypeProfile<0, 2, [SDTCisInt<0>, SDTCisVT<1, OtherVT>]>;
 def SDT_AArch64tbz : SDTypeProfile<0, 3, [SDTCisInt<0>, SDTCisInt<1>,
                                         SDTCisVT<2, OtherVT>]>;
 
-
+def SDT_AArch64CtSelect : SDTypeProfile<1, 4,
+                                   [SDTCisSameAs<0, 1>,
+                                    SDTCisSameAs<0, 2>,
+                                    SDTCisInt<3>,
+                                    SDTCisVT<4, i32>]>;
 def SDT_AArch64CSel  : SDTypeProfile<1, 4,
                                    [SDTCisSameAs<0, 1>,
                                     SDTCisSameAs<0, 2>,
@@ -761,6 +765,7 @@ def AArch64tbz           : SDNode<"AArch64ISD::TBZ", SDT_AArch64tbz,
 def AArch64tbnz           : SDNode<"AArch64ISD::TBNZ", SDT_AArch64tbz,
                                 [SDNPHasChain]>;
 
+def AArch64ctselect      : SDNode<"AArch64ISD::CTSELECT", SDT_AArch64CtSelect>;
 
 def AArch64csel          : SDNode<"AArch64ISD::CSEL", SDT_AArch64CSel>;
 def AArch64csinv         : SDNode<"AArch64ISD::CSINV", SDT_AArch64CSel>;
@@ -5352,6 +5357,26 @@ def F128CSEL : Pseudo<(outs FPR128:$Rd),
   let usesCustomInserter = 1;
   let hasNoSchedulingInfo = 1;
 }
+
+//===----------------------------------------------------------------------===//
+// Constant-time conditional selection instructions
+//===----------------------------------------------------------------------===//
+
+def : Pat<(AArch64ctselect GPR32:$tval, GPR32:$fval, (i32 imm:$cc), NZCV),
+          (CSELWr GPR32:$tval, GPR32:$fval, (i32 imm:$cc))>;
+def : Pat<(AArch64ctselect GPR64:$tval, GPR64:$fval, (i32 imm:$cc), NZCV),
+          (CSELXr GPR64:$tval, GPR64:$fval, (i32 imm:$cc))>;
+
+let Predicates = [HasFullFP16] in {
+  def : Pat<(bf16 (AArch64ctselect (bf16 FPR16:$tval), (bf16 FPR16:$fval), (i32 imm:$cc), NZCV)),
+            (FCSELHrrr FPR16:$tval, FPR16:$fval, (i32 imm:$cc))>;
+  def : Pat<(f16 (AArch64ctselect (f16 FPR16:$tval), (f16 FPR16:$fval), (i32 imm:$cc), NZCV)),
+            (FCSELHrrr FPR16:$tval, FPR16:$fval, (i32 imm:$cc))>;
+}
+def : Pat<(f32 (AArch64ctselect (f32 FPR32:$tval), (f32 FPR32:$fval), (i32 imm:$cc), NZCV)),
+          (FCSELSrrr FPR32:$tval, FPR32:$fval, (i32 imm:$cc))>;
+def : Pat<(f64 (AArch64ctselect (f64 FPR64:$tval), (f64 FPR64:$fval), (i32 imm:$cc), NZCV)),
+          (FCSELDrrr FPR64:$tval, FPR64:$fval, (i32 imm:$cc))>;
 
 //===----------------------------------------------------------------------===//
 // Instructions used for emitting unwind opcodes on ARM64 Windows.
