@@ -517,6 +517,9 @@ AArch64TargetLowering::AArch64TargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SELECT, MVT::f64, Custom);
   setOperationAction(ISD::CTSELECT, MVT::f32, Custom);
   setOperationAction(ISD::CTSELECT, MVT::f64, Custom);
+  for (MVT VT : MVT::vector_valuetypes()) {
+    setOperationAction(ISD::CTSELECT, VT, Expand);
+  }
   setOperationAction(ISD::SELECT_CC, MVT::i32, Custom);
   setOperationAction(ISD::SELECT_CC, MVT::i64, Custom);
   setOperationAction(ISD::SELECT_CC, MVT::f16, Custom);
