@@ -5276,6 +5276,24 @@ SDValue ARMTargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const {
                          SelectTrue, SelectFalse, ISD::SETNE);
 }
 
+SDValue BuildCtSelectMask(SDValue Cond, EVT MaskVT, SDLoc DL, SelectionDAG &DAG) {
+  Cond = DAG.getNode(ISD::AND, DL, MaskVT, Cond, DAG.getConstant(1, DL, MaskVT));
+  SDValue Zero = DAG.getConstant(0, DL, MaskVT);
+  return DAG.getNode(ISD::SUB, DL, MaskVT, Zero, Cond);  // mask = -cond
+}
+
+SDValue SplatCtSelectCond(SDValue Cond, EVT MaskVT, SDLoc DL, SelectionDAG &DAG) {
+  const EVT CondVT = Cond.getValueType();
+  
+  if (MaskVT.isVector() && !CondVT.isVector()) {
+    Cond = DAG.getSplatBuildVector(MaskVT, DL, Cond);
+  } else if (CondVT != MaskVT) {
+    Cond = DAG.getZExtOrTrunc(Cond, DL, MaskVT);
+  }
+
+  return Cond;
+}
+
 SDValue ARMTargetLowering::LowerCTSELECT(SDValue Op, SelectionDAG &DAG) const {
   SDLoc DL(Op);
   SDValue Cond = Op.getOperand(0);
@@ -5288,33 +5306,24 @@ SDValue ARMTargetLowering::LowerCTSELECT(SDValue Op, SelectionDAG &DAG) const {
     return DAG.getNode(ISD::SELECT, DL, VT, Cond, SelectTrue, SelectFalse);
   }
 
-  EVT ElemVT;
-  if (VT.isVector()) {
+  EVT ElemVT = VT;
+  EVT MaskVT = VT;
+
+  if (VT == MVT::f64 && !VT.isVector()) {
+    // Use <2 x i32> vector mask for scalar f64 on ARM32 NEON
+    ElemVT = EVT::getIntegerVT(*DAG.getContext(), 32);
+    MaskVT = EVT::getVectorVT(*DAG.getContext(), ElemVT, 2);
+  } else if (VT.isVector()) {
     ElemVT = EVT::getIntegerVT(*DAG.getContext(), VT.getScalarSizeInBits());
+    MaskVT = EVT::getVectorVT(*DAG.getContext(), ElemVT, VT.getVectorNumElements());
   } else if (VT.isFloatingPoint()) {
+    // scalar float types mask as integer scalar of same size
     ElemVT = EVT::getIntegerVT(*DAG.getContext(), VT.getSizeInBits());
-  } else {
-    ElemVT = VT;
+    MaskVT = ElemVT;
   }
 
-  EVT MaskVT = VT.isVector()
-    ? EVT::getVectorVT(*DAG.getContext(), ElemVT, VT.getVectorNumElements())
-    : ElemVT;
-
-  EVT CondVT = Cond.getValueType();
-  // If cond is scalar but VT is vector, splat cond to vector
-  if (VT.isVector() && !CondVT.isVector()) {
-    Cond = DAG.getSplatBuildVector(MaskVT, DL, Cond);
-    CondVT = MaskVT;
-  }
-
-  if (CondVT != MaskVT)
-    Cond = DAG.getZExtOrTrunc(Cond, DL, MaskVT);
-
-  Cond = DAG.getNode(ISD::AND, DL, MaskVT, Cond, DAG.getConstant(1, DL, MaskVT));
-
-  SDValue Zero = DAG.getConstant(0, DL, MaskVT);
-  SDValue Mask = DAG.getNode(ISD::SUB, DL, MaskVT, Zero, Cond);
+  Cond = SplatCtSelectCond(Cond, MaskVT, DL, DAG);
+  SDValue Mask = BuildCtSelectMask(Cond, MaskVT, DL, DAG);
 
   if (VT.isFloatingPoint()) {
     SelectTrue = DAG.getBitcast(MaskVT, SelectTrue);
@@ -5326,8 +5335,9 @@ SDValue ARMTargetLowering::LowerCTSELECT(SDValue Op, SelectionDAG &DAG) const {
   SDValue FalseMasked = DAG.getNode(ISD::AND, DL, MaskVT, SelectFalse, MaskNeg);
   SDValue ResultInt = DAG.getNode(ISD::OR, DL, MaskVT, TrueMasked, FalseMasked);
 
-  if (VT.isFloatingPoint())
+  if (VT.isFloatingPoint()) {
     return DAG.getBitcast(VT, ResultInt);
+  }
 
   return ResultInt;
 }
