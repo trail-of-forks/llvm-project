@@ -81,3 +81,43 @@ entry:
   %sel = call i64 @llvm.ct.select.i64(i1 %cond, i64 %a, i64 %b)
   ret i64 %sel
 }
+
+define float @ct_float(i1 %cond, float %a, float %b) {
+; CT-LABEL: ct_float:
+; CT: and
+; CT: and
+; CT: orr
+; CT-NOT: b{{eq|ne}}
+; CT-NOT: j
+; CT-NOT: {{mov|ldr}}
+; TEST-CT: and
+; TEST-CT: and
+; TEST-CT: orr
+; TEST-CT-NOT: b{{eq|ne}}
+; TEST-CT-NOT: j
+; TEST-CT-NOT: {{mov|ldr}}
+; DEFAULT: {{mov|ldr}}
+entry:
+  %sel = call float @llvm.ct.select.f32(i1 %cond, float %a, float %b)
+  ret float %sel
+}
+
+define <8 x i8> @ct_v8i8(i1 %cond, <8 x i8> %a, <8 x i8> %b) {
+; CT-LABEL: ct_v8i8:
+; CT: vand
+; CT: vneg
+; CT: vbsl
+; CT-NOT: b{{eq|ne}}
+; CT-NOT: j
+; CT-NOT: {{mov|ldr}}
+; TEST-CT: vand
+; TEST-CT: vneg
+; TEST-CT: vbsl
+; TEST-CT-NOT: b{{eq|ne}}
+; TEST-CT-NOT: j
+; TEST-CT-NOT: {{mov|ldr}}
+; DEFAULT: {{mov|ldr}}
+entry:
+  %sel = call <8 x i8> @llvm.ct.select.v8i8(i1 %cond, <8 x i8> %a, <8 x i8> %b)
+  ret <8 x i8> %sel
+}

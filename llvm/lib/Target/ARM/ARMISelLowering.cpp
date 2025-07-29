@@ -205,7 +205,7 @@ void ARMTargetLowering::addTypeForNEON(MVT VT, MVT PromotedLdStVT) {
   setOperationAction(ISD::SELECT,            VT, Expand);
   setOperationAction(ISD::SELECT_CC,         VT, Expand);
   setOperationAction(ISD::VSELECT,           VT, Expand);
-  setOperationAction(ISD::CTSELECT,          VT, Expand);
+  setOperationAction(ISD::CTSELECT,          VT, Custom);
   setOperationAction(ISD::SIGN_EXTEND_INREG, VT, Expand);
   if (VT.isInteger()) {
     setOperationAction(ISD::SHL, VT, Custom);
@@ -307,7 +307,7 @@ void ARMTargetLowering::addMVEVectorTypes(bool HasMVEFP) {
     setOperationAction(ISD::CTPOP, VT, Expand);
     setOperationAction(ISD::SELECT, VT, Expand);
     setOperationAction(ISD::SELECT_CC, VT, Expand);
-    setOperationAction(ISD::CTSELECT, VT, Expand);
+    setOperationAction(ISD::CTSELECT, VT, Custom);
 
     // Vector reductions
     setOperationAction(ISD::VECREDUCE_ADD, VT, Legal);
@@ -359,7 +359,7 @@ void ARMTargetLowering::addMVEVectorTypes(bool HasMVEFP) {
     setOperationAction(ISD::MSTORE, VT, Legal);
     setOperationAction(ISD::SELECT, VT, Expand);
     setOperationAction(ISD::SELECT_CC, VT, Expand);
-    setOperationAction(ISD::CTSELECT, VT, Expand);
+    setOperationAction(ISD::CTSELECT, VT, Custom);
 
     // Pre and Post inc are supported on loads and stores
     for (unsigned im = (unsigned)ISD::PRE_INC;
@@ -474,7 +474,7 @@ void ARMTargetLowering::addMVEVectorTypes(bool HasMVEFP) {
     setOperationAction(ISD::VSELECT, VT, Expand);
     setOperationAction(ISD::SELECT, VT, Expand);
     setOperationAction(ISD::SELECT_CC, VT, Expand);
-    setOperationAction(ISD::CTSELECT, VT, Expand);
+    setOperationAction(ISD::CTSELECT, VT, Custom);
 
     if (!HasMVEFP) {
       setOperationAction(ISD::SINT_TO_FP, VT, Expand);
@@ -1461,7 +1461,7 @@ ARMTargetLowering::ARMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::CTSELECT,  MVT::i32, Custom);
   setOperationAction(ISD::CTSELECT,  MVT::i64, Expand);
   setOperationAction(ISD::CTSELECT,  MVT::f32, Custom);
-  setOperationAction(ISD::CTSELECT,  MVT::f64, Expand);
+  setOperationAction(ISD::CTSELECT,  MVT::f64, Custom);
   if (Subtarget->hasFullFP16()) {
     setOperationAction(ISD::SETCC,     MVT::f16, Expand);
     setOperationAction(ISD::SELECT,    MVT::f16, Custom);
@@ -5277,59 +5277,59 @@ SDValue ARMTargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const {
 }
 
 SDValue ARMTargetLowering::LowerCTSELECT(SDValue Op, SelectionDAG &DAG) const {
-  const ARMSubtarget &Subtarget = DAG.getSubtarget<ARMSubtarget>();
-
   SDLoc DL(Op);
   SDValue Cond = Op.getOperand(0);
   SDValue SelectTrue = Op.getOperand(1);
   SDValue SelectFalse = Op.getOperand(2);
   EVT VT = Op.getValueType();
 
-  // Fall back to IR select for subtargets that are not ARMv7 for now.
-  // Turn on CTSELECT for other subtargets using -mattr=+ctselect.
+  const ARMSubtarget &Subtarget = DAG.getSubtarget<ARMSubtarget>();
   if (!Subtarget.hasCtSelect()) {
     return DAG.getNode(ISD::SELECT, DL, VT, Cond, SelectTrue, SelectFalse);
   }
 
-  // Emulate f32 select via use of integer registers.
-  if (VT == MVT::f32) {
-    EVT IVT;
-    if (VT.isVector()) {
-      IVT = EVT::getVectorVT(*DAG.getContext(),
-                            EVT::getIntegerVT(*DAG.getContext(), VT.getScalarSizeInBits()),
-                            VT.getVectorElementCount());
-    } else {
-      IVT = EVT::getIntegerVT(*DAG.getContext(), VT.getSizeInBits());
-    }
-
-    SDValue TrueInt = DAG.getBitcast(IVT, SelectTrue);
-    SDValue FalseInt = DAG.getBitcast(IVT, SelectFalse);
-
-    SDValue Zero = DAG.getConstant(0, DL, Cond.getValueType());
-    SDValue Mask = DAG.getSetCC(DL, IVT, Cond, Zero, ISD::SETNE);
-    SDValue MaskNeg = DAG.getSetCC(DL, IVT, Cond, Zero, ISD::SETEQ);
-
-    SDValue TrueMasked = DAG.getNode(ISD::AND, DL, IVT, TrueInt, Mask);
-    SDValue FalseMasked = DAG.getNode(ISD::AND, DL, IVT, FalseInt, MaskNeg);
-    SDValue OutInt = DAG.getNode(ISD::OR, DL, IVT, TrueMasked, FalseMasked);
-
-    // Bitcast back to the original FP type.
-    return DAG.getBitcast(VT, OutInt);
-
-  // todo: split the f64 in half and i32 each half, then f64 them back together.
-  } else if (VT == MVT::f64) {
-     return DAG.getNode(ISD::SELECT, DL, VT, Cond, SelectTrue, SelectFalse);
+  EVT ElemVT;
+  if (VT.isVector()) {
+    ElemVT = EVT::getIntegerVT(*DAG.getContext(), VT.getScalarSizeInBits());
+  } else if (VT.isFloatingPoint()) {
+    ElemVT = EVT::getIntegerVT(*DAG.getContext(), VT.getSizeInBits());
+  } else {
+    ElemVT = VT;
   }
 
-  SDValue Zero = DAG.getConstant(0, DL, Cond.getValueType());
-  SDValue Val = DAG.getSetCC(DL, VT, Cond, Zero, ISD::SETNE);
-  SDValue Mask = DAG.getNode(ISD::SUB, DL, VT, DAG.getConstant(0, DL, VT), Val);
-  SDValue MaskNeg = DAG.getNOT(DL, Mask, VT);
+  EVT MaskVT = VT.isVector()
+    ? EVT::getVectorVT(*DAG.getContext(), ElemVT, VT.getVectorNumElements())
+    : ElemVT;
 
-  SelectTrue = DAG.getNode(ISD::AND, DL, VT, SelectTrue, Mask);
-  SelectFalse = DAG.getNode(ISD::AND, DL, VT, SelectFalse, MaskNeg);
+  EVT CondVT = Cond.getValueType();
+  // If cond is scalar but VT is vector, splat cond to vector
+  if (VT.isVector() && !CondVT.isVector()) {
+    Cond = DAG.getSplatBuildVector(MaskVT, DL, Cond);
+    CondVT = MaskVT;
+  }
 
-  return DAG.getNode(ISD::OR, DL, VT, SelectTrue, SelectFalse);
+  if (CondVT != MaskVT)
+    Cond = DAG.getZExtOrTrunc(Cond, DL, MaskVT);
+
+  Cond = DAG.getNode(ISD::AND, DL, MaskVT, Cond, DAG.getConstant(1, DL, MaskVT));
+
+  SDValue Zero = DAG.getConstant(0, DL, MaskVT);
+  SDValue Mask = DAG.getNode(ISD::SUB, DL, MaskVT, Zero, Cond);
+
+  if (VT.isFloatingPoint()) {
+    SelectTrue = DAG.getBitcast(MaskVT, SelectTrue);
+    SelectFalse = DAG.getBitcast(MaskVT, SelectFalse);
+  }
+
+  SDValue MaskNeg = DAG.getNOT(DL, Mask, MaskVT);
+  SDValue TrueMasked = DAG.getNode(ISD::AND, DL, MaskVT, SelectTrue, Mask);
+  SDValue FalseMasked = DAG.getNode(ISD::AND, DL, MaskVT, SelectFalse, MaskNeg);
+  SDValue ResultInt = DAG.getNode(ISD::OR, DL, MaskVT, TrueMasked, FalseMasked);
+
+  if (VT.isFloatingPoint())
+    return DAG.getBitcast(VT, ResultInt);
+
+  return ResultInt;
 }
 
 static void checkVSELConstraints(ISD::CondCode CC, ARMCC::CondCodes &CondCode,
@@ -10848,15 +10848,14 @@ static SDValue ExpandCTSELECT(SDNode *N, SelectionDAG &DAG) {
   SDValue FalseValue = N->getOperand(2);
   SDLoc DL(N);
 
-  SDValue TrueValueHi, TrueValueLo;
-  std::tie(TrueValueHi, TrueValueLo) = DAG.SplitScalar(TrueValue, DL, MVT::i32, MVT::i32);
+  SDValue TrueLo, TrueHi, FalseLo, FalseHi;
+  std::tie(TrueLo, TrueHi) = 
+    DAG.SplitScalar(TrueValue, DL, MVT::i32, MVT::i32);
+  std::tie(FalseLo, FalseHi) = 
+    DAG.SplitScalar(FalseValue, DL, MVT::i32, MVT::i32);
 
-  SDValue FalseValueHi, FalseValueLo;
-  std::tie(FalseValueHi, FalseValueLo) = DAG.SplitScalar(FalseValue, DL, MVT::i32, MVT::i32);
-
-  SDValue ResHi = DAG.getNode(ISD::CTSELECT, DL, MVT::i32, {Cond, TrueValueHi, FalseValueHi});
-  SDValue ResLo = DAG.getNode(ISD::CTSELECT, DL, MVT::i32, {Cond, TrueValueLo, FalseValueLo});
-
+  SDValue ResLo = DAG.getNode(ISD::CTSELECT, DL, MVT::i32, {Cond, TrueLo, FalseLo});
+  SDValue ResHi = DAG.getNode(ISD::CTSELECT, DL, MVT::i32, {Cond, TrueHi, FalseHi});
   return DAG.getNode(ISD::BUILD_PAIR, DL, MVT::i64, ResLo, ResHi);
 }
 
