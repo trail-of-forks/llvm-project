@@ -1456,8 +1456,8 @@ ARMTargetLowering::ARMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SELECT_CC, MVT::i32, Custom);
   setOperationAction(ISD::SELECT_CC, MVT::f32, Custom);
   setOperationAction(ISD::SELECT_CC, MVT::f64, Custom);
-  setOperationAction(ISD::CTSELECT,  MVT::i8,  Custom);
-  setOperationAction(ISD::CTSELECT,  MVT::i16, Custom);
+  setOperationAction(ISD::CTSELECT,  MVT::i8,  Promote);
+  setOperationAction(ISD::CTSELECT,  MVT::i16, Promote);
   setOperationAction(ISD::CTSELECT,  MVT::i32, Custom);
   setOperationAction(ISD::CTSELECT,  MVT::i64, Expand);
   setOperationAction(ISD::CTSELECT,  MVT::f32, Custom);
