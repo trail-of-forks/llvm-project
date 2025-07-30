@@ -6684,8 +6684,64 @@ void SelectionDAGBuilder::visitIntrinsicCall(const CallInst &I,
       return;
     }
 
-    SDValue Result = DAG.getNode(ISD::SELECT, DL, VT, Cond, A, B);
-    setValue(&I, Result);
+    // Handle scalar types
+    if (VT.isVector()) {
+      SDValue Result = DAG.getNode(ISD::SELECT, DL, VT, Cond, A, B);
+      setValue(&I, Result);
+    } else {
+      // Implement chained bitwise operations to implement conditional select
+      SDValue Chain = DAG.getEntryNode();
+
+      // 1. Generate mask = -(!!condition)
+      SDValue Zero = DAG.getConstant(0, DL, VT);
+      SDValue Bool = DAG.getSetCC(DL, MVT::i1, DAG.getZExtOrTrunc(Cond, DL, VT),
+                                  Zero, ISD::SETNE);
+      SDValue ZExt = DAG.getZExtOrTrunc(Bool, DL, VT);
+      SDValue NegMask = DAG.getNode(ISD::SUB, DL, VT, Zero, ZExt);
+
+      // Chain point to freeze this value
+      Register TmpReg1 = FuncInfo.CreateReg(VT.getSimpleVT(), true);
+      Chain = DAG.getCopyToReg(Chain, DL, TmpReg1, NegMask);
+
+      // 2. Generate noise internally
+      SDValue Noise =
+          DAG.getNode(ISD::ROTR, DL, VT, DAG.getConstant(0x5A5A5A5A, DL, VT),
+                      DAG.getConstant(3, DL, VT));
+
+      Register TmpRegNoise = FuncInfo.CreateReg(VT.getSimpleVT());
+      Chain = DAG.getCopyToReg(Chain, DL, TmpRegNoise, Noise);
+
+      // 3. mask ^= noise (first)
+      SDValue Mask1 = DAG.getNode(ISD::XOR, DL, VT, NegMask, Noise);
+      Register TmpReg2 = FuncInfo.CreateReg(VT.getSimpleVT());
+      Chain = DAG.getCopyToReg(Chain, DL, TmpReg2, Mask1);
+
+      // 4. mask ^= noise (second)
+      SDValue Mask2 = DAG.getNode(ISD::XOR, DL, VT, Mask1, Noise);
+      Register TmpReg3 = FuncInfo.CreateReg(VT.getSimpleVT());
+      Chain = DAG.getCopyToReg(Chain, DL, TmpReg3, Mask2);
+
+      // 5. (mask & a)
+      SDValue AndA = DAG.getNode(ISD::AND, DL, VT, Mask2, A);
+      Register TmpReg4 = FuncInfo.CreateReg(VT.getSimpleVT());
+      Chain = DAG.getCopyToReg(Chain, DL, TmpReg4, AndA);
+
+      // 6. (~mask & b)
+      SDValue NotMask = DAG.getNode(
+          ISD::XOR, DL, VT, Mask2,
+          DAG.getConstant(APInt::getAllOnes(VT.getSizeInBits()), DL, VT));
+      SDValue AndB = DAG.getNode(ISD::AND, DL, VT, NotMask, B);
+      Register TmpReg5 = FuncInfo.CreateReg(VT.getSimpleVT());
+      Chain = DAG.getCopyToReg(Chain, DL, TmpReg5, AndB);
+
+      // 7. Combine OR
+      SDValue Or = DAG.getNode(ISD::OR, DL, VT, AndA, AndB);
+      Register TmpReg6 = FuncInfo.CreateReg(VT.getSimpleVT());
+      Chain = DAG.getCopyToReg(Chain, DL, TmpReg6, Or);
+
+      SDValue RetVal = DAG.getCopyFromReg(Chain, DL, TmpReg6, VT);
+      setValue(&I, RetVal);
+    }
     return;
   }
   case Intrinsic::call_preallocated_setup: {

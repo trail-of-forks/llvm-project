@@ -12075,8 +12075,8 @@ SDValue DAGCombiner::visitCTSELECT(SDNode *N) {
   SDLoc DL(N);
   SDNodeFlags Flags = N->getFlags();
 
-  if (SDValue V = foldBoolSelectToLogic<EmptyMatchContext>(N, DL, DAG))
-    return V;
+  // if (SDValue V = foldBoolSelectToLogic<EmptyMatchContext>(N, DL, DAG))
+  //   return V;
 
   // ctselect (not Cond), N1, N2 -> ctselect Cond, N2, N1
   if (SDValue F = extractBooleanFlip(N0, DAG, TLI, false)) {
