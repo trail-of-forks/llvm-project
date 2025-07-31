@@ -38203,36 +38203,6 @@ X86TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   case X86::CMOV_VK64:
     return EmitLoweredSelect(MI, BB);
 
-  case X86::CTSELECT_V2F64:
-  case X86::CTSELECT_V4F32:
-  case X86::CTSELECT_V8F16:
-  case X86::CTSELECT_V2I64:
-  case X86::CTSELECT_V4I32:
-  case X86::CTSELECT_V8I16:
-  case X86::CTSELECT_V16I8:
-  case X86::CTSELECT_V2F64X:
-  case X86::CTSELECT_V4F32X:
-  case X86::CTSELECT_V8F16X:
-  case X86::CTSELECT_V2I64X:
-  case X86::CTSELECT_V4I32X:
-  case X86::CTSELECT_V8I16X:
-  case X86::CTSELECT_V16I8X:
-  case X86::CTSELECT_V4I64:
-  case X86::CTSELECT_V8I32:
-  case X86::CTSELECT_V16I16:
-  case X86::CTSELECT_V32I8:
-  case X86::CTSELECT_V4F64:
-  case X86::CTSELECT_V8F32:
-  case X86::CTSELECT_V16F16:
-  case X86::CTSELECT_V8I64:
-  case X86::CTSELECT_V16I32:
-  case X86::CTSELECT_V32I16:
-  case X86::CTSELECT_V64I8:
-  case X86::CTSELECT_V8F64:
-  case X86::CTSELECT_V16F32:
-  case X86::CTSELECT_V32F16:
-    return EmitLoweredCtSelect(MI, BB);
-
   case X86::CTSELECT_GR16rr:
   case X86::CTSELECT_GR32rr:
     return EmitLoweredCtSelectNoCMOV(MI, BB);

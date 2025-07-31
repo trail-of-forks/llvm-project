@@ -683,7 +683,9 @@ private:
                       int &FrameIndex) const;
 
   /// Expand the CTSELECT pseudo-instructions.
-  bool expandCtSelect(unsigned Opcode, MachineInstrBuilder &MIB) const;
+  bool expandCtSelect(MachineInstrBuilder &MIB) const;
+
+  bool emitLoweredCtSelect(MachineInstrBuilder &MIB) const;
 
   /// Returns true iff the routine could find two commutable operands in the
   /// given machine instruction with 3 vector inputs.

@@ -137,7 +137,7 @@ let isCodeGenOnly = 1, hasSideEffects = 1, ForceDisassemble = 1 in {
   }
 }
 
-let Uses = [EFLAGS], usesCustomInserter = 1, isNotDuplicable = 1, isPseudo = 1, hasSideEffects = 1 in {
+let Uses = [EFLAGS], isNotDuplicable = 1, isPseudo = 1, hasSideEffects = 1 in {
   // 128-bit vector types
   let Predicates = [HasSSE1] in {
     def CTSELECT_V4F32  : PseudoI<(outs VR128:$dst), (ins VR128:$t, VR128:$f, i8imm:$cond),
