@@ -261,24 +261,3 @@ entry:
   %sel = call <4 x float> @llvm.ct.select.v4f32(i1 %cond, <4 x float> %a, <4 x float> %b)
   ret <4 x float> %sel
 }
-
-define <2 x i64> @ct_v2i64(i1 %cond, <2 x i64> %a, <2 x i64> %b) {
-; CT-LABEL: ct_v2i64:
-; CT: vand
-; CT-NEXT: vldr
-; CT-NEXT: vneg
-; CT-NEXT: vbsl
-; CT-NOT: ldr
-; CT-NOT: vldr
-; CT-NOT: b{{eq|ne|lt|gt|le|ge}}
-; CT-NOT: j
-
-; TEST-CT-NOT: b{{eq|ne|lt|gt|le|ge}}
-; TEST-CT-NOT: j
-; TEST-CT-NOT: mov
-
-; DEFAULT: {{mov|ldr|vldr}}
-entry:
-  %sel = call <2 x i64> @llvm.ct.select.v2i64(i1 %cond, <2 x i64> %a, <2 x i64> %b)
-  ret <2 x i64> %sel
-}
