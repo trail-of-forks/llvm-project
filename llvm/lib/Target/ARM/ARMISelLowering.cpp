@@ -419,6 +419,7 @@ void ARMTargetLowering::addMVEVectorTypes(bool HasMVEFP) {
     setOperationAction(ISD::EXTRACT_VECTOR_ELT, VT, Custom);
     setOperationAction(ISD::BUILD_VECTOR, VT, Custom);
     setOperationAction(ISD::VSELECT, VT, Legal);
+    setOperationAction(ISD::CTSELECT, VT, Custom);
     setOperationAction(ISD::VECTOR_SHUFFLE, VT, Custom);
   }
   setOperationAction(ISD::SCALAR_TO_VECTOR, MVT::v2f64, Legal);
@@ -5282,18 +5283,6 @@ SDValue BuildCtSelectMask(SDValue Cond, EVT MaskVT, SDLoc DL, SelectionDAG &DAG)
   return DAG.getNode(ISD::SUB, DL, MaskVT, Zero, Cond);  // mask = -cond
 }
 
-SDValue SplatCtSelectCond(SDValue Cond, EVT MaskVT, SDLoc DL, SelectionDAG &DAG) {
-  const EVT CondVT = Cond.getValueType();
-  
-  if (MaskVT.isVector() && !CondVT.isVector()) {
-    Cond = DAG.getSplatBuildVector(MaskVT, DL, Cond);
-  } else if (CondVT != MaskVT) {
-    Cond = DAG.getZExtOrTrunc(Cond, DL, MaskVT);
-  }
-
-  return Cond;
-}
-
 SDValue ARMTargetLowering::LowerCTSELECT(SDValue Op, SelectionDAG &DAG) const {
   SDLoc DL(Op);
   SDValue Cond = Op.getOperand(0);
@@ -5309,30 +5298,46 @@ SDValue ARMTargetLowering::LowerCTSELECT(SDValue Op, SelectionDAG &DAG) const {
   EVT ElemVT = VT;
   EVT MaskVT = VT;
 
-  if (VT == MVT::f64 && !VT.isVector()) {
-    // Use <2 x i32> vector mask for scalar f64 on ARM32 NEON
-    ElemVT = EVT::getIntegerVT(*DAG.getContext(), 32);
-    MaskVT = EVT::getVectorVT(*DAG.getContext(), ElemVT, 2);
-  } else if (VT.isVector()) {
+  if (!VT.isVector()) {
+    if (VT == MVT::f64) {
+       // Use <2 x i32> vector mask for scalar f64
+      ElemVT = EVT::getIntegerVT(*DAG.getContext(), 32);
+      MaskVT = EVT::getVectorVT(*DAG.getContext(), ElemVT, 2);
+    } else {
+      // float masks as i32
+      ElemVT = EVT::getIntegerVT(*DAG.getContext(), VT.getSizeInBits());
+      MaskVT = ElemVT;
+    }
+  } else {
     ElemVT = EVT::getIntegerVT(*DAG.getContext(), VT.getScalarSizeInBits());
     MaskVT = EVT::getVectorVT(*DAG.getContext(), ElemVT, VT.getVectorNumElements());
-  } else if (VT.isFloatingPoint()) {
-    // scalar float types mask as integer scalar of same size
-    ElemVT = EVT::getIntegerVT(*DAG.getContext(), VT.getSizeInBits());
-    MaskVT = ElemVT;
   }
 
-  Cond = SplatCtSelectCond(Cond, MaskVT, DL, DAG);
-  SDValue Mask = BuildCtSelectMask(Cond, MaskVT, DL, DAG);
+  const EVT CondVT = Cond.getValueType();
+  if (MaskVT.isVector() && !CondVT.isVector()) {
+    unsigned CondBits = CondVT.getSizeInBits();
+    unsigned ElemBits = ElemVT.getSizeInBits();
+
+    if (CondBits < ElemBits) {
+      Cond = DAG.getZExtOrTrunc(Cond, DL, ElemVT);
+    } 
+
+    Cond = DAG.getSplatBuildVector(MaskVT, DL, Cond);
+  } else if (CondVT != MaskVT) {
+    Cond = DAG.getZExtOrTrunc(Cond, DL, MaskVT);
+  }
 
   if (VT.isFloatingPoint()) {
     SelectTrue = DAG.getBitcast(MaskVT, SelectTrue);
     SelectFalse = DAG.getBitcast(MaskVT, SelectFalse);
   }
 
-  SDValue MaskNeg = DAG.getNOT(DL, Mask, MaskVT);
+  SDValue Mask = BuildCtSelectMask(Cond, MaskVT, DL, DAG);
   SDValue TrueMasked = DAG.getNode(ISD::AND, DL, MaskVT, SelectTrue, Mask);
+
+  SDValue MaskNeg = DAG.getNOT(DL, Mask, MaskVT);
   SDValue FalseMasked = DAG.getNode(ISD::AND, DL, MaskVT, SelectFalse, MaskNeg);
+  
   SDValue ResultInt = DAG.getNode(ISD::OR, DL, MaskVT, TrueMasked, FalseMasked);
 
   if (VT.isFloatingPoint()) {
