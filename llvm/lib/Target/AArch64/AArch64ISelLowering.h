@@ -679,6 +679,8 @@ public:
   MachineBasicBlock *EmitGetSMESaveSize(MachineInstr &MI,
                                         MachineBasicBlock *BB) const;
 
+  MachineBasicBlock *EmitCTSELECT(MachineInstr &MI, MachineBasicBlock *BB, unsigned Opcode) const;
+
   MachineBasicBlock *
   EmitInstrWithCustomInserter(MachineInstr &MI,
                               MachineBasicBlock *MBB) const override;

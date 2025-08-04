@@ -5362,21 +5362,40 @@ def F128CSEL : Pseudo<(outs FPR128:$Rd),
 // Constant-time conditional selection instructions
 //===----------------------------------------------------------------------===//
 
-def : Pat<(AArch64ctselect GPR32:$tval, GPR32:$fval, (i32 imm:$cc), NZCV),
-          (CSELWr GPR32:$tval, GPR32:$fval, (i32 imm:$cc))>;
-def : Pat<(AArch64ctselect GPR64:$tval, GPR64:$fval, (i32 imm:$cc), NZCV),
-          (CSELXr GPR64:$tval, GPR64:$fval, (i32 imm:$cc))>;
-
-let Predicates = [HasFullFP16] in {
-  def : Pat<(bf16 (AArch64ctselect (bf16 FPR16:$tval), (bf16 FPR16:$fval), (i32 imm:$cc), NZCV)),
-            (FCSELHrrr FPR16:$tval, FPR16:$fval, (i32 imm:$cc))>;
-  def : Pat<(f16 (AArch64ctselect (f16 FPR16:$tval), (f16 FPR16:$fval), (i32 imm:$cc), NZCV)),
-            (FCSELHrrr FPR16:$tval, FPR16:$fval, (i32 imm:$cc))>;
+let hasSideEffects = 1, isPseudo = 1, hasNoSchedulingInfo = 1, usesCustomInserter = 1 in {
+  def I32CTSELECT : Pseudo<(outs GPR32:$dst),
+                           (ins GPR32:$tval, GPR32:$fval, i32imm:$cc),
+                           [(set (i32 GPR32:$dst),
+                                 (AArch64ctselect GPR32:$tval, GPR32:$fval,
+                                                (i32 imm:$cc), NZCV))]>;
+  def I64CTSELECT : Pseudo<(outs GPR64:$dst),
+                           (ins GPR64:$tval, GPR64:$fval, i32imm:$cc),
+                           [(set (i64 GPR64:$dst),
+                                 (AArch64ctselect GPR64:$tval, GPR64:$fval,
+                                                (i32 imm:$cc), NZCV))]>;
+  let Predicates = [HasFullFP16] in {
+    def F16CTSELECT : Pseudo<(outs FPR16:$dst),
+                            (ins FPR16:$tval, FPR16:$fval, i32imm:$cc),
+                            [(set (f16 FPR16:$dst),
+                                  (AArch64ctselect (f16 FPR16:$tval), (f16 FPR16:$fval),
+                                                  (i32 imm:$cc), NZCV))]>;
+    def BF16CTSELECT : Pseudo<(outs FPR16:$dst),
+                            (ins FPR16:$tval, FPR16:$fval, i32imm:$cc),
+                            [(set (bf16 FPR16:$dst),
+                                  (AArch64ctselect (bf16 FPR16:$tval), (bf16 FPR16:$fval),
+                                                  (i32 imm:$cc), NZCV))]>;
+  }
+  def F32CTSELECT : Pseudo<(outs FPR32:$dst),
+                           (ins FPR32:$tval, FPR32:$fval, i32imm:$cc),
+                           [(set (f32 FPR32:$dst),
+                                 (AArch64ctselect FPR32:$tval, FPR32:$fval,
+                                                (i32 imm:$cc), NZCV))]>;
+  def F64CTSELECT : Pseudo<(outs FPR64:$dst),
+                           (ins FPR64:$tval, FPR64:$fval, i32imm:$cc),
+                           [(set (f64 FPR64:$dst),
+                                 (AArch64ctselect FPR64:$tval, FPR64:$fval,
+                                                (i32 imm:$cc), NZCV))]>;
 }
-def : Pat<(f32 (AArch64ctselect (f32 FPR32:$tval), (f32 FPR32:$fval), (i32 imm:$cc), NZCV)),
-          (FCSELSrrr FPR32:$tval, FPR32:$fval, (i32 imm:$cc))>;
-def : Pat<(f64 (AArch64ctselect (f64 FPR64:$tval), (f64 FPR64:$fval), (i32 imm:$cc), NZCV)),
-          (FCSELDrrr FPR64:$tval, FPR64:$fval, (i32 imm:$cc))>;
 
 //===----------------------------------------------------------------------===//
 // Instructions used for emitting unwind opcodes on ARM64 Windows.

@@ -3319,6 +3319,18 @@ AArch64TargetLowering::EmitGetSMESaveSize(MachineInstr &MI,
   return BB;
 }
 
+MachineBasicBlock *AArch64TargetLowering::EmitCTSELECT(MachineInstr &MI, MachineBasicBlock *MBB, unsigned Opcode) const {
+  const TargetInstrInfo *TII = Subtarget->getInstrInfo();
+  DebugLoc DL = MI.getDebugLoc();
+  MachineInstrBuilder Builder = BuildMI(*MBB, MI, DL, TII->get(Opcode));
+  for (unsigned Idx = 0; Idx < MI.getNumOperands(); ++Idx) {
+    Builder.add(MI.getOperand(Idx));
+  }
+  Builder->setFlag(MachineInstr::NoMerge);
+  MBB->remove_instr(&MI);
+  return MBB;
+}
+
 MachineBasicBlock *AArch64TargetLowering::EmitInstrWithCustomInserter(
     MachineInstr &MI, MachineBasicBlock *BB) const {
 
@@ -3359,6 +3371,18 @@ MachineBasicBlock *AArch64TargetLowering::EmitInstrWithCustomInserter(
     return EmitGetSMESaveSize(MI, BB);
   case AArch64::F128CSEL:
     return EmitF128CSEL(MI, BB);
+  case AArch64::I32CTSELECT:
+    return EmitCTSELECT(MI, BB, AArch64::CSELWr);
+  case AArch64::I64CTSELECT:
+    return EmitCTSELECT(MI, BB, AArch64::CSELXr);
+  case AArch64::BF16CTSELECT:
+    return EmitCTSELECT(MI, BB, AArch64::FCSELHrrr);
+  case AArch64::F16CTSELECT:
+    return EmitCTSELECT(MI, BB, AArch64::FCSELHrrr);
+  case AArch64::F32CTSELECT:
+    return EmitCTSELECT(MI, BB, AArch64::FCSELSrrr);
+  case AArch64::F64CTSELECT:
+    return EmitCTSELECT(MI, BB, AArch64::FCSELDrrr);
   case TargetOpcode::STATEPOINT:
     // STATEPOINT is a pseudo instruction which has no implicit defs/uses
     // while bl call instruction (where statepoint will be lowered at the end)
