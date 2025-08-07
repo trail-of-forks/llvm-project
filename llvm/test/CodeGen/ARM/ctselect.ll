@@ -2,6 +2,35 @@
 ; RUN: llc < %s -mtriple=armv6 -mattr=+ctselect -verify-machineinstrs | FileCheck --check-prefix=TEST-CT %s
 ; RUN: llc < %s -mtriple=armv6 -verify-machineinstrs | FileCheck --check-prefix=DEFAULT %s
 
+define i1 @ct_i1(i1 %cond, i1 %a, i1 %b) {
+; CT-LABEL: ct_i1:
+; CT: and
+; CT: sub
+; CT: rsb
+; CT-NEXT: and
+; CT-NEXT: and
+; CT-NEXT: orr
+; CT-NOT: b{{eq|ne|lt|gt|le|ge}}
+; CT-NOT: j
+; CT-NOT: mov
+; CT-NOT: ldr
+
+; TEST-CT: and
+; TEST-CT: sub
+; TEST-CT: rsb
+; TEST-CT-NEXT: and
+; TEST-CT-NEXT: and
+; TEST-CT-NEXT: orr
+; TEST-CT-NOT: b{{eq|ne|lt|gt|le|ge}}
+; TEST-CT-NOT: j
+; TEST-CT-NOT: mov
+
+; DEFAULT: {{mov|ldr}}
+entry:
+  %sel = call i1 @llvm.ct.select.i1(i1 %cond, i1 %a, i1 %b)
+  ret i1 %sel
+}
+
 define i8 @ct_int8(i1 %cond, i8 %a, i8 %b) {
 ; CT-LABEL: ct_int8:
 ; CT: and

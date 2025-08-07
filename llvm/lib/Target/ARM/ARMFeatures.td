@@ -763,7 +763,6 @@ def FeatureHardenSlsNoComdat : SubtargetFeature<"harden-sls-nocomdat",
 // Support for constant-time coding for branch timing mitigation.
 //===----------------------------------------------------------------------===//
 
-// Constant-time selection is ARMv7-A only, for the moment!
 def FeatureCtSelect : SubtargetFeature<"ctselect", "HasCtSelect", "true",
                                        "Enable feature to implement constant-time select">;
 
