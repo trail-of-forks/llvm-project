@@ -687,6 +687,9 @@ private:
 
   bool emitLoweredCtSelect(MachineInstrBuilder &MIB) const;
 
+
+public:
+
   /// Returns true iff the routine could find two commutable operands in the
   /// given machine instruction with 3 vector inputs.
   /// The 'SrcOpIdx1' and 'SrcOpIdx2' are INPUT and OUTPUT arguments. Their

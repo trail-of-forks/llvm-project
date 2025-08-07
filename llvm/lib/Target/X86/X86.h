@@ -20,6 +20,7 @@ namespace llvm {
 
 class FunctionPass;
 class InstructionSelector;
+class MachineFunctionPass;
 class PassRegistry;
 class X86RegisterBankInfo;
 class X86Subtarget;
@@ -170,6 +171,9 @@ FunctionPass *createX86SpeculativeLoadHardeningPass();
 FunctionPass *createX86SpeculativeExecutionSideEffectSuppression();
 FunctionPass *createX86ArgumentStackSlotPass();
 
+/// Return a Machine IR pass that analyzes constant-time select instructions.
+MachineFunctionPass *createX86CtSelectAnalysisPass();
+
 void initializeCompressEVEXPassPass(PassRegistry &);
 void initializeFPSPass(PassRegistry &);
 void initializeFixupBWInstPassPass(PassRegistry &);
@@ -204,6 +208,7 @@ void initializeX86ReturnThunksPass(PassRegistry &);
 void initializeX86SpeculativeExecutionSideEffectSuppressionPass(PassRegistry &);
 void initializeX86SpeculativeLoadHardeningPassPass(PassRegistry &);
 void initializeX86TileConfigPass(PassRegistry &);
+void initializeX86CtSelectAnalysisPass(PassRegistry &);
 
 namespace X86AS {
 enum : unsigned {

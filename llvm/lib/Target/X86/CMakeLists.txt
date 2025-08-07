@@ -29,6 +29,7 @@ set(sources
   X86CallFrameOptimization.cpp
   X86CallingConv.cpp
   X86CmovConversion.cpp
+  X86CtSelectAnalysis.cpp
   X86CodeGenPassBuilder.cpp
   X86DomainReassignment.cpp
   X86DiscriminateMemOps.cpp

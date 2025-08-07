@@ -498,6 +498,18 @@ struct CtSelectInstructions {
   bool UseBlendInstr;
 };
 
+// Forward declarations for helper functions
+static unsigned findAvailableScratchRegister(MachineBasicBlock &MBB, const CtSelectInstructions &Instructions,
+                                            const X86RegisterInfo *TRI, unsigned DstReg, 
+                                            unsigned TrueReg, unsigned FalseReg);
+static bool generateConditionMaskPhysical(MachineBasicBlock &MBB, MachineInstr *MI, const DebugLoc &DL,
+                                         const CtSelectInstructions &Instructions, unsigned ScratchReg,
+                                         const X86InstrInfo &TII);
+static void emitVectorSelectPhysical(MachineBasicBlock &MBB, MachineInstr *MI, const DebugLoc &DL,
+                                    const CtSelectInstructions &Instructions, unsigned DstReg,
+                                    unsigned TrueReg, unsigned FalseReg, unsigned MaskReg,
+                                    const X86InstrInfo &TII);
+
 static CtSelectInstructions
 getCtSelectInstructions(unsigned Opcode, const X86Subtarget &Subtarget) {
   CtSelectInstructions Instructions = {};
@@ -725,106 +737,130 @@ static Register broadcastScalarMask(
   return MaskReg;
 }
 
+
+/// Find an available physical scratch register
+static unsigned findAvailableScratchRegister(MachineBasicBlock &MBB, 
+                                            const CtSelectInstructions &Instructions,
+                                            const X86RegisterInfo *TRI, 
+                                            unsigned DstReg, unsigned TrueReg, unsigned FalseReg) {
+  // Determine scratch register candidates based on vector width
+  unsigned ScratchCandidates[16];
+  unsigned NumCandidates = 0;
+
+  if (Instructions.Use256) {
+    for (unsigned R : {X86::YMM2, X86::YMM3, X86::YMM4, X86::YMM5, X86::YMM6, X86::YMM7})
+      ScratchCandidates[NumCandidates++] = R;
+  } else if (Instructions.UseVEX || true) { // Assume SSE2+ support
+    for (unsigned R : {X86::XMM2, X86::XMM3, X86::XMM4, X86::XMM5, X86::XMM6, X86::XMM7})
+      ScratchCandidates[NumCandidates++] = R;
+  } else {
+    // 512-bit case
+    for (unsigned R : {X86::ZMM2, X86::ZMM3, X86::ZMM4, X86::ZMM5, X86::ZMM6, X86::ZMM7})
+      ScratchCandidates[NumCandidates++] = R;
+  }
+
+  // Check for live registers to find a free scratch register
+  LivePhysRegs LiveRegs(*TRI);
+  LiveRegs.addLiveOuts(MBB);
+  LiveRegs.addLiveIns(MBB);
+
+  for (unsigned i = 0; i < NumCandidates; i++) {
+    unsigned R = ScratchCandidates[i];
+    if (!LiveRegs.contains(R) && R != DstReg && R != TrueReg && R != FalseReg) {
+      return R;
+    }
+  }
+  
+  return 0; // No available register found
+}
+
+/// Generate a condition mask from the current condition flags using physical registers
+static bool generateConditionMaskPhysical(MachineBasicBlock &MBB,
+                                         MachineInstr *MI,
+                                         const DebugLoc &DL,
+                                         const CtSelectInstructions &Instructions,
+                                         unsigned ScratchReg,
+                                         const X86InstrInfo &TII) {
+  // Test the condition bit (assumes condition in AL)
+  BuildMI(MBB, MI, DL, TII.get(X86::TEST8ri))
+      .addReg(X86::AL, RegState::Kill)
+      .addImm(1)
+      .addReg(X86::EFLAGS, RegState::ImplicitDefine);
+
+  // Set byte based on condition (E = equal to zero)
+  BuildMI(MBB, MI, DL, TII.get(X86::SETCCr), X86::AL)
+      .addImm(X86::COND_E);
+
+  // Zero-extend to 32-bit
+  BuildMI(MBB, MI, DL, TII.get(X86::MOVZX32rr8), X86::EAX)
+      .addReg(X86::AL);
+
+  // Negate to create all-ones or all-zeros mask
+  BuildMI(MBB, MI, DL, TII.get(X86::NEG32r), X86::EAX)
+      .addReg(X86::EAX);
+
+  // Move to vector register
+  BuildMI(MBB, MI, DL, TII.get(Instructions.IntMoveOpc), ScratchReg)
+      .addReg(X86::EAX);
+
+  return true;
+}
+
+/// Emit the vector select logic using physical registers: dst = (mask & true_val) | (~mask & false_val)
+static void emitVectorSelectPhysical(MachineBasicBlock &MBB,
+                                    MachineInstr *MI,
+                                    const DebugLoc &DL,
+                                    const CtSelectInstructions &Instructions,
+                                    unsigned DstReg,
+                                    unsigned TrueReg,
+                                    unsigned FalseReg,
+                                    unsigned MaskReg,
+                                    const X86InstrInfo &TII) {
+  // mask & true_val -> DstReg
+  BuildMI(MBB, MI, DL, TII.get(Instructions.PAndOpc), DstReg)
+      .addReg(MaskReg)
+      .addReg(TrueReg);
+
+  // ~mask & false_val -> MaskReg (reuse mask register)
+  BuildMI(MBB, MI, DL, TII.get(Instructions.PAndnOpc), MaskReg)
+      .addReg(MaskReg)
+      .addReg(FalseReg);
+
+  // OR the results: DstReg | MaskReg -> DstReg
+  BuildMI(MBB, MI, DL, TII.get(Instructions.POrOpc), DstReg)
+      .addReg(DstReg)
+      .addReg(MaskReg);
+}
+
 bool X86InstrInfo::emitLoweredCtSelect(MachineInstrBuilder &MIB) const {
   MachineInstr *MI = MIB.getInstr();
-  MachineBasicBlock &ThisMBB = *MI->getParent();
+  MachineBasicBlock &MBB = *MI->getParent();
+  MachineFunction &MF = *MBB.getParent();
   DebugLoc DL = MI->getDebugLoc();
-  const MIMetadata MIMD(*MI);
+  const X86Subtarget &Subtarget = MF.getSubtarget<X86Subtarget>();
+  const X86RegisterInfo *TRI = &getRegisterInfo();
 
-  const TargetInstrInfo *TII = Subtarget.getInstrInfo();
-  MachineRegisterInfo &MRI = ThisMBB.getParent()->getRegInfo();
+  // Extract operands: dest = ctselect true_val, false_val, cond
+  unsigned DstReg = MI->getOperand(0).getReg();
+  unsigned TrueReg = MI->getOperand(1).getReg();
+  unsigned FalseReg = MI->getOperand(2).getReg();
 
-  // Extract operands: dst = ctselect src1, src2, cond
-  Register DstReg = MI->getOperand(0).getReg();
-  Register TrueReg = MI->getOperand(1).getReg();
-  Register FalseReg = MI->getOperand(2).getReg();
-  // Note: CondCode from MI.getOperand(3).getImm() is not used - we hardcode
-  // COND_E for sete
-
-  // Get the vector type to determine the appropriate instructions
-  const TargetRegisterClass *RC = MRI.getRegClass(DstReg);
+  // Get instruction configuration for this opcode
   unsigned Opcode = MI->getOpcode();
+  CtSelectInstructions Instructions = getCtSelectInstructions(Opcode, Subtarget);
 
-  // Get instruction opcodes for this operation
-  CtSelectInstructions Instructions =
-      getCtSelectInstructions(Opcode, Subtarget);
+  // Find a free physical scratch register
+  unsigned ScratchReg = findAvailableScratchRegister(MBB, Instructions, TRI, DstReg, TrueReg, FalseReg);
+  if (!ScratchReg)
+    return false;
 
-  // Step 1: Create scalar mask using SETCC + NEG
-  Register ScalarMaskReg = createScalarMask(&ThisMBB, *MI, MIMD, TII, MRI);
+  // Generate mask from condition (assumes condition in AL)
+  if (!generateConditionMaskPhysical(MBB, MI, DL, Instructions, ScratchReg, *this))
+    return false;
 
-  // Step 2: Move scalar mask to vector register and broadcast
-  Register MaskReg =
-      broadcastScalarMask(&ThisMBB, *MI, MIMD, TII, MRI, ScalarMaskReg, RC,
-                          Instructions, Subtarget);
+  // Emit the select operation: dst = (mask & true_val) | (~mask & false_val)
+  emitVectorSelectPhysical(MBB, MI, DL, Instructions, DstReg, TrueReg, FalseReg, ScratchReg, *this);
 
-  // Step 3: Implement blend operation
-  if (Instructions.UseBlendInstr && Subtarget.hasSSE41() &&
-      !Instructions.Use256) {
-    // Use dedicated blend instructions for SSE4.1+
-    unsigned BlendOpc;
-    switch (Opcode) {
-    case X86::CTSELECT_V4F32:
-      BlendOpc = X86::BLENDVPSrr0;
-      break;
-    case X86::CTSELECT_V2F64:
-      BlendOpc = X86::BLENDVPDrr0;
-      break;
-    default:
-      BlendOpc = X86::PBLENDVBrr0;
-      break;
-    }
-
-    // BLENDV uses XMM0 as implicit mask register
-    BuildMI(ThisMBB, MI, MIMD, TII->get(X86::MOVAPSrr), X86::XMM0)
-        .addReg(MaskReg)
-        .setMIFlag(MachineInstr::MIFlag::NoMerge);
-
-    BuildMI(ThisMBB, MI, MIMD, TII->get(BlendOpc), DstReg)
-        .addReg(FalseReg)
-        .addReg(TrueReg)
-        .setMIFlag(MachineInstr::MIFlag::NoMerge);
-  } else {
-    // Use traditional AND/ANDN/OR approach
-    Register TempReg = MRI.createVirtualRegister(RC);
-    Register MaskCopyReg = MRI.createVirtualRegister(RC);
-    Register VecAndReg = MRI.createVirtualRegister(RC);
-    Register VecAndnReg = MRI.createVirtualRegister(RC);
-    Register FinalResultReg = MRI.createVirtualRegister(RC);
-
-    // Copy mask for first operation
-    BuildMI(ThisMBB, MI, MIMD, TII->get(Instructions.MoveOpc), TempReg)
-        .addReg(MaskReg)
-        .setMIFlag(MachineInstr::MIFlag::NoMerge);
-
-    // mask & true_val
-    BuildMI(ThisMBB, MI, MIMD, TII->get(Instructions.PAndOpc), VecAndReg)
-        .addReg(TempReg)
-        .addReg(TrueReg)
-        .setMIFlag(MachineInstr::MIFlag::NoMerge);
-
-    // Copy mask for second operation
-    BuildMI(ThisMBB, MI, MIMD, TII->get(Instructions.MoveOpc), MaskCopyReg)
-        .addReg(MaskReg)
-        .setMIFlag(MachineInstr::MIFlag::NoMerge);
-
-    // ~mask & false_val
-    BuildMI(ThisMBB, MI, MIMD, TII->get(Instructions.PAndnOpc), VecAndnReg)
-        .addReg(MaskCopyReg)
-        .addReg(FalseReg)
-        .setMIFlag(MachineInstr::MIFlag::NoMerge);
-
-    // Combine results
-    BuildMI(ThisMBB, MI, MIMD, TII->get(Instructions.POrOpc), FinalResultReg)
-        .addReg(VecAndReg)
-        .addReg(VecAndnReg)
-        .setMIFlag(MachineInstr::MIFlag::NoMerge);
-
-    // Move final result to destination
-    BuildMI(ThisMBB, MI, MIMD, TII->get(Instructions.MoveOpc), DstReg)
-        .addReg(FinalResultReg)
-        .setMIFlag(MachineInstr::MIFlag::NoMerge);
-  }
-  // Remove the original instruction
   MI->eraseFromParent();
   return true;
 }
