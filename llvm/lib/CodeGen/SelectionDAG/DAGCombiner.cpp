@@ -12075,9 +12075,6 @@ SDValue DAGCombiner::visitCTSELECT(SDNode *N) {
   SDLoc DL(N);
   SDNodeFlags Flags = N->getFlags();
 
-  // if (SDValue V = DAG.simplifySelect(N0, N1, N2))
-  //   return V;
-
   if (SDValue V = foldBoolSelectToLogic<EmptyMatchContext>(N, DL, DAG))
     return V;
 
@@ -12087,9 +12084,6 @@ SDValue DAGCombiner::visitCTSELECT(SDNode *N) {
     SelectOp->setFlags(Flags);
     return SelectOp;
   }
-
-  // if (SDValue V = foldSelectOfConstants(N))
-  //   return V;
 
   if (VT0 == MVT::i1) {
     // The code in this block deals with the following 2 equivalences:
@@ -12171,9 +12165,6 @@ SDValue DAGCombiner::visitCTSELECT(SDNode *N) {
       }
     }
   }
-
-  if (SDValue R = combineSelectAsExtAnd(N0, N1, N2, DL, DAG))
-    return R;
 
   return SDValue();
 }
