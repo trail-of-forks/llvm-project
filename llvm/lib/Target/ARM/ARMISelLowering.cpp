@@ -10863,10 +10863,9 @@ static SDValue ExpandCTSELECT(SDNode *N, SelectionDAG &DAG) {
   SDValue FalseValue = N->getOperand(2);
   SDLoc DL(N);
 
-  SDValue TrueLo, TrueHi, FalseLo, FalseHi;
-  std::tie(TrueLo, TrueHi) = 
+  auto [TrueLo, TrueHi] = 
     DAG.SplitScalar(TrueValue, DL, MVT::i32, MVT::i32);
-  std::tie(FalseLo, FalseHi) = 
+  auto [FalseLo, FalseHi] = 
     DAG.SplitScalar(FalseValue, DL, MVT::i32, MVT::i32);
 
   SDValue ResLo = DAG.getNode(ISD::CTSELECT, DL, MVT::i32, {Cond, TrueLo, FalseLo});
