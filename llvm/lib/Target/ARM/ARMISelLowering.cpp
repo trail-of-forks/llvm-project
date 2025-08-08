@@ -5288,13 +5288,8 @@ SDValue ARMTargetLowering::LowerCTSELECT(SDValue Op, SelectionDAG &DAG) const {
   SDValue Cond = Op.getOperand(0);
   SDValue SelectTrue = Op.getOperand(1);
   SDValue SelectFalse = Op.getOperand(2);
+  
   EVT VT = Op.getValueType();
-
-  const ARMSubtarget &Subtarget = DAG.getSubtarget<ARMSubtarget>();
-  if (!Subtarget.hasCtSelect()) {
-    return DAG.getNode(ISD::SELECT, DL, VT, Cond, SelectTrue, SelectFalse);
-  }
-
   EVT ElemVT = VT;
   EVT MaskVT = VT;
 

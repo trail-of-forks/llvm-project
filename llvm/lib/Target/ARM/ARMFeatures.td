@@ -760,13 +760,6 @@ def FeatureHardenSlsNoComdat : SubtargetFeature<"harden-sls-nocomdat",
   "Generate thunk code for SLS mitigation in the normal text section">;
 
 //===----------------------------------------------------------------------===//
-// Support for constant-time coding for branch timing mitigation.
-//===----------------------------------------------------------------------===//
-
-def FeatureCtSelect : SubtargetFeature<"ctselect", "HasCtSelect", "true",
-                                       "Enable feature to implement constant-time select">;
-
-//===----------------------------------------------------------------------===//
 // Endianness of instruction encodings in memory.
 //
 // In the current Arm architecture, this is usually little-endian regardless of
