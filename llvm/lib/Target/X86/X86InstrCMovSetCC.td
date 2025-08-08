@@ -115,6 +115,8 @@ let Uses = [EFLAGS], isNotDuplicable = 1, isPseudo = 1 in {
   multiclass CTSELECT<X86TypeInfo t> {
     // register-only
     let isCommutable = 0, SchedRW = [WriteCMOV] in {
+      // Make disassembly/print show ctselect semantics:
+      let AsmString = "ctselect\\t$dst, $src1, $src2, $cond" in
       def rr : PseudoI<(outs t.RegClass:$dst),
                        (ins t.RegClass:$src1, t.RegClass:$src2, i8imm:$cond),
                        [(set t.RegClass:$dst, (X86ctselect t.RegClass:$src1, t.RegClass:$src2, timm:$cond, EFLAGS))]>;
@@ -122,6 +124,8 @@ let Uses = [EFLAGS], isNotDuplicable = 1, isPseudo = 1 in {
 
     // register-memory
     let SchedRW = [WriteCMOV.Folded, WriteCMOV.ReadAfterFold] in {
+      // Same readable asm string for reg/mem variant
+      let AsmString = "ctselect\\t$dst, $src1, $src2, $cond" in
       def rm : PseudoI<(outs t.RegClass:$dst),
                        (ins t.RegClass:$src1, t.MemOperand:$src2, i8imm:$cond),
                        [(set t.RegClass:$dst, (X86ctselect t.RegClass:$src1, (t.LoadNode addr:$src2), timm:$cond, EFLAGS))]>;
@@ -139,7 +143,7 @@ let isCodeGenOnly = 1, hasSideEffects = 1, ForceDisassemble = 1 in {
 
 let Uses = [EFLAGS], isNotDuplicable = 1, isPseudo = 1, hasSideEffects = 1 in {
   // 128-bit vector types
-  let Predicates = [HasSSE1] in {
+  let usesCustomInserter = 1, Predicates = [HasSSE1] in {
     def CTSELECT_V4F32  : PseudoI<(outs VR128:$dst), (ins VR128:$t, VR128:$f, i8imm:$cond),
                                   [(set VR128:$dst, (v4f32 (X86ctselect VR128:$t, VR128:$f, timm:$cond, EFLAGS)))]>,
                                   Sched<[]>;
@@ -164,7 +168,7 @@ let Uses = [EFLAGS], isNotDuplicable = 1, isPseudo = 1, hasSideEffects = 1 in {
   }
 
   // 128-bit vector types (AVX versions)
-  let Predicates = [HasAVX] in {
+  let usesCustomInserter = 1, Predicates = [HasAVX] in {
     def CTSELECT_V4F32X : PseudoI<(outs VR128X:$dst), (ins VR128X:$t, VR128X:$f, i8imm:$cond),
                                   [(set VR128X:$dst, (v4f32 (X86ctselect VR128X:$t, VR128X:$f, timm:$cond, EFLAGS)))]>,
                                   Sched<[]>;
@@ -189,7 +193,7 @@ let Uses = [EFLAGS], isNotDuplicable = 1, isPseudo = 1, hasSideEffects = 1 in {
   }
 
   // 256-bit vector types
-  let Predicates = [HasAVX] in {
+  let usesCustomInserter = 1, Predicates = [HasAVX] in {
     def CTSELECT_V8F32  : PseudoI<(outs VR256:$dst), (ins VR256:$t, VR256:$f, i8imm:$cond),
                                   [(set VR256:$dst, (v8f32 (X86ctselect VR256:$t, VR256:$f, timm:$cond, EFLAGS)))]>,
                                   Sched<[]>;
@@ -214,7 +218,7 @@ let Uses = [EFLAGS], isNotDuplicable = 1, isPseudo = 1, hasSideEffects = 1 in {
   }
 
   // 512-bit vector types
-  let Predicates = [HasAVX512] in {
+  let usesCustomInserter = 1, Predicates = [HasAVX512] in {
     def CTSELECT_V16F32 : PseudoI<(outs VR512:$dst), (ins VR512:$t, VR512:$f, i8imm:$cond),
                                   [(set VR512:$dst, (v16f32 (X86ctselect VR512:$t, VR512:$f, timm:$cond, EFLAGS)))]>,
                                   Sched<[WriteCMOV]>;

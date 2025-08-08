@@ -27,6 +27,7 @@
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineInstr.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
+#include "llvm/CodeGen/MachineInstrBundle.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/CodeGen/MachineOperand.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
@@ -785,23 +786,28 @@ static bool generateConditionMaskPhysical(MachineBasicBlock &MBB,
   BuildMI(MBB, MI, DL, TII.get(X86::TEST8ri))
       .addReg(X86::AL, RegState::Kill)
       .addImm(1)
-      .addReg(X86::EFLAGS, RegState::ImplicitDefine);
+      .addReg(X86::EFLAGS, RegState::ImplicitDefine)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
 
   // Set byte based on condition (E = equal to zero)
   BuildMI(MBB, MI, DL, TII.get(X86::SETCCr), X86::AL)
-      .addImm(X86::COND_E);
+      .addImm(X86::COND_E)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
 
   // Zero-extend to 32-bit
   BuildMI(MBB, MI, DL, TII.get(X86::MOVZX32rr8), X86::EAX)
-      .addReg(X86::AL);
+      .addReg(X86::AL)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
 
   // Negate to create all-ones or all-zeros mask
   BuildMI(MBB, MI, DL, TII.get(X86::NEG32r), X86::EAX)
-      .addReg(X86::EAX);
+      .addReg(X86::EAX)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
 
   // Move to vector register
   BuildMI(MBB, MI, DL, TII.get(Instructions.IntMoveOpc), ScratchReg)
-      .addReg(X86::EAX);
+      .addReg(X86::EAX)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
 
   return true;
 }
@@ -819,17 +825,20 @@ static void emitVectorSelectPhysical(MachineBasicBlock &MBB,
   // mask & true_val -> DstReg
   BuildMI(MBB, MI, DL, TII.get(Instructions.PAndOpc), DstReg)
       .addReg(MaskReg)
-      .addReg(TrueReg);
+      .addReg(TrueReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
 
   // ~mask & false_val -> MaskReg (reuse mask register)
   BuildMI(MBB, MI, DL, TII.get(Instructions.PAndnOpc), MaskReg)
       .addReg(MaskReg)
-      .addReg(FalseReg);
+      .addReg(FalseReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
 
   // OR the results: DstReg | MaskReg -> DstReg
   BuildMI(MBB, MI, DL, TII.get(Instructions.POrOpc), DstReg)
       .addReg(DstReg)
-      .addReg(MaskReg);
+      .addReg(MaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
 }
 
 bool X86InstrInfo::emitLoweredCtSelect(MachineInstrBuilder &MIB) const {
@@ -841,9 +850,9 @@ bool X86InstrInfo::emitLoweredCtSelect(MachineInstrBuilder &MIB) const {
   const X86RegisterInfo *TRI = &getRegisterInfo();
 
   // Extract operands: dest = ctselect true_val, false_val, cond
-  unsigned DstReg = MI->getOperand(0).getReg();
-  unsigned TrueReg = MI->getOperand(1).getReg();
-  unsigned FalseReg = MI->getOperand(2).getReg();
+  Register DstReg = MI->getOperand(0).getReg();
+  Register TrueReg = MI->getOperand(1).getReg();
+  Register FalseReg = MI->getOperand(2).getReg();
 
   // Get instruction configuration for this opcode
   unsigned Opcode = MI->getOpcode();
@@ -854,12 +863,24 @@ bool X86InstrInfo::emitLoweredCtSelect(MachineInstrBuilder &MIB) const {
   if (!ScratchReg)
     return false;
 
+  // Mark the starting point for bundling
+  auto BundleStart = MI->getIterator();
+
   // Generate mask from condition (assumes condition in AL)
   if (!generateConditionMaskPhysical(MBB, MI, DL, Instructions, ScratchReg, *this))
     return false;
 
   // Emit the select operation: dst = (mask & true_val) | (~mask & false_val)
   emitVectorSelectPhysical(MBB, MI, DL, Instructions, DstReg, TrueReg, FalseReg, ScratchReg, *this);
+
+  // Create bundle to ensure atomic execution for constant-time guarantees
+  auto BundleEnd = MI->getIterator();
+  if (BundleStart != BundleEnd) {
+    // Only bundle if we have multiple instructions
+    MachineInstr *BundleHeader =
+        BuildMI(MBB, BundleStart, DL, get(TargetOpcode::BUNDLE));
+    finalizeBundle(MBB, BundleHeader->getIterator(), std::next(BundleEnd));
+  }
 
   MI->eraseFromParent();
   return true;
@@ -6837,8 +6858,7 @@ bool X86InstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   case X86::CTSELECT64rm:
   case X86::CTSELECT32rm:
   case X86::CTSELECT16rm:
-    expandCtSelect(MIB);
-    break;
+    return expandCtSelect(MIB);
 
   case X86::CTSELECT_V2F64:
   case X86::CTSELECT_V4F32:
@@ -6847,29 +6867,7 @@ bool X86InstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   case X86::CTSELECT_V4I32:
   case X86::CTSELECT_V8I16:
   case X86::CTSELECT_V16I8:
-  case X86::CTSELECT_V2F64X:
-  case X86::CTSELECT_V4F32X:
-  case X86::CTSELECT_V8F16X:
-  case X86::CTSELECT_V2I64X:
-  case X86::CTSELECT_V4I32X:
-  case X86::CTSELECT_V8I16X:
-  case X86::CTSELECT_V16I8X:
-  case X86::CTSELECT_V4I64:
-  case X86::CTSELECT_V8I32:
-  case X86::CTSELECT_V16I16:
-  case X86::CTSELECT_V32I8:
-  case X86::CTSELECT_V4F64:
-  case X86::CTSELECT_V8F32:
-  case X86::CTSELECT_V16F16:
-  case X86::CTSELECT_V8I64:
-  case X86::CTSELECT_V16I32:
-  case X86::CTSELECT_V32I16:
-  case X86::CTSELECT_V64I8:
-  case X86::CTSELECT_V8F64:
-  case X86::CTSELECT_V16F32:
-  case X86::CTSELECT_V32F16:
-    emitLoweredCtSelect(MIB);
-    break;
+    return emitLoweredCtSelect(MIB);
   }
   return false;
 }

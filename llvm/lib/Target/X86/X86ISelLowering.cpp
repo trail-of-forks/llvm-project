@@ -33,6 +33,7 @@
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
+#include "llvm/CodeGen/MachineInstrBundle.h"
 #include "llvm/CodeGen/MachineJumpTableInfo.h"
 #include "llvm/CodeGen/MachineLoopInfo.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
@@ -36563,6 +36564,9 @@ X86TargetLowering::EmitLoweredCtSelect(MachineInstr &MI,
   Register MaskReg = broadcastScalarMask(
       ThisMBB, MI, MIMD, TII, MRI, ScalarMaskReg, RC, Instructions, Subtarget);
 
+  // Begin instruction bundle region for constant-time select
+  auto BundleStart = MI.getIterator();
+
   // Step 3: Implement blend operation
   if (Instructions.UseBlendInstr && Subtarget.hasSSE41() &&
       !Instructions.Use256) {
@@ -36630,8 +36634,18 @@ X86TargetLowering::EmitLoweredCtSelect(MachineInstr &MI,
         .addReg(FinalResultReg)
         .setMIFlag(MachineInstr::MIFlag::NoMerge);
   }
+
   // Remove the original instruction
   MI.eraseFromParent();
+
+  // Finalize the bundle (bundle all newly inserted instructions)
+  auto BundleEnd = MI.getIterator();
+  if (BundleStart != BundleEnd) {
+    MachineInstr *BundleHeader =
+        BuildMI(*ThisMBB, BundleStart, DL, TII->get(TargetOpcode::BUNDLE));
+    finalizeBundle(*ThisMBB, BundleHeader->getIterator(), std::next(BundleEnd));
+  }
+
   return ThisMBB;
 }
 
@@ -36682,6 +36696,9 @@ X86TargetLowering::EmitLoweredCtSelectNoCMOV(MachineInstr &MI,
   } else {
     llvm_unreachable("Unsupported register class for conditional select");
   }
+
+  // Begin instruction bundle region
+  auto BundleStart = MI.getIterator();
 
   // Step 1: Create condition value using SETCC instruction
   Register CondByteReg = MRI.createVirtualRegister(&X86::GR8RegClass);
@@ -36740,6 +36757,15 @@ X86TargetLowering::EmitLoweredCtSelectNoCMOV(MachineInstr &MI,
 
   // Remove the original instruction
   MI.eraseFromParent();
+
+  // Finalize the bundle over the SETCC/extend/neg/xor/and/or sequence
+  auto BundleEnd = MI.getIterator();
+  if (BundleStart != BundleEnd) {
+    MachineInstr *BundleHeader =
+        BuildMI(*ThisMBB, BundleStart, DL, TII->get(TargetOpcode::BUNDLE));
+    finalizeBundle(*ThisMBB, BundleHeader->getIterator(), std::next(BundleEnd));
+  }
+
   return ThisMBB;
 }
 
