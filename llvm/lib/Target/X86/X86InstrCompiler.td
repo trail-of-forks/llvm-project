@@ -688,43 +688,69 @@ def : Pat<(v8f64 (X86cmov VR512:$t, VR512:$f, timm:$cond, EFLAGS)),
           (CMOV_VR512 VR512:$t, VR512:$f, timm:$cond)>;
 
 // CTSELECT
-
+// CTSELECT
 let Uses = [EFLAGS], isNotDuplicable = 1, isPseudo = 1 in {
-  multiclass CTSELECT_NOCMOV<RegisterClass RC, ValueType VT> {
+  multiclass CTSELECT_LEGACY<RegisterClass RC, ValueType VT> {
     let hasNoSchedulingInfo = 1 in {
-      def rr  : PseudoI<(outs RC:$dst),
-                        (ins RC:$src1, RC:$src2, i8imm:$cond),
-                        [(set RC:$dst, ( VT (X86ctselect RC:$src1, RC:$src2, timm:$cond, EFLAGS)))]>;
-
-      // TODO: Do we need register-memory variant??
-      //def rm : PseudoI<(outs t.RegClass:$dst),
-      //                 (ins t.RegClass:$src1, t.MemOperand:$src2, i8imm:$cond),
-      //                 [(set t.RegClass:$dst, (X86ctselect t.RegClass:$src1, (t.LoadNode addr:$src2), timm:$cond, EFLAGS))]>;
+      def rr : PseudoI<
+        (outs RC:$dst, RC:$tmpv, GR32:$tmpg),
+        (ins  RC:$src1, RC:$src2, i8imm:$cond),
+        // Provide a pattern to constrain types: dst has type VT,
+        // and the node has the same VT, with EFLAGS as chain/flag dep.
+        [(set RC:$dst, (VT (X86ctselect RC:$src1, RC:$src2, timm:$cond, EFLAGS))),
+          // Mention the temps so TableGen knows their types:
+          (set RC:$tmpv, (VT (undef))),
+          (set GR32:$tmpg, (i32 (undef)))
+        ]
+      >;
     }
   }
 }
 
 let usesCustomInserter = 1,
-    isCodeGenOnly = 1,
-    hasSideEffects = 1,
+    isCodeGenOnly    = 1,
+    hasSideEffects   = 1,
     ForceDisassemble = 1,
-    Constraints = "$dst = $src1" in {
+    Constraints      = "$dst = $src1" in {
+
   let Predicates = [NoCMOV] in {
-    defm CTSELECT_GR16 : CTSELECT_NOCMOV<GR16, i16>;
-    defm CTSELECT_GR32 : CTSELECT_NOCMOV<GR32, i32>;
+    defm CTSELECT_GR16 : CTSELECT_LEGACY<GR16, i16>;
+    defm CTSELECT_GR32 : CTSELECT_LEGACY<GR32, i32>;
   }
 
   let Predicates = [FPStackf32] in
-    defm CTSELECT_FP32 : CTSELECT_NOCMOV<RFP32, f32>;
+    defm CTSELECT_FP32 : CTSELECT_LEGACY<RFP32, f32>;
 
   let Predicates = [FPStackf64] in
-    defm CTSELECT_FP64 : CTSELECT_NOCMOV<RFP64, f64>;
+    defm CTSELECT_FP64 : CTSELECT_LEGACY<RFP64, f64>;
 
-  defm CTSELECT_FP80 : CTSELECT_NOCMOV<RFP80, f80>;
+  defm CTSELECT_FP80 : CTSELECT_LEGACY<RFP80, f80>;
 
   let Predicates = [HasMMX] in
-    defm CTSELECT_VR64   : CTSELECT_NOCMOV<VR64, x86mmx>;
+    defm CTSELECT_VR64 : CTSELECT_LEGACY<VR64, x86mmx>;
 }
+
+// ----- Patterns must name the concrete defs (…rr) -----
+let Predicates = [NoCMOV] in {
+  def : Pat<(i16 (X86ctselect GR16:$t, GR16:$f, (i8 timm:$cc), EFLAGS)),
+            (CTSELECT_GR16rr GR16:$t, GR16:$f, timm:$cc)>;
+
+  def : Pat<(i32 (X86ctselect GR32:$t, GR32:$f, (i8 timm:$cc), EFLAGS)),
+            (CTSELECT_GR32rr GR32:$t, GR32:$f, timm:$cc)>;
+}
+
+let Predicates = [FPStackf32] in
+  def : Pat<(f32 (X86ctselect RFP32:$t, RFP32:$f, (i8 timm:$cc), EFLAGS)),
+            (CTSELECT_FP32rr RFP32:$t, RFP32:$f, timm:$cc)>;
+
+let Predicates = [FPStackf64] in
+  def : Pat<(f64 (X86ctselect RFP64:$t, RFP64:$f, (i8 timm:$cc), EFLAGS)),
+            (CTSELECT_FP64rr RFP64:$t, RFP64:$f, timm:$cc)>;
+
+let Predicates = [HasMMX] in
+  def : Pat<(x86mmx (X86ctselect VR64:$t, VR64:$f, (i8 timm:$cc), EFLAGS)),
+            (CTSELECT_VR64rr VR64:$t, VR64:$f, timm:$cc)>;
+
 
 //===----------------------------------------------------------------------===//
 // Normal-Instructions-With-Lock-Prefix Pseudo Instructions
