@@ -5145,6 +5145,74 @@ def : ARMV6T2Pat<(ARMcmov i32:$false, imm:$src, imm:$cc, CPSR),
                  (MOVCCi32imm $false, imm:$src, imm:$cc, CPSR)>;
 
 //===----------------------------------------------------------------------===//
+// Constant-time selection pseudoinstructions. 
+// We use a machine pass to lower these pseudos as applicable by subtarget,
+// in order to avoid backend optimizations that could invalidate constant-time
+// guarantees to the source programmer by node merging or other operations that
+// would result in machine code that does not run in constant time.
+let isNotDuplicable = 1, isPseudo = 1, hasNoSchedulingInfo = 1, usesCustomInserter = 1 in {
+  multiclass CTSELECT<RegisterClass DataRC, ValueType VT, list<Register> FlagsReg> {
+    let Uses = FlagsReg, isCommutable = 0, hasSideEffects = 1 in {
+
+      // register–register
+      def rr : ARMPseudoInst<
+        (outs DataRC:$dst),
+        (ins  DataRC:$src1, DataRC:$src2, i8imm:$cond),
+        4,
+        NoItinerary,
+        [(set DataRC:$dst, ( VT (ARMctselect DataRC:$src1, DataRC:$src2, timm:$cond, !cast<Register>(!head(FlagsReg))) ))]
+      >;
+
+      // register–memory
+      // def rm : ARMPseudoInst<
+      //   (outs DataRC:$dst),
+      //   (ins  DataRC:$src1, MemOp:$src2, i8imm:$cond),
+      //   4,
+      //   NoItinerary,
+      //   [(set DataRC:$dst, (ARMctselect DataRC:$src1, (load MemOp:$src2), timm:$cond, FlagsReg))]
+      // >;
+    }
+  }
+}
+
+defm CTSELECTi32  : CTSELECT<GPR, i32, [CPSR]>;
+defm CTSELECTi64  : CTSELECT<GPRPair, i64, [CPSR]>;
+
+let Predicates = [HasFullFP16] in {
+  defm CTSELECTf16 : CTSELECT<SPR, f16, [FPSCR]>;
+}
+
+let Predicates = [HasVFP2] in {
+  defm CTSELECTf32   : CTSELECT<SPR, f32, [FPSCR]>;
+}
+
+let Predicates = [HasDPVFP] in {
+  defm CTSELECTf64 : CTSELECT<DPR, f64, [FPSCR]>;
+}
+
+let Predicates = [HasNEON] in {
+  // single elt vectors
+  defm CTSELECTv1i8  : CTSELECT<DPR, v1i8, [FPSCR]>;
+  defm CTSELECTv1i16  : CTSELECT<DPR, v1i16, [FPSCR]>;
+  defm CTSELECTv1i32  : CTSELECT<DPR, v1i32, [FPSCR]>;
+
+  // 64 bit vectors: v8i8, v4i16, v2i32, v1i64, v2f32, v4f16
+  defm CTSELECTv8i8  : CTSELECT<DPR, v8i8, [FPSCR]>;
+  defm CTSELECTv4i16 : CTSELECT<DPR, v4i16, [FPSCR]>;
+  defm CTSELECTv2i32 : CTSELECT<DPR, v2i32, [FPSCR]>;
+  defm CTSELECTv1i64 : CTSELECT<DPR, v1i64, [FPSCR]>;
+  defm CTSELECTv2f32 : CTSELECT<DPR, v2f32, [FPSCR]>;
+  let Predicates = [HasFullFP16] in {
+    defm CTSELECTv4f16 : CTSELECT<QPR, v4f16, [FPSCR]>;
+  }
+
+  // 128 bit vectors: v16i8, v8i16, v4i32, v2i64, v4f32, v8f16, v2f64
+  defm CTSELECTv2i64 : CTSELECT<QPR, v2i64, [FPSCR]>;
+
+  defm CTSELECTv4f32 : CTSELECT<QPR, v4f32, [FPSCR]>;
+}
+
+//===----------------------------------------------------------------------===//
 // Atomic operations intrinsics
 //
 
