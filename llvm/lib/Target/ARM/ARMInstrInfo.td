@@ -5191,25 +5191,28 @@ let Predicates = [HasDPVFP] in {
 }
 
 let Predicates = [HasNEON] in {
-  // single elt vectors
   defm CTSELECTv1i8  : CTSELECT<DPR, v1i8, [FPSCR]>;
   defm CTSELECTv1i16  : CTSELECT<DPR, v1i16, [FPSCR]>;
   defm CTSELECTv1i32  : CTSELECT<DPR, v1i32, [FPSCR]>;
 
-  // 64 bit vectors: v8i8, v4i16, v2i32, v1i64, v2f32, v4f16
   defm CTSELECTv8i8  : CTSELECT<DPR, v8i8, [FPSCR]>;
   defm CTSELECTv4i16 : CTSELECT<DPR, v4i16, [FPSCR]>;
   defm CTSELECTv2i32 : CTSELECT<DPR, v2i32, [FPSCR]>;
   defm CTSELECTv1i64 : CTSELECT<DPR, v1i64, [FPSCR]>;
   defm CTSELECTv2f32 : CTSELECT<DPR, v2f32, [FPSCR]>;
+  
   let Predicates = [HasFullFP16] in {
     defm CTSELECTv4f16 : CTSELECT<QPR, v4f16, [FPSCR]>;
   }
 
-  // 128 bit vectors: v16i8, v8i16, v4i32, v2i64, v4f32, v8f16, v2f64
+  defm CTSELECTv16i8 : CTSELECT<QPR, v16i8, [FPSCR]>;
+  defm CTSELECTv8i16 : CTSELECT<QPR, v8i16, [FPSCR]>;
+  defm CTSELECTv4i32 : CTSELECT<QPR, v4i32, [FPSCR]>;
   defm CTSELECTv2i64 : CTSELECT<QPR, v2i64, [FPSCR]>;
-
   defm CTSELECTv4f32 : CTSELECT<QPR, v4f32, [FPSCR]>;
+  defm CTSELECTv8f16 : CTSELECT<QPR, v8f16, [FPSCR]>;
+  defm CTSELECTv2f64 : CTSELECT<QPR, v2f64, [FPSCR]>;
+
 }
 
 //===----------------------------------------------------------------------===//
