@@ -5342,15 +5342,6 @@ let Uses = [CPSR],
       >;
     }
   }
-
-  //   def CTSELECTv16i8 : CTSELECT<QPR, v16i8>;
-  //   def CTSELECTv8i16 : CTSELECT<QPR, v8i16>;
-  //   def CTSELECTv4i32 : CTSELECT<QPR, v4i32>;
-  //   def CTSELECTv2i64 : CTSELECT<QPR, v2i64>;
-  //   def CTSELECTv4f32 : CTSELECT<QPR, v4f32>;
-  //   def CTSELECTv8f16 : CTSELECT<QPR, v8f16>;
-  //   def CTSELECTv2f64 : CTSELECT<QPR, v2f64>;
-  // }
 }
 
 //===----------------------------------------------------------------------===//
