@@ -5150,69 +5150,83 @@ def : ARMV6T2Pat<(ARMcmov i32:$false, imm:$src, imm:$cc, CPSR),
 // in order to avoid backend optimizations that could invalidate constant-time
 // guarantees to the source programmer by node merging or other operations that
 // would result in machine code that does not run in constant time.
-let isNotDuplicable = 1, isPseudo = 1, hasNoSchedulingInfo = 1, usesCustomInserter = 1 in {
-  multiclass CTSELECT<RegisterClass DataRC, ValueType VT, list<Register> FlagsReg> {
-    let Uses = FlagsReg, isCommutable = 0, hasSideEffects = 1 in {
+let Uses = [CPSR], 
+    isNotDuplicable = 1, 
+    isPseudo = 1, 
+    usesCustomInserter = 1, 
+    hasNoSchedulingInfo = 1 in {  
+  // todo thumb & thumb2
 
-      // register–register
-      def rr : ARMPseudoInst<
-        (outs DataRC:$dst),
-        (ins  DataRC:$src1, DataRC:$src2, i8imm:$cond),
+  def CTSELECTi32  : ARMPseudoInst<
+        (outs GPR:$dst),
+        (ins  GPR:$src1, GPR:$src2, i32imm:$cond),
         4,
         NoItinerary,
-        [(set DataRC:$dst, ( VT (ARMctselect DataRC:$src1, DataRC:$src2, timm:$cond, !cast<Register>(!head(FlagsReg))) ))]
+        [(set GPR:$dst, (ARMctselect GPR:$src1, GPR:$src2, imm:$cond, CPSR))]
       >;
 
-      // register–memory
-      // def rm : ARMPseudoInst<
-      //   (outs DataRC:$dst),
-      //   (ins  DataRC:$src1, MemOp:$src2, i8imm:$cond),
-      //   4,
-      //   NoItinerary,
-      //   [(set DataRC:$dst, (ARMctselect DataRC:$src1, (load MemOp:$src2), timm:$cond, FlagsReg))]
-      // >;
-    }
-  }
-}
+  def CTSELECTi64  : ARMPseudoInst<
+        (outs GPRPair:$dst),
+        (ins  GPRPair:$src1, GPRPair:$src2, i32imm:$cond),
+        4,
+        NoItinerary,
+        [(set GPRPair:$dst, (ARMctselect GPRPair:$src1, GPRPair:$src2, imm:$cond, CPSR))]
+      >;
 
-defm CTSELECTi32  : CTSELECT<GPR, i32, [CPSR]>;
-defm CTSELECTi64  : CTSELECT<GPRPair, i64, [CPSR]>;
-
-let Predicates = [HasFullFP16] in {
-  defm CTSELECTf16 : CTSELECT<SPR, f16, [FPSCR]>;
-}
-
-let Predicates = [HasVFP2] in {
-  defm CTSELECTf32   : CTSELECT<SPR, f32, [FPSCR]>;
-}
-
-let Predicates = [HasDPVFP] in {
-  defm CTSELECTf64 : CTSELECT<DPR, f64, [FPSCR]>;
-}
-
-let Predicates = [HasNEON] in {
-  defm CTSELECTv1i8  : CTSELECT<DPR, v1i8, [FPSCR]>;
-  defm CTSELECTv1i16  : CTSELECT<DPR, v1i16, [FPSCR]>;
-  defm CTSELECTv1i32  : CTSELECT<DPR, v1i32, [FPSCR]>;
-
-  defm CTSELECTv8i8  : CTSELECT<DPR, v8i8, [FPSCR]>;
-  defm CTSELECTv4i16 : CTSELECT<DPR, v4i16, [FPSCR]>;
-  defm CTSELECTv2i32 : CTSELECT<DPR, v2i32, [FPSCR]>;
-  defm CTSELECTv1i64 : CTSELECT<DPR, v1i64, [FPSCR]>;
-  defm CTSELECTv2f32 : CTSELECT<DPR, v2f32, [FPSCR]>;
-  
   let Predicates = [HasFullFP16] in {
-    defm CTSELECTv4f16 : CTSELECT<QPR, v4f16, [FPSCR]>;
+    def CTSELECTf16  : ARMPseudoInst<
+        (outs SPR:$dst),
+        (ins  SPR:$src1, SPR:$src2, i32imm:$cond),
+        4,
+        NoItinerary,
+        [(set SPR:$dst, (ARMctselect SPR:$src1, SPR:$src2, imm:$cond, CPSR))]
+      >;
   }
 
-  defm CTSELECTv16i8 : CTSELECT<QPR, v16i8, [FPSCR]>;
-  defm CTSELECTv8i16 : CTSELECT<QPR, v8i16, [FPSCR]>;
-  defm CTSELECTv4i32 : CTSELECT<QPR, v4i32, [FPSCR]>;
-  defm CTSELECTv2i64 : CTSELECT<QPR, v2i64, [FPSCR]>;
-  defm CTSELECTv4f32 : CTSELECT<QPR, v4f32, [FPSCR]>;
-  defm CTSELECTv8f16 : CTSELECT<QPR, v8f16, [FPSCR]>;
-  defm CTSELECTv2f64 : CTSELECT<QPR, v2f64, [FPSCR]>;
+  let Predicates = [HasVFP2] in {
+    def CTSELECTf32  : ARMPseudoInst<
+        (outs SPR:$dst),
+        (ins  SPR:$src1, SPR:$src2, i32imm:$cond),
+        4,
+        NoItinerary,
+        [(set SPR:$dst, (ARMctselect SPR:$src1, SPR:$src2, imm:$cond, CPSR))]
+      >;
+  }
 
+  let Predicates = [HasDPVFP] in {
+    // todo: what should i32imm be for this one? for the next?
+    // def CTSELECTf64  : ARMPseudoInst<
+    //     (outs DPR:$dst),
+    //     (ins  DPR:$src1, DPR:$src2, i32imm:$cond),
+    //     4,
+    //     NoItinerary,
+    //     [(set DPR:$dst, (ARMctselect DPR:$src1, DPR:$src2, imm:$cond, CPSR))]
+    //   >;
+  }
+
+  // let Predicates = [HasNEON] in {
+  //   def CTSELECTv1i8  : CTSELECT<DPR, v1i8>;
+  //   def CTSELECTv1i16  : CTSELECT<DPR, v1i16>;
+  //   def CTSELECTv1i32  : CTSELECT<DPR, v1i32>;
+
+  //   def CTSELECTv8i8  : CTSELECT<DPR, v8i8>;
+  //   def CTSELECTv4i16 : CTSELECT<DPR, v4i16>;
+  //   def CTSELECTv2i32 : CTSELECT<DPR, v2i32>;
+  //   def CTSELECTv1i64 : CTSELECT<DPR, v1i64>;
+  //   def CTSELECTv2f32 : CTSELECT<DPR, v2f32>;
+    
+  //   let Predicates = [HasFullFP16] in {
+  //     def CTSELECTv4f16 : CTSELECT<DPR, v4f16>;
+  //   }
+
+  //   def CTSELECTv16i8 : CTSELECT<QPR, v16i8>;
+  //   def CTSELECTv8i16 : CTSELECT<QPR, v8i16>;
+  //   def CTSELECTv4i32 : CTSELECT<QPR, v4i32>;
+  //   def CTSELECTv2i64 : CTSELECT<QPR, v2i64>;
+  //   def CTSELECTv4f32 : CTSELECT<QPR, v4f32>;
+  //   def CTSELECTv8f16 : CTSELECT<QPR, v8f16>;
+  //   def CTSELECTv2f64 : CTSELECT<QPR, v2f64>;
+  // }
 }
 
 //===----------------------------------------------------------------------===//
