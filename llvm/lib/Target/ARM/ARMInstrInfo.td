@@ -5211,16 +5211,68 @@ let Uses = [CPSR],
       >;
   }
 
-  // let Predicates = [HasNEON] in {
-  //   def CTSELECTv1i8  : CTSELECT<DPR, v1i8>;
-  //   def CTSELECTv1i16  : CTSELECT<DPR, v1i16>;
-  //   def CTSELECTv1i32  : CTSELECT<DPR, v1i32>;
+  let Predicates = [HasNEON] in {
+    // DPR
+    def CTSELECTvector  : ARMPseudoInst<
+        (outs DPR:$dst),
+        (ins  DPR:$src1, DPR:$src2, i32imm:$cond),
+        4,
+        NoItinerary,
+        [(set (v8i8 DPR:$dst), (ARMctselect (v8i8 DPR:$src1), (v8i8 DPR:$src2), timm:$cond, CPSR))]
+      >;
 
-  //   def CTSELECTv8i8  : CTSELECT<DPR, v8i8>;
-  //   def CTSELECTv4i16 : CTSELECT<DPR, v4i16>;
-  //   def CTSELECTv2i32 : CTSELECT<DPR, v2i32>;
-  //   def CTSELECTv1i64 : CTSELECT<DPR, v1i64>;
-  //   def CTSELECTv2f32 : CTSELECT<DPR, v2f32>;
+    def CTSELECTv4i16  : ARMPseudoInst<
+        (outs DPR:$dst),
+        (ins  DPR:$src1, DPR:$src2, i32imm:$cond),
+        4,
+        NoItinerary,
+        [(set (v4i16 DPR:$dst), (ARMctselect (v4i16 DPR:$src1), (v4i16 DPR:$src2), timm:$cond, CPSR))]
+      >;
+
+    def CTSELECTv2i32  : ARMPseudoInst<
+        (outs DPR:$dst),
+        (ins  DPR:$src1, DPR:$src2, i32imm:$cond),
+        4,
+        NoItinerary,
+        [(set (v2i32 DPR:$dst), (ARMctselect (v2i32 DPR:$src1), (v2i32 DPR:$src2), timm:$cond, CPSR))]
+      >;
+
+    def CTSELECTv1i64  : ARMPseudoInst<
+        (outs DPR:$dst),
+        (ins  DPR:$src1, DPR:$src2, i32imm:$cond),
+        4,
+        NoItinerary,
+        [(set (v1i64 DPR:$dst), (ARMctselect (v1i64 DPR:$src1), (v1i64 DPR:$src2), timm:$cond, CPSR))]
+      >;
+
+    def CTSELECTv2f32  : ARMPseudoInst<
+        (outs DPR:$dst),
+        (ins  DPR:$src1, DPR:$src2, i32imm:$cond),
+        4,
+        NoItinerary,
+        [(set (v2f32 DPR:$dst), (ARMctselect (v2f32 DPR:$src1), (v2f32 DPR:$src2), timm:$cond, CPSR))]
+      >;
+
+    let Predicates = [HasFullFP16] in {
+      def CTSELECTv4f16  : ARMPseudoInst<
+          (outs DPR:$dst),
+          (ins  DPR:$src1, DPR:$src2, i32imm:$cond),
+          4,
+          NoItinerary,
+          [(set (v4f16 DPR:$dst), (ARMctselect (v4f16 DPR:$src1), (v4f16 DPR:$src2), timm:$cond, CPSR))]
+        >;
+    }
+
+    let Predicates = [HasBF16] in {
+      def CTSELECTv4bf16  : ARMPseudoInst<
+          (outs DPR:$dst),
+          (ins  DPR:$src1, DPR:$src2, i32imm:$cond),
+          4,
+          NoItinerary,
+          [(set (v4bf16 DPR:$dst), (ARMctselect (v4bf16 DPR:$src1), (v4bf16 DPR:$src2), timm:$cond, CPSR))]
+        >;
+    }
+  }
     
   //   let Predicates = [HasFullFP16] in {
   //     def CTSELECTv4f16 : CTSELECT<DPR, v4f16>;
