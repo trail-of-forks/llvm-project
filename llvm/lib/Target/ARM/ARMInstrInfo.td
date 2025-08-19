@@ -5181,7 +5181,9 @@ let Uses = [CPSR],
         NoItinerary,
         [(set (f16 HPR:$dst), (ARMctselect (f16 HPR:$src1), (f16 HPR:$src2), timm:$cond, CPSR))]
       >;
+  }
 
+  let Predicates = [HasBF16] in {
     def CTSELECTbf16  : ARMPseudoInst<
         (outs HPR:$dst),
         (ins  HPR:$src1, HPR:$src2, i32imm:$cond),
@@ -5191,15 +5193,13 @@ let Uses = [CPSR],
       >;
   }
 
-  let Predicates = [HasVFP2] in {
-    def CTSELECTf32  : ARMPseudoInst<
-        (outs SPR:$dst),
-        (ins  SPR:$src1, SPR:$src2, i32imm:$cond),
-        4,
-        NoItinerary,
-        [(set SPR:$dst, (ARMctselect SPR:$src1, SPR:$src2, timm:$cond, CPSR))]
-      >;
-  }
+  def CTSELECTf32  : ARMPseudoInst<
+      (outs SPR:$dst),
+      (ins  SPR:$src1, SPR:$src2, i32imm:$cond),
+      4,
+      NoItinerary,
+      [(set SPR:$dst, (ARMctselect SPR:$src1, SPR:$src2, timm:$cond, CPSR))]
+    >;
 
   let Predicates = [HasDPVFP] in {
     def CTSELECTf64  : ARMPseudoInst<
@@ -5207,7 +5207,7 @@ let Uses = [CPSR],
         (ins  DPR:$src1, DPR:$src2, i32imm:$cond),
         4,
         NoItinerary,
-        [(set DPR:$dst, (ARMctselect DPR:$src1, DPR:$src2, timm:$cond, CPSR))]
+        [(set (f64 DPR:$dst), (ARMctselect (f64 DPR:$src1), (f64 DPR:$src2), timm:$cond, CPSR))]
       >;
   }
 
