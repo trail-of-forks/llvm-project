@@ -5341,8 +5341,6 @@ let Uses = [CPSR],
         [(set (v8bf16 QPR:$dst), (ARMctselect (v8bf16 QPR:$src1), (v8bf16 QPR:$src2), timm:$cond, CPSR))]
       >;
     }
-
-    // MQPR
   }
 
   //   def CTSELECTv16i8 : CTSELECT<QPR, v16i8>;
