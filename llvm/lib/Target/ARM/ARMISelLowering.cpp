@@ -10852,21 +10852,21 @@ static void ReplaceLongIntrinsic(SDNode *N, SmallVectorImpl<SDValue> &Results,
                                 LongMul.getValue(0), LongMul.getValue(1)));
 }
 
-static SDValue ExpandCTSELECT(SDNode *N, SelectionDAG &DAG) {
-  SDValue Cond = N->getOperand(0);
-  SDValue TrueValue = N->getOperand(1);
-  SDValue FalseValue = N->getOperand(2);
-  SDLoc DL(N);
+// static SDValue ExpandCTSELECT(SDNode *N, SelectionDAG &DAG) {
+//   SDValue Cond = N->getOperand(0);
+//   SDValue TrueValue = N->getOperand(1);
+//   SDValue FalseValue = N->getOperand(2);
+//   SDLoc DL(N);
 
-  auto [TrueLo, TrueHi] = 
-    DAG.SplitScalar(TrueValue, DL, MVT::i32, MVT::i32);
-  auto [FalseLo, FalseHi] = 
-    DAG.SplitScalar(FalseValue, DL, MVT::i32, MVT::i32);
+//   auto [TrueLo, TrueHi] = 
+//     DAG.SplitScalar(TrueValue, DL, MVT::i32, MVT::i32);
+//   auto [FalseLo, FalseHi] = 
+//     DAG.SplitScalar(FalseValue, DL, MVT::i32, MVT::i32);
 
-  SDValue ResLo = DAG.getNode(ISD::CTSELECT, DL, MVT::i32, {Cond, TrueLo, FalseLo});
-  SDValue ResHi = DAG.getNode(ISD::CTSELECT, DL, MVT::i32, {Cond, TrueHi, FalseHi});
-  return DAG.getNode(ISD::BUILD_PAIR, DL, MVT::i64, ResLo, ResHi);
-}
+//   SDValue ResLo = DAG.getNode(ISD::CTSELECT, DL, MVT::i32, {Cond, TrueLo, FalseLo});
+//   SDValue ResHi = DAG.getNode(ISD::CTSELECT, DL, MVT::i32, {Cond, TrueHi, FalseHi});
+//   return DAG.getNode(ISD::BUILD_PAIR, DL, MVT::i64, ResLo, ResHi);
+// }
 
 /// ReplaceNodeResults - Replace the results of node with an illegal result
 /// type with new values built out of custom code.
@@ -10932,9 +10932,9 @@ void ARMTargetLowering::ReplaceNodeResults(SDNode *N,
   case ISD::FP_TO_UINT_SAT:
     Res = LowerFP_TO_INT_SAT(SDValue(N, 0), DAG, Subtarget);
     break;
-  case ISD::CTSELECT:
-    Res = ExpandCTSELECT(N, DAG);
-    break;
+  // case ISD::CTSELECT:
+  //   Res = ExpandCTSELECT(N, DAG);
+  //   break;
   }
   if (Res.getNode())
     Results.push_back(Res);
