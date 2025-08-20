@@ -1460,14 +1460,19 @@ ARMTargetLowering::ARMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::CTSELECT,  MVT::i8,  Promote);
   setOperationAction(ISD::CTSELECT,  MVT::i16, Promote);
   setOperationAction(ISD::CTSELECT,  MVT::i32, Custom);
-  setOperationAction(ISD::CTSELECT,  MVT::i64, Expand);
+  setOperationAction(ISD::CTSELECT,  MVT::i64, Custom);
   setOperationAction(ISD::CTSELECT,  MVT::f32, Custom);
   setOperationAction(ISD::CTSELECT,  MVT::f64, Custom);
+  
   if (Subtarget->hasFullFP16()) {
     setOperationAction(ISD::SETCC,     MVT::f16, Expand);
     setOperationAction(ISD::SELECT,    MVT::f16, Custom);
     setOperationAction(ISD::SELECT_CC, MVT::f16, Custom);
     setOperationAction(ISD::CTSELECT,  MVT::f16, Custom);
+    setOperationAction(ISD::CTSELECT, MVT::bf16, Custom);
+  } else {
+    setOperationAction(ISD::CTSELECT,  MVT::f16, Promote);
+    setOperationAction(ISD::CTSELECT, MVT::bf16, Promote);
   }
 
   setOperationAction(ISD::SETCCCARRY, MVT::i32, Custom);
@@ -10852,22 +10857,6 @@ static void ReplaceLongIntrinsic(SDNode *N, SmallVectorImpl<SDValue> &Results,
                                 LongMul.getValue(0), LongMul.getValue(1)));
 }
 
-// static SDValue ExpandCTSELECT(SDNode *N, SelectionDAG &DAG) {
-//   SDValue Cond = N->getOperand(0);
-//   SDValue TrueValue = N->getOperand(1);
-//   SDValue FalseValue = N->getOperand(2);
-//   SDLoc DL(N);
-
-//   auto [TrueLo, TrueHi] = 
-//     DAG.SplitScalar(TrueValue, DL, MVT::i32, MVT::i32);
-//   auto [FalseLo, FalseHi] = 
-//     DAG.SplitScalar(FalseValue, DL, MVT::i32, MVT::i32);
-
-//   SDValue ResLo = DAG.getNode(ISD::CTSELECT, DL, MVT::i32, {Cond, TrueLo, FalseLo});
-//   SDValue ResHi = DAG.getNode(ISD::CTSELECT, DL, MVT::i32, {Cond, TrueHi, FalseHi});
-//   return DAG.getNode(ISD::BUILD_PAIR, DL, MVT::i64, ResLo, ResHi);
-// }
-
 /// ReplaceNodeResults - Replace the results of node with an illegal result
 /// type with new values built out of custom code.
 void ARMTargetLowering::ReplaceNodeResults(SDNode *N,
@@ -10932,9 +10921,6 @@ void ARMTargetLowering::ReplaceNodeResults(SDNode *N,
   case ISD::FP_TO_UINT_SAT:
     Res = LowerFP_TO_INT_SAT(SDValue(N, 0), DAG, Subtarget);
     break;
-  // case ISD::CTSELECT:
-  //   Res = ExpandCTSELECT(N, DAG);
-  //   break;
   }
   if (Res.getNode())
     Results.push_back(Res);
@@ -11956,6 +11942,20 @@ ARMTargetLowering::EmitLowered__dbzchk(MachineInstr &MI,
 
   MI.eraseFromParent();
   return ContBB;
+}
+
+MachineBasicBlock *
+ARMTargetLowering::EmitCtSelect(MachineInstr &MI,
+                                MachineBasicBlock *MBB, unsigned Opcode) const {
+  const TargetInstrInfo *TII = Subtarget->getInstrInfo();
+  DebugLoc DL = MI.getDebugLoc();
+  MachineInstrBuilder Builder = BuildMI(*MBB, MI, DL, TII->get(Opcode));
+  for (unsigned Idx = 0; Idx < MI.getNumOperands(); ++Idx) {
+    Builder.add(MI.getOperand(Idx));
+  }
+  Builder->setFlag(MachineInstr::NoMerge);
+  MBB->remove_instr(&MI);
+  return MBB;                                        
 }
 
 // The CPSR operand of SelectItr might be missing a kill marker
