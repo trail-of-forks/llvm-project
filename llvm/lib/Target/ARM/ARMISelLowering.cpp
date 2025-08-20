@@ -12372,6 +12372,30 @@ ARMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
     return BB;
   }
 
+  case ARM::CTSELECTint:
+  case ARM::CTSELECTi64:
+  case ARM::CTSELECTf16:
+  case ARM::CTSELECTbf16:
+  case ARM::CTSELECTf32:
+  case ARM::CTSELECTf64:
+  case ARM::CTSELECTv8i8:
+  case ARM::CTSELECTv4i16:
+  case ARM::CTSELECTv2i32:
+  case ARM::CTSELECTv1i64:
+  case ARM::CTSELECTv2f32:
+  case ARM::CTSELECTv4f16:
+  case ARM::CTSELECTv4bf16:
+  case ARM::CTSELECTv16i8:
+  case ARM::CTSELECTv8i16:
+  case ARM::CTSELECTv4i32:
+  case ARM::CTSELECTv2i64:
+  case ARM::CTSELECTv4f32:
+  case ARM::CTSELECTv2f64:
+  case ARM::CTSELECTv8f16:
+  case ARM::CTSELECTv8bf16: {
+    return EmitCtSelect(MI, BB, MI.getOpcode());
+  }
+
   case ARM::BCCi64:
   case ARM::BCCZi64: {
     // If there is an unconditional branch to the other successor, remove it.
