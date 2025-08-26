@@ -1002,9 +1002,6 @@ class VectorType;
 
     void EmitSjLjDispatchBlock(MachineInstr &MI, MachineBasicBlock *MBB) const;
 
-    MachineBasicBlock *EmitCtSelect(MachineInstr &MI,
-                                    MachineBasicBlock *MBB, unsigned Opcode) const;
-
     MachineBasicBlock *EmitStructByval(MachineInstr &MI,
                                        MachineBasicBlock *MBB) const;
 

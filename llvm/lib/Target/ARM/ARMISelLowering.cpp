@@ -1469,10 +1469,10 @@ ARMTargetLowering::ARMTargetLowering(const TargetMachine &TM,
     setOperationAction(ISD::SELECT,    MVT::f16, Custom);
     setOperationAction(ISD::SELECT_CC, MVT::f16, Custom);
     setOperationAction(ISD::CTSELECT,  MVT::f16, Custom);
+  }
+
+  if (Subtarget->hasBF16()) {
     setOperationAction(ISD::CTSELECT, MVT::bf16, Custom);
-  } else {
-    setOperationAction(ISD::CTSELECT,  MVT::f16, Promote);
-    setOperationAction(ISD::CTSELECT, MVT::bf16, Promote);
   }
 
   setOperationAction(ISD::SETCCCARRY, MVT::i32, Custom);
@@ -11944,20 +11944,6 @@ ARMTargetLowering::EmitLowered__dbzchk(MachineInstr &MI,
   return ContBB;
 }
 
-MachineBasicBlock *
-ARMTargetLowering::EmitCtSelect(MachineInstr &MI,
-                                MachineBasicBlock *MBB, unsigned Opcode) const {
-  const TargetInstrInfo *TII = Subtarget->getInstrInfo();
-  DebugLoc DL = MI.getDebugLoc();
-  MachineInstrBuilder Builder = BuildMI(*MBB, MI, DL, TII->get(Opcode));
-  for (unsigned Idx = 0; Idx < MI.getNumOperands(); ++Idx) {
-    Builder.add(MI.getOperand(Idx));
-  }
-  Builder->setFlag(MachineInstr::NoMerge);
-  MBB->remove_instr(&MI);
-  return MBB;                                        
-}
-
 // The CPSR operand of SelectItr might be missing a kill marker
 // because there were multiple uses of CPSR, and ISel didn't know
 // which to mark. Figure out whether SelectItr should have had a
@@ -12370,30 +12356,6 @@ ARMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
 
     MI.eraseFromParent(); // The pseudo instruction is gone now.
     return BB;
-  }
-
-  case ARM::CTSELECTint:
-  case ARM::CTSELECTi64:
-  case ARM::CTSELECTf16:
-  case ARM::CTSELECTbf16:
-  case ARM::CTSELECTf32:
-  case ARM::CTSELECTf64:
-  case ARM::CTSELECTv8i8:
-  case ARM::CTSELECTv4i16:
-  case ARM::CTSELECTv2i32:
-  case ARM::CTSELECTv1i64:
-  case ARM::CTSELECTv2f32:
-  case ARM::CTSELECTv4f16:
-  case ARM::CTSELECTv4bf16:
-  case ARM::CTSELECTv16i8:
-  case ARM::CTSELECTv8i16:
-  case ARM::CTSELECTv4i32:
-  case ARM::CTSELECTv2i64:
-  case ARM::CTSELECTv4f32:
-  case ARM::CTSELECTv2f64:
-  case ARM::CTSELECTv8f16:
-  case ARM::CTSELECTv8bf16: {
-    return EmitCtSelect(MI, BB, MI.getOpcode());
   }
 
   case ARM::BCCi64:
