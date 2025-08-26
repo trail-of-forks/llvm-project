@@ -5152,195 +5152,308 @@ def : ARMV6T2Pat<(ARMcmov i32:$false, imm:$src, imm:$cc, CPSR),
 // would result in machine code that does not run in constant time.
 let Uses = [CPSR], 
     isNotDuplicable = 1, 
-    isPseudo = 1, 
-    usesCustomInserter = 1, 
+    isPseudo = 1,  
     hasNoSchedulingInfo = 1 in {  
 
   // i1, i8, i16, i32
   def CTSELECTint  : ARMPseudoInst<
-        (outs GPR:$dst),
+        (outs GPR:$dst, GPR:$tmp_mask),
         (ins  GPR:$src1, GPR:$src2, i32imm:$cond),
         4,
         NoItinerary,
-        [(set GPR:$dst, (ARMctselect GPR:$src1, GPR:$src2, timm:$cond, CPSR))]
-      >;
-
-  def CTSELECTi64  : ARMPseudoInst<
-        (outs GPRPair:$dst),
-        (ins  GPRPair:$src1, GPRPair:$src2, i32imm:$cond),
-        4,
-        NoItinerary,
-        [(set GPRPair:$dst, (ARMctselect GPRPair:$src1, GPRPair:$src2, timm:$cond, CPSR))]
-      >;
+        []
+      > {
+    let Constraints = "@earlyclobber $dst,@earlyclobber $tmp_mask";
+  }
 
   let Predicates = [HasFullFP16] in {
     def CTSELECTf16  : ARMPseudoInst<
-        (outs HPR:$dst),
+        (outs HPR:$dst, HPR:$tmp_mask),
         (ins  HPR:$src1, HPR:$src2, i32imm:$cond),
         4,
         NoItinerary,
-        [(set (f16 HPR:$dst), (ARMctselect (f16 HPR:$src1), (f16 HPR:$src2), timm:$cond, CPSR))]
-      >;
+        []
+    > {
+      let Constraints = "@earlyclobber $dst,@earlyclobber $tmp_mask";
+    }
   }
 
   let Predicates = [HasBF16] in {
     def CTSELECTbf16  : ARMPseudoInst<
-        (outs HPR:$dst),
+        (outs HPR:$dst, HPR:$tmp_mask),
         (ins  HPR:$src1, HPR:$src2, i32imm:$cond),
         4,
         NoItinerary,
-        [(set (bf16 HPR:$dst), (ARMctselect (bf16 HPR:$src1), (bf16 HPR:$src2), timm:$cond, CPSR))]
-      >;
+        []
+    > {
+      let Constraints = "@earlyclobber $dst,@earlyclobber $tmp_mask";
+    }
   }
 
   def CTSELECTf32  : ARMPseudoInst<
-      (outs SPR:$dst),
+      (outs SPR:$dst, SPR:$tmp_mask),
       (ins  SPR:$src1, SPR:$src2, i32imm:$cond),
       4,
       NoItinerary,
-      [(set SPR:$dst, (ARMctselect SPR:$src1, SPR:$src2, timm:$cond, CPSR))]
-    >;
+      []
+    > {
+      let Constraints = "@earlyclobber $dst,@earlyclobber $tmp_mask";
+    }
 
   let Predicates = [HasDPVFP] in {
     def CTSELECTf64  : ARMPseudoInst<
-        (outs DPR:$dst),
+        (outs DPR:$dst, DPR:$tmp_mask),
         (ins  DPR:$src1, DPR:$src2, i32imm:$cond),
         4,
         NoItinerary,
-        [(set (f64 DPR:$dst), (ARMctselect (f64 DPR:$src1), (f64 DPR:$src2), timm:$cond, CPSR))]
-      >;
+        []
+      > {
+      let Constraints = "@earlyclobber $dst,@earlyclobber $tmp_mask";
+    }
   }
 
   let Predicates = [HasNEON] in {
     // DPR
     def CTSELECTv8i8  : ARMPseudoInst<
-        (outs DPR:$dst),
+        (outs DPR:$dst, DPR:$tmp_mask),
         (ins  DPR:$src1, DPR:$src2, i32imm:$cond),
         4,
         NoItinerary,
-        [(set (v8i8 DPR:$dst), (ARMctselect (v8i8 DPR:$src1), (v8i8 DPR:$src2), timm:$cond, CPSR))]
-      >;
+        []
+      > {
+      let Constraints = "@earlyclobber $dst,@earlyclobber $tmp_mask";
+    }
 
     def CTSELECTv4i16  : ARMPseudoInst<
-        (outs DPR:$dst),
+        (outs DPR:$dst, DPR:$tmp_mask),
         (ins  DPR:$src1, DPR:$src2, i32imm:$cond),
         4,
         NoItinerary,
-        [(set (v4i16 DPR:$dst), (ARMctselect (v4i16 DPR:$src1), (v4i16 DPR:$src2), timm:$cond, CPSR))]
-      >;
+        []
+      > {
+      let Constraints = "@earlyclobber $dst,@earlyclobber $tmp_mask";
+    }
 
     def CTSELECTv2i32  : ARMPseudoInst<
-        (outs DPR:$dst),
+        (outs DPR:$dst, DPR:$tmp_mask),
         (ins  DPR:$src1, DPR:$src2, i32imm:$cond),
         4,
         NoItinerary,
-        [(set (v2i32 DPR:$dst), (ARMctselect (v2i32 DPR:$src1), (v2i32 DPR:$src2), timm:$cond, CPSR))]
-      >;
+        []
+      > {
+      let Constraints = "@earlyclobber $dst,@earlyclobber $tmp_mask";
+    }
 
     def CTSELECTv1i64  : ARMPseudoInst<
-        (outs DPR:$dst),
+        (outs DPR:$dst, DPR:$tmp_mask),
         (ins  DPR:$src1, DPR:$src2, i32imm:$cond),
         4,
         NoItinerary,
-        [(set (v1i64 DPR:$dst), (ARMctselect (v1i64 DPR:$src1), (v1i64 DPR:$src2), timm:$cond, CPSR))]
-      >;
+        []
+      > {
+      let Constraints = "@earlyclobber $dst,@earlyclobber $tmp_mask";
+    }
 
     def CTSELECTv2f32  : ARMPseudoInst<
-        (outs DPR:$dst),
+        (outs DPR:$dst, DPR:$tmp_mask),
         (ins  DPR:$src1, DPR:$src2, i32imm:$cond),
         4,
         NoItinerary,
-        [(set (v2f32 DPR:$dst), (ARMctselect (v2f32 DPR:$src1), (v2f32 DPR:$src2), timm:$cond, CPSR))]
-      >;
+        []
+      > {
+      let Constraints = "@earlyclobber $dst,@earlyclobber $tmp_mask";
+    }
 
     let Predicates = [HasFullFP16] in {
       def CTSELECTv4f16  : ARMPseudoInst<
-          (outs DPR:$dst),
+          (outs DPR:$dst, DPR:$tmp_mask),
           (ins  DPR:$src1, DPR:$src2, i32imm:$cond),
           4,
           NoItinerary,
-          [(set (v4f16 DPR:$dst), (ARMctselect (v4f16 DPR:$src1), (v4f16 DPR:$src2), timm:$cond, CPSR))]
-        >;
+          []
+      > {
+        let Constraints = "@earlyclobber $dst,@earlyclobber $tmp_mask";
+      }
     }
 
     let Predicates = [HasBF16] in {
       def CTSELECTv4bf16  : ARMPseudoInst<
-          (outs DPR:$dst),
+          (outs DPR:$dst, DPR:$tmp_mask),
           (ins  DPR:$src1, DPR:$src2, i32imm:$cond),
           4,
           NoItinerary,
-          [(set (v4bf16 DPR:$dst), (ARMctselect (v4bf16 DPR:$src1), (v4bf16 DPR:$src2), timm:$cond, CPSR))]
-        >;
+          []
+      > {
+        let Constraints = "@earlyclobber $dst,@earlyclobber $tmp_mask";
+      }
     }
 
     // QPR
     def CTSELECTv16i8  : ARMPseudoInst<
-      (outs QPR:$dst),
+      (outs QPR:$dst, QPR:$tmp_mask),
       (ins  QPR:$src1, QPR:$src2, i32imm:$cond),
       4,
       NoItinerary,
-      [(set (v16i8 QPR:$dst), (ARMctselect (v16i8 QPR:$src1), (v16i8 QPR:$src2), timm:$cond, CPSR))]
-    >;
+      []
+    > {
+      let Constraints = "@earlyclobber $dst,@earlyclobber $tmp_mask";
+    }
 
     def CTSELECTv8i16  : ARMPseudoInst<
-      (outs QPR:$dst),
+      (outs QPR:$dst, QPR:$tmp_mask),
       (ins  QPR:$src1, QPR:$src2, i32imm:$cond),
       4,
       NoItinerary,
-      [(set (v8i16 QPR:$dst), (ARMctselect (v8i16 QPR:$src1), (v8i16 QPR:$src2), timm:$cond, CPSR))]
-    >;
+      []
+    > {
+      let Constraints = "@earlyclobber $dst,@earlyclobber $tmp_mask";
+    }
 
     def CTSELECTv4i32  : ARMPseudoInst<
-      (outs QPR:$dst),
+      (outs QPR:$dst, QPR:$tmp_mask),
       (ins  QPR:$src1, QPR:$src2, i32imm:$cond),
       4,
       NoItinerary,
-      [(set (v4i32 QPR:$dst), (ARMctselect (v4i32 QPR:$src1), (v4i32 QPR:$src2), timm:$cond, CPSR))]
-    >;
+      []
+    > {
+      let Constraints = "@earlyclobber $dst,@earlyclobber $tmp_mask";
+    }
 
     def CTSELECTv2i64  : ARMPseudoInst<
-      (outs QPR:$dst),
+      (outs QPR:$dst, QPR:$tmp_mask),
       (ins  QPR:$src1, QPR:$src2, i32imm:$cond),
       4,
       NoItinerary,
-      [(set (v2i64 QPR:$dst), (ARMctselect (v2i64 QPR:$src1), (v2i64 QPR:$src2), timm:$cond, CPSR))]
-    >;
+      []
+    > {
+      let Constraints = "@earlyclobber $dst,@earlyclobber $tmp_mask";
+    }
 
     def CTSELECTv4f32  : ARMPseudoInst<
-      (outs QPR:$dst),
+      (outs QPR:$dst, QPR:$tmp_mask),
       (ins  QPR:$src1, QPR:$src2, i32imm:$cond),
       4,
       NoItinerary,
-      [(set (v4f32 QPR:$dst), (ARMctselect (v4f32 QPR:$src1), (v4f32 QPR:$src2), timm:$cond, CPSR))]
-    >;
+      []
+    > {
+      let Constraints = "@earlyclobber $dst,@earlyclobber $tmp_mask";
+    }
 
     def CTSELECTv2f64  : ARMPseudoInst<
-      (outs QPR:$dst),
+      (outs QPR:$dst, QPR:$tmp_mask),
       (ins  QPR:$src1, QPR:$src2, i32imm:$cond),
       4,
       NoItinerary,
-      [(set (v2f64 QPR:$dst), (ARMctselect (v2f64 QPR:$src1), (v2f64 QPR:$src2), timm:$cond, CPSR))]
-    >;
+      []
+    > {
+      let Constraints = "@earlyclobber $dst,@earlyclobber $tmp_mask";
+    }
 
     let Predicates = [HasFullFP16] in {
       def CTSELECTv8f16  : ARMPseudoInst<
-        (outs QPR:$dst),
+        (outs QPR:$dst, QPR:$tmp_mask),
         (ins  QPR:$src1, QPR:$src2, i32imm:$cond),
         4,
         NoItinerary,
-        [(set (v8f16 QPR:$dst), (ARMctselect (v8f16 QPR:$src1), (v8f16 QPR:$src2), timm:$cond, CPSR))]
-      >;
+        []
+      > {
+        let Constraints = "@earlyclobber $dst,@earlyclobber $tmp_mask";
+      }
     }
 
     let Predicates = [HasBF16] in {
       def CTSELECTv8bf16  : ARMPseudoInst<
-        (outs QPR:$dst),
+        (outs QPR:$dst, QPR:$tmp_mask),
         (ins  QPR:$src1, QPR:$src2, i32imm:$cond),
         4,
         NoItinerary,
-        [(set (v8bf16 QPR:$dst), (ARMctselect (v8bf16 QPR:$src1), (v8bf16 QPR:$src2), timm:$cond, CPSR))]
-      >;
+        []
+      > {
+        let Constraints = "@earlyclobber $dst,@earlyclobber $tmp_mask";
+      }
     }
+  }
+}
+
+// Let LLVM automagically map tmp_mask in the following Pat<>s.
+// GPR. NB: int handles i1, i8, i16, i32, i64.
+def : Pat<( i32(ARMctselect GPR:$src1, GPR:$src2, timm:$cond, CPSR)),
+          (CTSELECTint GPR:$src1, GPR:$src2, timm:$cond)>;
+
+// HPR
+let Predicates = [HasFullFP16] in {
+  def : Pat<( f16(ARMctselect HPR:$src1, HPR:$src2, timm:$cond, CPSR)),
+          (CTSELECTf16 HPR:$src1, HPR:$src2, timm:$cond)>;
+}
+
+let Predicates = [HasBF16] in {
+  def : Pat<( bf16(ARMctselect HPR:$src1, HPR:$src2, timm:$cond, CPSR)),
+          (CTSELECTbf16 HPR:$src1, HPR:$src2, timm:$cond)>;
+}
+
+// SPR
+def : Pat<( f32(ARMctselect SPR:$src1, SPR:$src2, timm:$cond, CPSR)),
+          (CTSELECTf32 SPR:$src1, SPR:$src2, timm:$cond)>;
+
+// DPR
+let Predicates = [HasDPVFP] in {
+  def : Pat<( f64(ARMctselect DPR:$src1, DPR:$src2, timm:$cond, CPSR)),
+          (CTSELECTf64 DPR:$src1, DPR:$src2, timm:$cond)>;
+}
+
+let Predicates = [HasNEON] in {
+  def : Pat<( v8i8(ARMctselect DPR:$src1, DPR:$src2, timm:$cond, CPSR)),
+          (CTSELECTv8i8 DPR:$src1, DPR:$src2, timm:$cond)>;
+
+  def : Pat<( v4i16(ARMctselect DPR:$src1, DPR:$src2, timm:$cond, CPSR)),
+          (CTSELECTv4i16 DPR:$src1, DPR:$src2, timm:$cond)>;
+  
+  def : Pat<( v2i32(ARMctselect DPR:$src1, DPR:$src2, timm:$cond, CPSR)),
+          (CTSELECTv2i32 DPR:$src1, DPR:$src2, timm:$cond)>;
+
+  def : Pat<( v1i64(ARMctselect DPR:$src1, DPR:$src2, timm:$cond, CPSR)),
+          (CTSELECTv1i64 DPR:$src1, DPR:$src2, timm:$cond)>;
+
+  def : Pat<( v2f32(ARMctselect DPR:$src1, DPR:$src2, timm:$cond, CPSR)),
+          (CTSELECTv2f32 DPR:$src1, DPR:$src2, timm:$cond)>;
+
+  let Predicates = [HasFullFP16] in {
+    def : Pat<( v4f16(ARMctselect DPR:$src1, DPR:$src2, timm:$cond, CPSR)),
+          (CTSELECTv4f16 DPR:$src1, DPR:$src2, timm:$cond)>;
+  }
+
+  let Predicates = [HasBF16] in {
+    def : Pat<( v4bf16(ARMctselect DPR:$src1, DPR:$src2, timm:$cond, CPSR)),
+          (CTSELECTv4bf16 DPR:$src1, DPR:$src2, timm:$cond)>;
+  }
+
+  // QPR
+  def : Pat<( v16i8(ARMctselect QPR:$src1, QPR:$src2, timm:$cond, CPSR)),
+          (CTSELECTv16i8 QPR:$src1, QPR:$src2, timm:$cond)>;
+
+  def : Pat<( v8i16(ARMctselect QPR:$src1, QPR:$src2, timm:$cond, CPSR)),
+          (CTSELECTv8i16 QPR:$src1, QPR:$src2, timm:$cond)>;
+
+  def : Pat<( v4i32(ARMctselect QPR:$src1, QPR:$src2, timm:$cond, CPSR)),
+          (CTSELECTv4i32 QPR:$src1, QPR:$src2, timm:$cond)>;
+
+  def : Pat<( v2i64(ARMctselect QPR:$src1, QPR:$src2, timm:$cond, CPSR)),
+          (CTSELECTv2i64 QPR:$src1, QPR:$src2, timm:$cond)>;
+
+  def : Pat<( v4f32(ARMctselect QPR:$src1, QPR:$src2, timm:$cond, CPSR)),
+          (CTSELECTv4f32 QPR:$src1, QPR:$src2, timm:$cond)>;
+
+  def : Pat<( v2f64(ARMctselect QPR:$src1, QPR:$src2, timm:$cond, CPSR)),
+          (CTSELECTv2f64 QPR:$src1, QPR:$src2, timm:$cond)>;
+
+  let Predicates = [HasFullFP16] in {
+    def : Pat<( v8f16(ARMctselect QPR:$src1, QPR:$src2, timm:$cond, CPSR)),
+          (CTSELECTv8f16 QPR:$src1, QPR:$src2, timm:$cond)>;
+  }
+
+  let Predicates = [HasBF16] in {
+    def : Pat<( v8bf16(ARMctselect QPR:$src1, QPR:$src2, timm:$cond, CPSR)),
+          (CTSELECTv8bf16 QPR:$src1, QPR:$src2, timm:$cond)>;
   }
 }
 
