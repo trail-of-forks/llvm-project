@@ -5155,7 +5155,7 @@ let Uses = [CPSR],
     isPseudo = 1,  
     hasNoSchedulingInfo = 1 in {  
 
-  // i1, i8, i16, i32
+  // i1, i8, i16, i32, i64
   def CTSELECTint  : ARMPseudoInst<
         (outs GPR:$dst, GPR:$tmp_mask),
         (ins  GPR:$src1, GPR:$src2, i32imm:$cond),

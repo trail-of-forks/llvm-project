@@ -5282,69 +5282,15 @@ SDValue ARMTargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const {
                          SelectTrue, SelectFalse, ISD::SETNE);
 }
 
-SDValue BuildCtSelectMask(SDValue Cond, EVT MaskVT, SDLoc DL, SelectionDAG &DAG) {
-  Cond = DAG.getNode(ISD::AND, DL, MaskVT, Cond, DAG.getConstant(1, DL, MaskVT));
-  SDValue Zero = DAG.getConstant(0, DL, MaskVT);
-  return DAG.getNode(ISD::SUB, DL, MaskVT, Zero, Cond);  // mask = -cond
-}
-
 SDValue ARMTargetLowering::LowerCTSELECT(SDValue Op, SelectionDAG &DAG) const {
   SDLoc DL(Op);
   SDValue Cond = Op.getOperand(0);
   SDValue SelectTrue = Op.getOperand(1);
   SDValue SelectFalse = Op.getOperand(2);
-  
   EVT VT = Op.getValueType();
-  EVT ElemVT = VT;
-  EVT MaskVT = VT;
 
-  if (!VT.isVector()) {
-    if (VT == MVT::f64) {
-       // Use <2 x i32> vector mask for scalar f64
-      ElemVT = EVT::getIntegerVT(*DAG.getContext(), 32);
-      MaskVT = EVT::getVectorVT(*DAG.getContext(), ElemVT, 2);
-    } else {
-      // float masks as i32
-      ElemVT = EVT::getIntegerVT(*DAG.getContext(), VT.getSizeInBits());
-      MaskVT = ElemVT;
-    }
-  } else {
-    ElemVT = EVT::getIntegerVT(*DAG.getContext(), VT.getScalarSizeInBits());
-    MaskVT = EVT::getVectorVT(*DAG.getContext(), ElemVT, VT.getVectorNumElements());
-  }
-
-  const EVT CondVT = Cond.getValueType();
-  if (MaskVT.isVector() && !CondVT.isVector()) {
-    unsigned CondBits = CondVT.getSizeInBits();
-    unsigned ElemBits = ElemVT.getSizeInBits();
-
-    if (CondBits < ElemBits) {
-      Cond = DAG.getZExtOrTrunc(Cond, DL, ElemVT);
-    } 
-
-    Cond = DAG.getSplatBuildVector(MaskVT, DL, Cond);
-  } else if (CondVT != MaskVT) {
-    Cond = DAG.getZExtOrTrunc(Cond, DL, MaskVT);
-  }
-
-  if (VT.isFloatingPoint()) {
-    SelectTrue = DAG.getBitcast(MaskVT, SelectTrue);
-    SelectFalse = DAG.getBitcast(MaskVT, SelectFalse);
-  }
-
-  SDValue Mask = BuildCtSelectMask(Cond, MaskVT, DL, DAG);
-  SDValue TrueMasked = DAG.getNode(ISD::AND, DL, MaskVT, SelectTrue, Mask);
-
-  SDValue MaskNeg = DAG.getNOT(DL, Mask, MaskVT);
-  SDValue FalseMasked = DAG.getNode(ISD::AND, DL, MaskVT, SelectFalse, MaskNeg);
-  
-  SDValue ResultInt = DAG.getNode(ISD::OR, DL, MaskVT, TrueMasked, FalseMasked);
-
-  if (VT.isFloatingPoint()) {
-    return DAG.getBitcast(VT, ResultInt);
-  }
-
-  return ResultInt;
+  // Tablegen in ArmInstrInfo.td will match this to the CTSELECT pseudos.
+  return DAG.getNode(ARMISD::CTSELECT, DL, VT, SelectTrue, SelectFalse, Cond);
 }
 
 static void checkVSELConstraints(ISD::CondCode CC, ARMCC::CondCodes &CondCode,
