@@ -5285,12 +5285,19 @@ SDValue ARMTargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const {
 SDValue ARMTargetLowering::LowerCTSELECT(SDValue Op, SelectionDAG &DAG) const {
   SDLoc DL(Op);
   SDValue Cond = Op.getOperand(0);
-  SDValue SelectTrue = Op.getOperand(1);
-  SDValue SelectFalse = Op.getOperand(2);
-  EVT VT = Op.getValueType();
+
+  // Constant folding of the condition into a condition-code
+  ARMCC::CondCodes CondCode = ARMCC::NE; // 1 (true)
+  if (auto *C = dyn_cast<ConstantSDNode>(Cond)) { 
+    if (C->isZero()) {
+      CondCode = ARMCC::EQ; // 0 (false)
+    }
+  }
+  SDValue CondCodeNode = DAG.getConstant(CondCode, DL, MVT::i32);
 
   // Tablegen in ArmInstrInfo.td will match this to the CTSELECT pseudos.
-  return DAG.getNode(ARMISD::CTSELECT, DL, VT, SelectTrue, SelectFalse, Cond);
+  return DAG.getNode(ARMISD::CTSELECT, DL, Op.getValueType(), Op.getOperand(1), 
+                    Op.getOperand(2), CondCodeNode);
 }
 
 static void checkVSELConstraints(ISD::CondCode CC, ARMCC::CondCodes &CondCode,
