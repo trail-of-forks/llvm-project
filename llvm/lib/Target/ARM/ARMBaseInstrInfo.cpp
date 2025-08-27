@@ -1699,16 +1699,137 @@ void ARMBaseInstrInfo::expandMEMCPY(MachineBasicBlock::iterator MI) const {
   BB->erase(MI);
 }
 
+// Expands the ctselect pseudo, post-RA.
+bool ARMBaseInstrInfo::expandCtSelect(MachineInstr &MI) const {
+  MachineBasicBlock *MBB = MI.getParent();
+  DebugLoc DL = MI.getDebugLoc();
+
+  // Refer to CTSELECT* pseudos in ARMInstrInfo.td.
+  // Each pseudo has: (outs $dst, $tmp_mask), (ins $src1, $src2, $cond))
+  Register DestReg = MI.getOperand(0).getReg();
+  Register MaskReg = MI.getOperand(1).getReg();
+  Register Src1Reg = MI.getOperand(2).getReg();
+  Register Src2Reg = MI.getOperand(3).getReg();
+  ARMCC::CondCodes CC = static_cast<ARMCC::CondCodes>(MI.getOperand(4).getImm());
+
+  // Type declaration binds dest, src1, and src2 to be the same type, 
+  // so should be the same register class as well.
+  const TargetRegisterInfo *TRI = &getRegisterInfo();
+  const TargetRegisterClass *RC = TRI->getMinimalPhysRegClass(DestReg);
+  
+  unsigned MovImmOp = ARM::MOVi;
+  unsigned MvnOp = ARM::MVNi;
+  unsigned AndOp = ARM::ANDrr;
+  unsigned BicOp = ARM::BICrr;
+  unsigned OrrOp = ARM::ORRrr;
+  // we need to widen the mask in the case of vector ops
+  unsigned BroadcastOp = ARM::VDUP32d;
+  
+  if (ARM::QPRRegClass.hasSubClassEq(RC)) {
+    AndOp = ARM::VANDq;
+    BicOp = ARM::VBICq;
+    OrrOp = ARM::VORRq;
+    BroadcastOp = ARM::VDUP32q;
+    
+    // NB: HPR, SPR are slices of DPRs
+  } else if (ARM::DPRRegClass.hasSubClassEq(RC)) {
+    AndOp = ARM::VANDd;
+    BicOp = ARM::VBICd;
+    OrrOp = ARM::VORRd;
+  }
+  
+  // The following sequence produces: result = (src1 & mask) | (src2 & ~mask)
+  MachineInstrBuilder Builder;
+
+  // 1. Mask and not-mask from condition codes
+  Builder = BuildMI(*MBB, MI, DL, get(MovImmOp), MaskReg)
+                   .addImm(0)
+                   .add(predOps(ARMCC::AL))
+                   .add(condCodeOp())
+                   .setMIFlag(MachineInstr::MIFlag::NoMerge);
+  auto BundleStart = Builder.getInstr()->getIterator();
+  
+  // If condition is true, mask = 0xFFFFFFFF.
+  BuildMI(*MBB, MI, DL, get(MvnOp), MaskReg)
+    .addImm(0)
+    .add(predOps(CC))
+    .add(condCodeOp())
+    .setMIFlag(MachineInstr::MIFlag::NoMerge);
+  
+  // As needed, broadcast our scalar mask to vector size.
+  if (ARM::DPRRegClass.hasSubClassEq(RC) || 
+      ARM::QPRRegClass.hasSubClassEq(RC)) {
+      BuildMI(*MBB, MI, DL, get(BroadcastOp), MaskReg)
+        .addReg(MaskReg)
+        .setMIFlag(MachineInstr::MIFlag::NoMerge);
+  }
+ 
+  // 2. A = src1 & mask
+  BuildMI(*MBB, MI, DL, get(AndOp), DestReg)
+      .addReg(Src1Reg)
+      .addReg(MaskReg)
+      .add(predOps(ARMCC::AL))
+      .add(condCodeOp())
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // 3. B = src2 & ~mask 
+  // B overwrites MaskReg, because we don't need the mask value after this.
+  BuildMI(*MBB, MI, DL, get(BicOp), MaskReg)
+      .addReg(Src2Reg)
+      .addReg(MaskReg)
+      .add(predOps(ARMCC::AL))
+      .add(condCodeOp())
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // 4. result = A | B
+  Builder = BuildMI(*MBB, MI, DL, get(OrrOp), DestReg)
+                  .addReg(DestReg)
+                  .addReg(MaskReg)
+                  .setMIFlag(MachineInstr::MIFlag::NoMerge);
+  auto BundleEnd = Builder.getInstr()->getIterator();
+  
+  // Bundle everything for atomic execution.
+  finalizeBundle(*MBB, BundleStart, std::next(BundleEnd));
+  MI.eraseFromParent();
+  return true;
+}
+
 bool ARMBaseInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
-  if (MI.getOpcode() == TargetOpcode::LOAD_STACK_GUARD) {
+  auto opcode = MI.getOpcode();
+
+  if (opcode == TargetOpcode::LOAD_STACK_GUARD) {
     expandLoadStackGuard(MI);
     MI.getParent()->erase(MI);
     return true;
   }
 
-  if (MI.getOpcode() == ARM::MEMCPY) {
+  if (opcode == ARM::MEMCPY) {
     expandMEMCPY(MI);
     return true;
+  }
+
+  if (opcode == ARM::CTSELECTint  || 
+      opcode == ARM::CTSELECTf16  ||
+      opcode == ARM::CTSELECTbf16 ||
+      opcode == ARM::CTSELECTf32  ||
+      opcode == ARM::CTSELECTf64  || 
+      opcode == ARM::CTSELECTv8i8  ||
+      opcode == ARM::CTSELECTv4i16 ||
+      opcode == ARM::CTSELECTv2i32 ||
+      opcode == ARM::CTSELECTv1i64 ||
+      opcode == ARM::CTSELECTv2f32 ||
+      opcode == ARM::CTSELECTv4f16 ||
+      opcode == ARM::CTSELECTv4bf16 ||
+      opcode == ARM::CTSELECTv16i8 ||
+      opcode == ARM::CTSELECTv8i16 ||
+      opcode == ARM::CTSELECTv4i32 ||
+      opcode == ARM::CTSELECTv2i64 ||
+      opcode == ARM::CTSELECTv4f32 ||
+      opcode == ARM::CTSELECTv2f64 ||
+      opcode == ARM::CTSELECTv8f16 ||
+      opcode == ARM::CTSELECTv8bf16) {
+    LLVM_DEBUG(dbgs() << "Opcode " << opcode << "replaced by: " << MI);
+    return expandCtSelect(MI);
   }
 
   // This hook gets to expand COPY instructions before they become
