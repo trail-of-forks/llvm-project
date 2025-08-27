@@ -32,12 +32,11 @@ def SDT_ARMSaveCallPC : SDTypeProfile<0, 1, []>;
 
 def SDT_ARMcall    : SDTypeProfile<0, -1, [SDTCisPtrTy<0>]>;
 
-def SDT_ARMCtSelect : SDTypeProfile<1, 4, [
+def SDT_ARMCtSelect : SDTypeProfile<1, 3, [
   /* any */                // result
   SDTCisSameAs<1, 0>,      // value on false
   SDTCisSameAs<2, 0>,      // value on true
   SDTCisVT<3, CondCodeVT>, // condition code
-  SDTCisVT<4, FlagsVT>,    // in flags
 ]>;
 
 def SDT_ARMCMov : SDTypeProfile<1, 4, [
@@ -5150,8 +5149,7 @@ def : ARMV6T2Pat<(ARMcmov i32:$false, imm:$src, imm:$cc, CPSR),
 // in order to avoid backend optimizations that could invalidate constant-time
 // guarantees to the source programmer by node merging or other operations that
 // would result in machine code that does not run in constant time.
-let Uses = [CPSR], 
-    isNotDuplicable = 1, 
+let isNotDuplicable = 1, 
     isPseudo = 1,  
     hasNoSchedulingInfo = 1 in {  
 
@@ -5377,83 +5375,83 @@ let Uses = [CPSR],
 
 // Let LLVM automagically map tmp_mask in the following Pat<>s.
 // GPR. NB: int handles i1, i8, i16, i32, i64.
-def : Pat<( i32(ARMctselect GPR:$src1, GPR:$src2, timm:$cond, CPSR)),
-          (CTSELECTint GPR:$src1, GPR:$src2, timm:$cond)>;
+def : Pat<( i32(ARMctselect GPR:$src1, GPR:$src2, imm:$cond)),
+          (CTSELECTint GPR:$src1, GPR:$src2, imm:$cond)>;
 
 // HPR
 let Predicates = [HasFullFP16] in {
-  def : Pat<( f16(ARMctselect HPR:$src1, HPR:$src2, timm:$cond, CPSR)),
-          (CTSELECTf16 HPR:$src1, HPR:$src2, timm:$cond)>;
+  def : Pat<( f16(ARMctselect HPR:$src1, HPR:$src2, imm:$cond)),
+          (CTSELECTf16 HPR:$src1, HPR:$src2, imm:$cond)>;
 }
 
 let Predicates = [HasBF16] in {
-  def : Pat<( bf16(ARMctselect HPR:$src1, HPR:$src2, timm:$cond, CPSR)),
-          (CTSELECTbf16 HPR:$src1, HPR:$src2, timm:$cond)>;
+  def : Pat<( bf16(ARMctselect HPR:$src1, HPR:$src2, imm:$cond)),
+          (CTSELECTbf16 HPR:$src1, HPR:$src2, imm:$cond)>;
 }
 
 // SPR
-def : Pat<( f32(ARMctselect SPR:$src1, SPR:$src2, timm:$cond, CPSR)),
-          (CTSELECTf32 SPR:$src1, SPR:$src2, timm:$cond)>;
+def : Pat<( f32(ARMctselect SPR:$src1, SPR:$src2, imm:$cond)),
+          (CTSELECTf32 SPR:$src1, SPR:$src2, imm:$cond)>;
 
 // DPR
 let Predicates = [HasDPVFP] in {
-  def : Pat<( f64(ARMctselect DPR:$src1, DPR:$src2, timm:$cond, CPSR)),
-          (CTSELECTf64 DPR:$src1, DPR:$src2, timm:$cond)>;
+  def : Pat<( f64(ARMctselect DPR:$src1, DPR:$src2, imm:$cond)),
+          (CTSELECTf64 DPR:$src1, DPR:$src2, imm:$cond)>;
 }
 
 let Predicates = [HasNEON] in {
-  def : Pat<( v8i8(ARMctselect DPR:$src1, DPR:$src2, timm:$cond, CPSR)),
-          (CTSELECTv8i8 DPR:$src1, DPR:$src2, timm:$cond)>;
+  def : Pat<( v8i8(ARMctselect DPR:$src1, DPR:$src2, imm:$cond)),
+          (CTSELECTv8i8 DPR:$src1, DPR:$src2, imm:$cond)>;
 
-  def : Pat<( v4i16(ARMctselect DPR:$src1, DPR:$src2, timm:$cond, CPSR)),
-          (CTSELECTv4i16 DPR:$src1, DPR:$src2, timm:$cond)>;
+  def : Pat<( v4i16(ARMctselect DPR:$src1, DPR:$src2, imm:$cond)),
+          (CTSELECTv4i16 DPR:$src1, DPR:$src2, imm:$cond)>;
   
-  def : Pat<( v2i32(ARMctselect DPR:$src1, DPR:$src2, timm:$cond, CPSR)),
-          (CTSELECTv2i32 DPR:$src1, DPR:$src2, timm:$cond)>;
+  def : Pat<( v2i32(ARMctselect DPR:$src1, DPR:$src2, imm:$cond)),
+          (CTSELECTv2i32 DPR:$src1, DPR:$src2, imm:$cond)>;
 
-  def : Pat<( v1i64(ARMctselect DPR:$src1, DPR:$src2, timm:$cond, CPSR)),
-          (CTSELECTv1i64 DPR:$src1, DPR:$src2, timm:$cond)>;
+  def : Pat<( v1i64(ARMctselect DPR:$src1, DPR:$src2, imm:$cond)),
+          (CTSELECTv1i64 DPR:$src1, DPR:$src2, imm:$cond)>;
 
-  def : Pat<( v2f32(ARMctselect DPR:$src1, DPR:$src2, timm:$cond, CPSR)),
-          (CTSELECTv2f32 DPR:$src1, DPR:$src2, timm:$cond)>;
+  def : Pat<( v2f32(ARMctselect DPR:$src1, DPR:$src2, imm:$cond)),
+          (CTSELECTv2f32 DPR:$src1, DPR:$src2, imm:$cond)>;
 
   let Predicates = [HasFullFP16] in {
-    def : Pat<( v4f16(ARMctselect DPR:$src1, DPR:$src2, timm:$cond, CPSR)),
-          (CTSELECTv4f16 DPR:$src1, DPR:$src2, timm:$cond)>;
+    def : Pat<( v4f16(ARMctselect DPR:$src1, DPR:$src2, imm:$cond)),
+          (CTSELECTv4f16 DPR:$src1, DPR:$src2, imm:$cond)>;
   }
 
   let Predicates = [HasBF16] in {
-    def : Pat<( v4bf16(ARMctselect DPR:$src1, DPR:$src2, timm:$cond, CPSR)),
-          (CTSELECTv4bf16 DPR:$src1, DPR:$src2, timm:$cond)>;
+    def : Pat<( v4bf16(ARMctselect DPR:$src1, DPR:$src2, imm:$cond)),
+          (CTSELECTv4bf16 DPR:$src1, DPR:$src2, imm:$cond)>;
   }
 
   // QPR
-  def : Pat<( v16i8(ARMctselect QPR:$src1, QPR:$src2, timm:$cond, CPSR)),
-          (CTSELECTv16i8 QPR:$src1, QPR:$src2, timm:$cond)>;
+  def : Pat<( v16i8(ARMctselect QPR:$src1, QPR:$src2, imm:$cond)),
+          (CTSELECTv16i8 QPR:$src1, QPR:$src2, imm:$cond)>;
 
-  def : Pat<( v8i16(ARMctselect QPR:$src1, QPR:$src2, timm:$cond, CPSR)),
-          (CTSELECTv8i16 QPR:$src1, QPR:$src2, timm:$cond)>;
+  def : Pat<( v8i16(ARMctselect QPR:$src1, QPR:$src2, imm:$cond)),
+          (CTSELECTv8i16 QPR:$src1, QPR:$src2, imm:$cond)>;
 
-  def : Pat<( v4i32(ARMctselect QPR:$src1, QPR:$src2, timm:$cond, CPSR)),
-          (CTSELECTv4i32 QPR:$src1, QPR:$src2, timm:$cond)>;
+  def : Pat<( v4i32(ARMctselect QPR:$src1, QPR:$src2, imm:$cond)),
+          (CTSELECTv4i32 QPR:$src1, QPR:$src2, imm:$cond)>;
 
-  def : Pat<( v2i64(ARMctselect QPR:$src1, QPR:$src2, timm:$cond, CPSR)),
-          (CTSELECTv2i64 QPR:$src1, QPR:$src2, timm:$cond)>;
+  def : Pat<( v2i64(ARMctselect QPR:$src1, QPR:$src2, imm:$cond)),
+          (CTSELECTv2i64 QPR:$src1, QPR:$src2, imm:$cond)>;
 
-  def : Pat<( v4f32(ARMctselect QPR:$src1, QPR:$src2, timm:$cond, CPSR)),
-          (CTSELECTv4f32 QPR:$src1, QPR:$src2, timm:$cond)>;
+  def : Pat<( v4f32(ARMctselect QPR:$src1, QPR:$src2, imm:$cond)),
+          (CTSELECTv4f32 QPR:$src1, QPR:$src2, imm:$cond)>;
 
-  def : Pat<( v2f64(ARMctselect QPR:$src1, QPR:$src2, timm:$cond, CPSR)),
-          (CTSELECTv2f64 QPR:$src1, QPR:$src2, timm:$cond)>;
+  def : Pat<( v2f64(ARMctselect QPR:$src1, QPR:$src2, imm:$cond)),
+          (CTSELECTv2f64 QPR:$src1, QPR:$src2, imm:$cond)>;
 
   let Predicates = [HasFullFP16] in {
-    def : Pat<( v8f16(ARMctselect QPR:$src1, QPR:$src2, timm:$cond, CPSR)),
-          (CTSELECTv8f16 QPR:$src1, QPR:$src2, timm:$cond)>;
+    def : Pat<( v8f16(ARMctselect QPR:$src1, QPR:$src2, imm:$cond)),
+          (CTSELECTv8f16 QPR:$src1, QPR:$src2, imm:$cond)>;
   }
 
   let Predicates = [HasBF16] in {
-    def : Pat<( v8bf16(ARMctselect QPR:$src1, QPR:$src2, timm:$cond, CPSR)),
-          (CTSELECTv8bf16 QPR:$src1, QPR:$src2, timm:$cond)>;
+    def : Pat<( v8bf16(ARMctselect QPR:$src1, QPR:$src2, imm:$cond)),
+          (CTSELECTv8bf16 QPR:$src1, QPR:$src2, imm:$cond)>;
   }
 }
 
