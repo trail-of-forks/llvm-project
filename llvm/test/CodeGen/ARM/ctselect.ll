@@ -37,7 +37,7 @@ entry:
   ret half %sel
 }
 
-define bfloat @ct_half(i1 %cond, bfloat %a, bfloat %b) {
+define bfloat @ct_bf16(i1 %cond, bfloat %a, bfloat %b) {
 entry:
   %sel = call bfloat @llvm.ct.select.bf16(i1 %cond, bfloat %a, bfloat %b)
   ret bfloat %sel
