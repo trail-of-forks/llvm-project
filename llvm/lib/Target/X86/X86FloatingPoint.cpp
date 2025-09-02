@@ -1540,6 +1540,79 @@ void FPS::handleSpecialFP(MachineBasicBlock::iterator &Inst) {
 
   switch (MI.getOpcode()) {
   default: llvm_unreachable("Unknown SpecialFP instruction!");
+  
+  // CTSELECT instructions - handled by post-RA expansion
+  case X86::CTSELECT_I386_RFP32rr:
+  case X86::CTSELECT_I386_RFP64rr:
+  case X86::CTSELECT_I386_RFP80rr: {
+    // CTSELECT: dst = select(cond, src1, src2)
+    // Different operand layouts:
+    // FP32: dst, tmp_byte, tmp_mask, tmp_a, tmp_b, src1, src2, cond (8 ops)
+    // FP64: dst, tmp_byte, tmp_mask, tmp_a_lo, tmp_a_hi, tmp_b_lo, tmp_b_hi, src1, src2, cond (10 ops)  
+    // FP80: dst, tmp_byte, tmp_mask, tmp_work, src1, src2, cond (7 ops - sequential processing)
+    
+    const MachineOperand &MO_dst = MI.getOperand(0);  // dst (RFP)
+    MachineOperand *MO_src1, *MO_src2;
+    
+    if (MI.getOpcode() == X86::CTSELECT_I386_RFP32rr) {
+      MO_src1 = &MI.getOperand(5); // src1 (RFP32)
+      MO_src2 = &MI.getOperand(6); // src2 (RFP32)
+    } else if (MI.getOpcode() == X86::CTSELECT_I386_RFP64rr) {
+      MO_src1 = &MI.getOperand(7); // src1 (RFP64)
+      MO_src2 = &MI.getOperand(8); // src2 (RFP64)
+    } else { // X86::CTSELECT_I386_RFP80rr
+      MO_src1 = &MI.getOperand(4);  // src1 (RFP80)
+      MO_src2 = &MI.getOperand(5);  // src2 (RFP80)
+    }
+    
+    unsigned DstFP = getFPReg(MO_dst);
+    unsigned Src1FP = getFPReg(*MO_src1);
+    unsigned Src2FP = getFPReg(*MO_src2);
+    
+    // Handle case where FP operands aren't properly live due to FP load sequence issues
+    // Since post-RA expansion completely replaces this instruction, we just need to 
+    // ensure the FP stack state is correct for the stackifier
+    if (!isLive(Src1FP) || !isLive(Src2FP)) {
+      // Just ensure the result gets marked as live
+      pushReg(DstFP);
+      return;
+    }
+    
+    // Handle register killing/reuse similar to COPY instruction
+    bool KillsSrc1 = MI.killsRegister(MO_src1->getReg(), /*TRI=*/nullptr);
+    bool KillsSrc2 = MI.killsRegister(MO_src2->getReg(), /*TRI=*/nullptr);
+    
+    // Since CTSELECT is expanded post-RA, we need to simulate its FP stack effects.
+    // The actual implementation will use FP->GP->FP conversion, but for the stackifier
+    // we just need to show that it consumes src1 and src2 and produces dst.
+    
+    if (KillsSrc1 && Src1FP != DstFP) {
+      // If src1 is killed and different from dst, we can reuse its stack slot
+      unsigned Slot = getSlot(Src1FP);
+      Stack[Slot] = DstFP;
+      RegMap[DstFP] = Slot;
+      RegMap[Src1FP] = ~0U; // Mark src1 as dead
+      
+      if (KillsSrc2 && Src2FP != DstFP) {
+        // Both sources killed, pop src2
+        freeStackSlotBefore(Inst, Src2FP);
+      }
+    } else if (KillsSrc2 && Src2FP != DstFP) {
+      // If src2 is killed and different from dst, we can reuse its stack slot
+      unsigned Slot = getSlot(Src2FP);
+      Stack[Slot] = DstFP;
+      RegMap[DstFP] = Slot;
+      RegMap[Src2FP] = ~0U; // Mark src2 as dead
+    } else {
+      // Neither source can be reused for dst, need a new stack slot
+      // This is similar to duplicateToTop but for a new virtual result
+      pushReg(DstFP);
+    }
+    
+    // Don't erase the instruction - let post-RA expansion handle it
+    return;
+  }
+  
   case TargetOpcode::COPY: {
     // We handle three kinds of copies: FP <- FP, FP <- ST, and ST <- FP.
     const MachineOperand &MO1 = MI.getOperand(1);

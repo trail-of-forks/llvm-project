@@ -716,6 +716,41 @@ let Uses = [EFLAGS], isNotDuplicable = 1, isPseudo = 1 in {
       }
     }
   }
+  // FP32-specific CTSELECT for i386 (FP->GR32->FP conversion approach)
+  multiclass CTSELECT_I386_FP32<RegisterClass RC> {
+    let hasNoSchedulingInfo = 1, FPForm = SpecialFP in {
+      def rr : PseudoI<(outs RC:$dst, GR8:$tmp_byte, GR32:$tmp_mask, GR32:$tmp_a, GR32:$tmp_b),
+                       (ins RC:$src1, RC:$src2, i8imm:$cond), []> {
+        let Constraints =
+            "@earlyclobber $dst,@earlyclobber $tmp_byte,@earlyclobber "
+            "$tmp_mask,@earlyclobber $tmp_a,@earlyclobber $tmp_b";
+      }
+    }
+  }
+  // FP64-specific CTSELECT for i386 (FP->2xGR32->FP conversion approach)
+  multiclass CTSELECT_I386_FP64<RegisterClass RC> {
+    let hasNoSchedulingInfo = 1, FPForm = SpecialFP in {
+      def rr : PseudoI<(outs RC:$dst, GR8:$tmp_byte, GR32:$tmp_mask, 
+                             GR32:$tmp_a_lo, GR32:$tmp_a_hi, GR32:$tmp_b_lo, GR32:$tmp_b_hi),
+                       (ins RC:$src1, RC:$src2, i8imm:$cond), []> {
+        let Constraints =
+            "@earlyclobber $dst,@earlyclobber $tmp_byte,@earlyclobber "
+            "$tmp_mask,@earlyclobber $tmp_a_lo,@earlyclobber $tmp_a_hi,"
+            "@earlyclobber $tmp_b_lo,@earlyclobber $tmp_b_hi";
+      }
+    }
+  }
+  // FP80-specific CTSELECT for i386 (sequential processing approach to reduce register pressure)
+  multiclass CTSELECT_I386_FP80<RegisterClass RC> {
+    let hasNoSchedulingInfo = 1, FPForm = SpecialFP in {
+      def rr : PseudoI<(outs RC:$dst, GR8:$tmp_byte, GR32:$tmp_mask, GR32:$tmp_work),
+                       (ins RC:$src1, RC:$src2, i8imm:$cond), []> {
+        let Constraints =
+            "@earlyclobber $dst,@earlyclobber $tmp_byte,@earlyclobber "
+            "$tmp_mask,@earlyclobber $tmp_work";
+      }
+    }
+  }
 
   // Legacy CTSELECT for other targets (unchanged)
   multiclass CTSELECT_NOCMOV<RegisterClass RC, ValueType VT> {
@@ -735,6 +770,15 @@ let isCodeGenOnly = 1, hasSideEffects = 1, ForceDisassemble = 1 in {
   }
   let Predicates = [NoCMOV, HasMMX] in {
     defm CTSELECT_I386_VR64 : CTSELECT_I386_VR64<VR64>;
+  }
+  let Predicates = [NoCMOV, FPStackf32] in {
+    defm CTSELECT_I386_RFP32 : CTSELECT_I386_FP32<RFP32>;
+  }
+  let Predicates = [NoCMOV, FPStackf64] in {
+    defm CTSELECT_I386_RFP64 : CTSELECT_I386_FP64<RFP64>;
+  }
+  let Predicates = [NoCMOV] in {
+    defm CTSELECT_I386_RFP80 : CTSELECT_I386_FP80<RFP80>;
   }
 }
 
@@ -777,6 +821,19 @@ let Predicates = [NoCMOV, Not64BitMode] in {
 let Predicates = [NoCMOV, Not64BitMode, HasMMX] in {
   def : Pat<(x86mmx(X86ctselect VR64:$src1, VR64:$src2, timm:$cond, EFLAGS)),
             (CTSELECT_I386_VR64rr VR64:$src1, VR64:$src2, timm:$cond)>;
+}
+// Pattern matching for FP CTSELECT on i386 without CMOV (routes to post-RA expansion)
+let Predicates = [NoCMOV, Not64BitMode, FPStackf32] in {
+  def : Pat<(f32(X86ctselect RFP32:$src1, RFP32:$src2, timm:$cond, EFLAGS)),
+            (CTSELECT_I386_RFP32rr RFP32:$src1, RFP32:$src2, timm:$cond)>;
+}
+let Predicates = [NoCMOV, Not64BitMode, FPStackf64] in {
+  def : Pat<(f64(X86ctselect RFP64:$src1, RFP64:$src2, timm:$cond, EFLAGS)),
+            (CTSELECT_I386_RFP64rr RFP64:$src1, RFP64:$src2, timm:$cond)>;
+}
+let Predicates = [NoCMOV, Not64BitMode] in {
+  def : Pat<(f80(X86ctselect RFP80:$src1, RFP80:$src2, timm:$cond, EFLAGS)),
+            (CTSELECT_I386_RFP80rr RFP80:$src1, RFP80:$src2, timm:$cond)>;
 }
 
 //===----------------------------------------------------------------------===//

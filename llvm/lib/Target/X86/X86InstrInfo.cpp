@@ -1048,6 +1048,468 @@ bool X86InstrInfo::expandCtSelectI386VR64(MachineInstr &MI) const {
   return true;
 }
 
+/// Expand FP32-specific CTSELECT pseudo instructions (post-RA, constant-time)
+bool X86InstrInfo::expandCtSelectI386FP32(MachineInstr &MI) const {
+  MachineBasicBlock *MBB = MI.getParent();
+  DebugLoc DL = MI.getDebugLoc();
+
+  // CTSELECT_I386_RFP32rr has operands: 
+  // (outs dst, tmp_byte, tmp_mask, tmp_a, tmp_b), (ins src1, src2, cond)
+  Register DstReg = MI.getOperand(0).getReg();
+  Register TmpByteReg = MI.getOperand(1).getReg();
+  Register TmpMaskReg = MI.getOperand(2).getReg();
+  Register TmpAReg = MI.getOperand(3).getReg();
+  Register TmpBReg = MI.getOperand(4).getReg();
+  // Source registers needed for pseudo store instructions
+  Register Src1Reg = MI.getOperand(5).getReg();
+  Register Src2Reg = MI.getOperand(6).getReg();
+  X86::CondCode CC = static_cast<X86::CondCode>(MI.getOperand(7).getImm());
+
+  auto BundleStart = MI.getIterator();
+
+  // Step 1: Store FP values to memory and load as 32-bit integers
+  // Allocate stack space (8 bytes for alignment)
+  BuildMI(*MBB, MI, DL, get(X86::SUB32ri), X86::ESP)
+      .addReg(X86::ESP)
+      .addImm(8)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Post-stackifier: Need to manually manage FP stack to store correct values
+  // At this point, both values should be on the FP stack
+  // ST(0) = most recently loaded, ST(1) = previously loaded
+  
+  // Store ST(0) (second value) as f32 at [ESP+4]  
+  BuildMI(*MBB, MI, DL, get(X86::ST_F32m))
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(4).addReg(0)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Exchange ST(0) and ST(1) to get first value on top
+  BuildMI(*MBB, MI, DL, get(X86::XCH_F))
+      .addReg(X86::ST1)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Store ST(0) (first value) as f32 at [ESP]
+  BuildMI(*MBB, MI, DL, get(X86::ST_F32m))
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(0).addReg(0)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Load FP values as 32-bit integers
+  BuildMI(*MBB, MI, DL, get(X86::MOV32rm), TmpAReg)
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(0).addReg(0)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::MOV32rm), TmpBReg)
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(4).addReg(0)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Step 2: Use existing 32-bit integer CTSELECT logic
+  // Create CTSELECT_I386_GR32rr pseudo and expand it inline
+  X86::CondCode OppCC = X86::GetOppositeBranchCondition(CC);
+
+  // Generate condition byte
+  BuildMI(*MBB, MI, DL, get(X86::SETCCr), TmpByteReg)
+      .addImm(OppCC)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Zero-extend byte to 32-bit
+  BuildMI(*MBB, MI, DL, get(X86::MOVZX32rr8), TmpMaskReg)
+      .addReg(TmpByteReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Negate to create mask (0x00000000 or 0xFFFFFFFF)
+  BuildMI(*MBB, MI, DL, get(X86::NEG32r), TmpMaskReg)
+      .addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Apply constant-time selection: TmpAReg = (TmpAReg & TmpMaskReg) | (TmpBReg & ~TmpMaskReg)
+  BuildMI(*MBB, MI, DL, get(X86::AND32rr), TmpAReg)
+      .addReg(TmpAReg)
+      .addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::NOT32r), TmpMaskReg)
+      .addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::AND32rr), TmpBReg)
+      .addReg(TmpBReg)
+      .addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::OR32rr), TmpAReg)
+      .addReg(TmpAReg)
+      .addReg(TmpBReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Step 3: Store selected integer back to memory and load as FP
+  BuildMI(*MBB, MI, DL, get(X86::MOV32mr))
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(0).addReg(0)
+      .addReg(TmpAReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Load result as f32 to DstReg (use concrete instruction since stackifier already ran)
+  BuildMI(*MBB, MI, DL, get(X86::LD_F32m))
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(0).addReg(0)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Clean up stack
+  BuildMI(*MBB, MI, DL, get(X86::ADD32ri), X86::ESP)
+      .addReg(X86::ESP)
+      .addImm(8)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Remove the original pseudo instruction
+  MI.eraseFromParent();
+
+  // Bundle all generated instructions for atomic execution
+  auto BundleEnd = MI.getIterator();
+  if (BundleStart != BundleEnd) {
+    MachineInstr *BundleHeader =
+        BuildMI(*MBB, BundleStart, DL, get(TargetOpcode::BUNDLE));
+    finalizeBundle(*MBB, BundleHeader->getIterator(), std::next(BundleEnd));
+  }
+
+  return true;
+}
+
+/// Expand FP64-specific CTSELECT pseudo instructions (post-RA, constant-time)  
+bool X86InstrInfo::expandCtSelectI386FP64(MachineInstr &MI) const {
+  MachineBasicBlock *MBB = MI.getParent();
+  DebugLoc DL = MI.getDebugLoc();
+
+  // CTSELECT_I386_RFP64rr has operands:
+  // (outs dst, tmp_byte, tmp_mask, tmp_a_lo, tmp_a_hi, tmp_b_lo, tmp_b_hi), (ins src1, src2, cond)
+  Register DstReg = MI.getOperand(0).getReg();
+  Register TmpByteReg = MI.getOperand(1).getReg();
+  Register TmpMaskReg = MI.getOperand(2).getReg();
+  Register TmpALoReg = MI.getOperand(3).getReg();
+  Register TmpAHiReg = MI.getOperand(4).getReg();
+  Register TmpBLoReg = MI.getOperand(5).getReg();
+  Register TmpBHiReg = MI.getOperand(6).getReg();
+  // Source registers are not needed for concrete store instructions
+  // Register Src1Reg = MI.getOperand(7).getReg();
+  // Register Src2Reg = MI.getOperand(8).getReg();
+  X86::CondCode CC = static_cast<X86::CondCode>(MI.getOperand(9).getImm());
+
+  auto BundleStart = MI.getIterator();
+
+  // Step 1: Store FP64 values to memory and load as two 32-bit integers
+  BuildMI(*MBB, MI, DL, get(X86::SUB32ri), X86::ESP)
+      .addReg(X86::ESP)
+      .addImm(16)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Post-stackifier: Need to manually manage FP stack for FP64
+  // At this point: ST(0) = most recently loaded, ST(1) = previously loaded  
+  
+  // Store ST(0) (second value) as f64 at [ESP+8] - this pops the stack
+  BuildMI(*MBB, MI, DL, get(X86::ST_FP64m))
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(8).addReg(0)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Now ST(0) contains the first value, store it at [ESP]
+  BuildMI(*MBB, MI, DL, get(X86::ST_FP64m))
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(0).addReg(0)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Load FP64 values as 32-bit integer pairs (little-endian: lo, hi)
+  BuildMI(*MBB, MI, DL, get(X86::MOV32rm), TmpALoReg)
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(0).addReg(0)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::MOV32rm), TmpAHiReg)
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(4).addReg(0)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::MOV32rm), TmpBLoReg)
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(8).addReg(0)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::MOV32rm), TmpBHiReg)
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(12).addReg(0)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Step 2: Use existing 32-bit integer CTSELECT logic for both halves
+  X86::CondCode OppCC = X86::GetOppositeBranchCondition(CC);
+
+  // Generate condition byte
+  BuildMI(*MBB, MI, DL, get(X86::SETCCr), TmpByteReg)
+      .addImm(OppCC)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Zero-extend byte to 32-bit mask
+  BuildMI(*MBB, MI, DL, get(X86::MOVZX32rr8), TmpMaskReg)
+      .addReg(TmpByteReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Negate to create mask
+  BuildMI(*MBB, MI, DL, get(X86::NEG32r), TmpMaskReg)
+      .addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Apply constant-time selection to low 32 bits
+  BuildMI(*MBB, MI, DL, get(X86::AND32rr), TmpALoReg)
+      .addReg(TmpALoReg)
+      .addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::NOT32r), TmpMaskReg)
+      .addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::AND32rr), TmpBLoReg)
+      .addReg(TmpBLoReg)
+      .addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::OR32rr), TmpALoReg)
+      .addReg(TmpALoReg)
+      .addReg(TmpBLoReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Apply constant-time selection to high 32 bits (mask is inverted, so invert again)
+  BuildMI(*MBB, MI, DL, get(X86::NOT32r), TmpMaskReg)
+      .addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::AND32rr), TmpAHiReg)
+      .addReg(TmpAHiReg)
+      .addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::NOT32r), TmpMaskReg)
+      .addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::AND32rr), TmpBHiReg)
+      .addReg(TmpBHiReg)
+      .addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::OR32rr), TmpAHiReg)
+      .addReg(TmpAHiReg)
+      .addReg(TmpBHiReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Step 3: Store selected integers back to memory and load as FP64
+  BuildMI(*MBB, MI, DL, get(X86::MOV32mr))
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(0).addReg(0)
+      .addReg(TmpALoReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::MOV32mr))
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(4).addReg(0)
+      .addReg(TmpAHiReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Load result as f64 (use concrete instruction since stackifier already ran)
+  BuildMI(*MBB, MI, DL, get(X86::LD_F64m))
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(0).addReg(0)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Clean up stack
+  BuildMI(*MBB, MI, DL, get(X86::ADD32ri), X86::ESP)
+      .addReg(X86::ESP)
+      .addImm(16)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Remove the original pseudo instruction
+  MI.eraseFromParent();
+
+  // Bundle all generated instructions for atomic execution
+  auto BundleEnd = MI.getIterator();
+  if (BundleStart != BundleEnd) {
+    MachineInstr *BundleHeader =
+        BuildMI(*MBB, BundleStart, DL, get(TargetOpcode::BUNDLE));
+    finalizeBundle(*MBB, BundleHeader->getIterator(), std::next(BundleEnd));
+  }
+
+  return true;
+}
+
+/// Expand FP80-specific CTSELECT pseudo instructions (post-RA, constant-time, sequential processing)
+bool X86InstrInfo::expandCtSelectI386FP80(MachineInstr &MI) const {
+  MachineBasicBlock *MBB = MI.getParent();
+  DebugLoc DL = MI.getDebugLoc();
+
+  // CTSELECT_I386_RFP80rr has operands (sequential processing version):
+  // (outs dst, tmp_byte, tmp_mask, tmp_work), (ins src1, src2, cond)
+  Register TmpByteReg = MI.getOperand(1).getReg();
+  Register TmpMaskReg = MI.getOperand(2).getReg();
+  Register TmpWorkReg = MI.getOperand(3).getReg();
+  Register Src1Reg = MI.getOperand(4).getReg();
+  Register Src2Reg = MI.getOperand(5).getReg();
+  X86::CondCode CC = static_cast<X86::CondCode>(MI.getOperand(6).getImm());
+
+  auto BundleStart = MI.getIterator();
+
+  // Step 1: Store FP80 values to memory (12 bytes each, aligned)
+  // Allocate stack space (24 bytes for 2×12-byte FP80 values)
+  BuildMI(*MBB, MI, DL, get(X86::SUB32ri), X86::ESP)
+      .addReg(X86::ESP)
+      .addImm(24)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Store src2 as f80 at [ESP+12] (ST(0) = src2)
+  BuildMI(*MBB, MI, DL, get(X86::ST_FP80m))
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(12).addReg(0)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Store src1 as f80 at [ESP] (ST(0) = src1 after src2 is popped)
+  BuildMI(*MBB, MI, DL, get(X86::ST_FP80m))
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(0).addReg(0)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Step 2: Generate condition mask once (will be reused for all phases)
+  X86::CondCode OppCC = X86::GetOppositeBranchCondition(CC);
+  BuildMI(*MBB, MI, DL, get(X86::SETCCr), TmpByteReg)
+      .addImm(OppCC)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::MOVZX32rr8), TmpMaskReg)
+      .addReg(TmpByteReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::NEG32r), TmpMaskReg)
+      .addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Step 3: Sequential processing - Phase 1 (Low 32 bits: bytes 0-3)
+  // Load src1[0:3] and src2[0:3]
+  BuildMI(*MBB, MI, DL, get(X86::MOV32rm), TmpWorkReg)
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(0).addReg(0)    // src1 low
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::MOV32rm), TmpByteReg)  // Reuse tmp_byte as 32-bit temp
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(12).addReg(0)   // src2 low
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Apply selection: result = (mask & src1) | (~mask & src2)
+  BuildMI(*MBB, MI, DL, get(X86::AND32rr), TmpWorkReg)
+      .addReg(TmpWorkReg).addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::NOT32r), TmpMaskReg)
+      .addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::AND32rr), TmpByteReg)
+      .addReg(TmpByteReg).addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::OR32rr), TmpWorkReg)
+      .addReg(TmpWorkReg).addReg(TmpByteReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Store result low 32 bits
+  BuildMI(*MBB, MI, DL, get(X86::MOV32mr))
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(0).addReg(0)
+      .addReg(TmpWorkReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Restore mask for next phase
+  BuildMI(*MBB, MI, DL, get(X86::NOT32r), TmpMaskReg)
+      .addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Step 4: Sequential processing - Phase 2 (Mid 32 bits: bytes 4-7)
+  BuildMI(*MBB, MI, DL, get(X86::MOV32rm), TmpWorkReg)
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(4).addReg(0)    // src1 mid
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::MOV32rm), TmpByteReg)
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(16).addReg(0)   // src2 mid
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Apply same selection logic
+  BuildMI(*MBB, MI, DL, get(X86::AND32rr), TmpWorkReg)
+      .addReg(TmpWorkReg).addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::NOT32r), TmpMaskReg)
+      .addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::AND32rr), TmpByteReg)
+      .addReg(TmpByteReg).addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::OR32rr), TmpWorkReg)
+      .addReg(TmpWorkReg).addReg(TmpByteReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Store result mid 32 bits
+  BuildMI(*MBB, MI, DL, get(X86::MOV32mr))
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(4).addReg(0)
+      .addReg(TmpWorkReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Restore mask for next phase
+  BuildMI(*MBB, MI, DL, get(X86::NOT32r), TmpMaskReg)
+      .addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Step 5: Sequential processing - Phase 3 (High 16 bits: bytes 8-9, FP80 exponent+mantissa high)
+  // Reuse existing 32-bit registers by accessing their 16-bit subregisters
+  
+  // Load high 16-bits into existing registers (reuse TmpWorkReg and TmpByteReg as 16-bit)
+  BuildMI(*MBB, MI, DL, get(X86::MOV16rm), TmpWorkReg)
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(8).addReg(0)    // src1 high
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::MOV16rm), TmpByteReg)
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(20).addReg(0)   // src2 high  
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Apply selection logic with 16-bit operations using subregister views
+  BuildMI(*MBB, MI, DL, get(X86::AND16rr), TmpWorkReg)
+      .addReg(TmpWorkReg)
+      .addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::NOT16r), TmpMaskReg)
+      .addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::AND16rr), TmpByteReg)
+      .addReg(TmpByteReg)
+      .addReg(TmpMaskReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  BuildMI(*MBB, MI, DL, get(X86::OR16rr), TmpWorkReg)
+      .addReg(TmpWorkReg)
+      .addReg(TmpByteReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Store result high 16 bits
+  BuildMI(*MBB, MI, DL, get(X86::MOV16mr))
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(8).addReg(0)
+      .addReg(TmpWorkReg)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Step 6: Load result as FP80
+  BuildMI(*MBB, MI, DL, get(X86::LD_F80m))
+      .addReg(X86::ESP).addImm(1).addReg(0).addImm(0).addReg(0)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Clean up stack
+  BuildMI(*MBB, MI, DL, get(X86::ADD32ri), X86::ESP)
+      .addReg(X86::ESP)
+      .addImm(24)
+      .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Remove the original pseudo instruction
+  MI.eraseFromParent();
+
+  // Bundle all generated instructions for atomic execution
+  auto BundleEnd = MI.getIterator();
+  if (BundleStart != BundleEnd) {
+    auto BundleHeader = BuildMI(*MBB, BundleStart, DL, get(TargetOpcode::BUNDLE));
+    finalizeBundle(*MBB, BundleHeader->getIterator(), std::next(BundleEnd));
+  }
+  return true;
+}
+
 static bool isFrameLoadOpcode(int Opcode, unsigned &MemBytes) {
   switch (Opcode) {
   default:
@@ -6950,8 +7412,8 @@ bool X86InstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   case X86::CTSELECT64rm:
   case X86::CTSELECT32rm:
   case X86::CTSELECT16rm:
-    // These CTSELECT pseudos are only selected when CMOV is available
-    // Pattern matching ensures we use CTSELECT_I386 when CMOV is not available
+    // These CTSELECT pseudos are for CMOV-based expansion
+    // Note: This path shouldn't be reached when CMOV is disabled and i386 patterns exist
     return expandCtSelectWithCMOV(MI);
 
   case X86::CTSELECT_V2F64:
@@ -6989,6 +7451,13 @@ bool X86InstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   // VR64-specific CTSELECT expansion (post-RA, constant-time)
   case X86::CTSELECT_I386_VR64rr:
     return expandCtSelectI386VR64(MI);
+  // FP-specific CTSELECT expansion (post-RA, constant-time)
+  case X86::CTSELECT_I386_RFP32rr:
+    return expandCtSelectI386FP32(MI);
+  case X86::CTSELECT_I386_RFP64rr:
+    return expandCtSelectI386FP64(MI);
+  case X86::CTSELECT_I386_RFP80rr:
+    return expandCtSelectI386FP80(MI);
   }
   return false;
 }

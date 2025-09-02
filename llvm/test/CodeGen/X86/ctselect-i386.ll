@@ -259,7 +259,55 @@ define i32 @test_ctselect_nested(i1 %cond1, i1 %cond2, i32 %a, i32 %b, i32 %c) n
   ret i32 %sel2
 }
 
+; Test i64 functionality and type legalization
+define i64 @test_ctselect_i64_basic(i1 %cond, i64 %a, i64 %b) nounwind {
+; I386-NOCMOV-LABEL: test_ctselect_i64_basic:
+; I386-NOCMOV:       # %bb.0:
+; I386-NOCMOV-NEXT:    pushl %ebp
+; I386-NOCMOV-NEXT:    pushl %ebx
+; I386-NOCMOV-NEXT:    pushl %edi
+; I386-NOCMOV-NEXT:    pushl %esi
+; I386-NOCMOV-NEXT:    movl {{[0-9]+}}(%esp), %ecx
+; I386-NOCMOV-NEXT:    movl {{[0-9]+}}(%esp), %esi
+; I386-NOCMOV-NEXT:    movl {{[0-9]+}}(%esp), %edx
+; I386-NOCMOV-NEXT:    movl {{[0-9]+}}(%esp), %edi
+; I386-NOCMOV-NEXT:    testb $1, {{[0-9]+}}(%esp)
+; I386-NOCMOV-NEXT:    sete %bl
+; I386-NOCMOV-NEXT:    movzbl %bl, %ebp
+; I386-NOCMOV-NEXT:    negl %ebp
+; I386-NOCMOV-NEXT:    movl %edx, %eax
+; I386-NOCMOV-NEXT:    andl %ebp, %eax
+; I386-NOCMOV-NEXT:    notl %ebp
+; I386-NOCMOV-NEXT:    andl %ecx, %ebp
+; I386-NOCMOV-NEXT:    orl %ebp, %eax
+; I386-NOCMOV-NEXT:    sete %cl
+; I386-NOCMOV-NEXT:    movzbl %cl, %ebx
+; I386-NOCMOV-NEXT:    negl %ebx
+; I386-NOCMOV-NEXT:    movl %edi, %edx
+; I386-NOCMOV-NEXT:    andl %ebx, %edx
+; I386-NOCMOV-NEXT:    notl %ebx
+; I386-NOCMOV-NEXT:    andl %esi, %ebx
+; I386-NOCMOV-NEXT:    orl %ebx, %edx
+; I386-NOCMOV-NEXT:    popl %esi
+; I386-NOCMOV-NEXT:    popl %edi
+; I386-NOCMOV-NEXT:    popl %ebx
+; I386-NOCMOV-NEXT:    popl %ebp
+; I386-NOCMOV-NEXT:    retl
+;
+; I386-CMOV-LABEL: test_ctselect_i64_basic:
+; I386-CMOV:       # %bb.0:
+; I386-CMOV-NEXT:    movl {{[0-9]+}}(%esp), %eax
+; I386-CMOV-NEXT:    movl {{[0-9]+}}(%esp), %edx
+; I386-CMOV-NEXT:    testb $1, {{[0-9]+}}(%esp)
+; I386-CMOV-NEXT:    cmovnel {{[0-9]+}}(%esp), %eax
+; I386-CMOV-NEXT:    cmovnel {{[0-9]+}}(%esp), %edx
+; I386-CMOV-NEXT:    retl
+  %result = call i64 @llvm.ct.select.i64(i1 %cond, i64 %a, i64 %b)
+  ret i64 %result
+}
+
 ; Declare ct.select intrinsics
 declare i8 @llvm.ct.select.i8(i1, i8, i8)
 declare i16 @llvm.ct.select.i16(i1, i16, i16)
 declare i32 @llvm.ct.select.i32(i1, i32, i32)
+declare i64 @llvm.ct.select.i64(i1, i64, i64)

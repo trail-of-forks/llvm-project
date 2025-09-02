@@ -692,6 +692,12 @@ private:
 
   /// Expand VR64-specific CTSELECT pseudo instructions (post-RA, constant-time)
   bool expandCtSelectI386VR64(MachineInstr &MI) const;
+  /// Expand FP32-specific CTSELECT pseudo instructions (post-RA, constant-time)
+  bool expandCtSelectI386FP32(MachineInstr &MI) const;
+  /// Expand FP64-specific CTSELECT pseudo instructions (post-RA, constant-time)
+  bool expandCtSelectI386FP64(MachineInstr &MI) const;
+  /// Expand FP80-specific CTSELECT pseudo instructions (post-RA, constant-time)
+  bool expandCtSelectI386FP80(MachineInstr &MI) const;
 
   /// Returns true iff the routine could find two commutable operands in the
   /// given machine instruction with 3 vector inputs.
