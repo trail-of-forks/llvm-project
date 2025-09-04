@@ -1708,8 +1708,12 @@ bool ARMBaseInstrInfo::expandCtSelect(MachineInstr &MI) const {
   // Each pseudo has: (outs $dst, $tmp_mask), (ins $src1, $src2, $cond))
   Register DestReg = MI.getOperand(0).getReg();
   Register MaskReg = MI.getOperand(1).getReg();
+  // choice a from __builtin_ct_select(cond, a, b)
   Register Src1Reg = MI.getOperand(2).getReg();
+  // choice b from __builtin_ct_select(cond, a, b)
   Register Src2Reg = MI.getOperand(3).getReg();
+  // cond from __builtin_ct_select(cond, a, b) is carried in CondCodes
+  // via constant folding that occurred in ARMISelLowering
   ARMCC::CondCodes CC = static_cast<ARMCC::CondCodes>(MI.getOperand(4).getImm());
 
   // Type declaration binds dest, src1, and src2 to be the same type, 
@@ -1717,12 +1721,15 @@ bool ARMBaseInstrInfo::expandCtSelect(MachineInstr &MI) const {
   const TargetRegisterInfo *TRI = &getRegisterInfo();
   const TargetRegisterClass *RC = TRI->getMinimalPhysRegClass(DestReg);
   
-  unsigned MovImmOp = ARM::MOVi;
+  // ops that differ by operand register size
+  unsigned MovOp = ARM::MOVi;
   unsigned MvnOp = ARM::MVNi;
   unsigned AndOp = ARM::ANDrr;
   unsigned BicOp = ARM::BICrr;
   unsigned OrrOp = ARM::ORRrr;
-  // we need to widen the mask in the case of vector ops
+  // NEON and SVE don't use condition codes
+  bool IsVector = false;
+  // Widen the mask in the case of vector ops
   unsigned BroadcastOp = ARM::VDUP32d;
   
   if (ARM::QPRRegClass.hasSubClassEq(RC)) {
@@ -1730,27 +1737,34 @@ bool ARMBaseInstrInfo::expandCtSelect(MachineInstr &MI) const {
     BicOp = ARM::VBICq;
     OrrOp = ARM::VORRq;
     BroadcastOp = ARM::VDUP32q;
-    
-    // NB: HPR, SPR are slices of DPRs
+    IsVector = true;
   } else if (ARM::DPRRegClass.hasSubClassEq(RC)) {
     AndOp = ARM::VANDd;
     BicOp = ARM::VBICd;
     OrrOp = ARM::VORRd;
-  }
+    IsVector = true;
+  } //else if (ARM::SPRRegClass.hasSubClassEq(RC)) {
+    //MovOp = ;
+    //MvnOp = ;
+    //AndOp = ;
+    //BicOp = ;
+    //OrrOp = ;
+  //} else if (ARM::HPRRegClass.hasSubClassEq(RC)) {
+   // 
+ // }
   
   // The following sequence produces: result = (src1 & mask) | (src2 & ~mask)
   MachineInstrBuilder Builder;
 
   // 1. Mask and not-mask from condition codes
-  Builder = BuildMI(*MBB, MI, DL, get(MovImmOp), MaskReg)
+  Builder = BuildMI(*MBB, MI, DL, get(MovOp), MaskReg)
                    .addImm(0)
                    .add(predOps(ARMCC::AL))
                    .add(condCodeOp())
                    .setMIFlag(MachineInstr::MIFlag::NoMerge);
-  auto BundleStart = Builder.getInstr()->getIterator();
   
   // If condition is true, mask = 0xFFFFFFFF.
-  BuildMI(*MBB, MI, DL, get(MvnOp), MaskReg)
+  Builder = BuildMI(*MBB, MI, DL, get(MvnOp), MaskReg)
     .addImm(0)
     .add(predOps(CC))
     .add(condCodeOp())
@@ -1759,37 +1773,46 @@ bool ARMBaseInstrInfo::expandCtSelect(MachineInstr &MI) const {
   // As needed, broadcast our scalar mask to vector size.
   if (ARM::DPRRegClass.hasSubClassEq(RC) || 
       ARM::QPRRegClass.hasSubClassEq(RC)) {
-      BuildMI(*MBB, MI, DL, get(BroadcastOp), MaskReg)
+      Builder = BuildMI(*MBB, MI, DL, get(BroadcastOp), MaskReg)
         .addReg(MaskReg)
         .setMIFlag(MachineInstr::MIFlag::NoMerge);
   }
  
   // 2. A = src1 & mask
-  BuildMI(*MBB, MI, DL, get(AndOp), DestReg)
+  Builder = BuildMI(*MBB, MI, DL, get(AndOp), DestReg)
       .addReg(Src1Reg)
       .addReg(MaskReg)
-      .add(predOps(ARMCC::AL))
-      .add(condCodeOp())
       .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Vector instrs don't support condition codes
+  if (!IsVector) {
+    Builder.add(predOps(ARMCC::AL))
+      .add(condCodeOp());
+  }
 
   // 3. B = src2 & ~mask 
   // B overwrites MaskReg, because we don't need the mask value after this.
-  BuildMI(*MBB, MI, DL, get(BicOp), MaskReg)
+  Builder = BuildMI(*MBB, MI, DL, get(BicOp), MaskReg)
       .addReg(Src2Reg)
       .addReg(MaskReg)
-      .add(predOps(ARMCC::AL))
-      .add(condCodeOp())
       .setMIFlag(MachineInstr::MIFlag::NoMerge);
+
+  if (!IsVector) {
+    Builder.add(predOps(ARMCC::AL))
+      .add(condCodeOp());
+  }
 
   // 4. result = A | B
   Builder = BuildMI(*MBB, MI, DL, get(OrrOp), DestReg)
                   .addReg(DestReg)
                   .addReg(MaskReg)
                   .setMIFlag(MachineInstr::MIFlag::NoMerge);
-  auto BundleEnd = Builder.getInstr()->getIterator();
   
-  // Bundle everything for atomic execution.
-  finalizeBundle(*MBB, BundleStart, std::next(BundleEnd));
+  if (!IsVector) {
+    Builder.add(predOps(ARMCC::AL))
+      .add(condCodeOp());
+  }
+
   MI.eraseFromParent();
   return true;
 }
