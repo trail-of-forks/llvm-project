@@ -1705,7 +1705,7 @@ bool ARMBaseInstrInfo::expandCtSelect(MachineInstr &MI) const {
   DebugLoc DL = MI.getDebugLoc();
 
   // Refer to CTSELECT* pseudos in ARMInstrInfo.td.
-  // Each pseudo has: (outs $dst, $tmp_mask), (ins $src1, $src2, $cond))
+  // Each pseudo has: (outs $dst, $tmp_mask), (ins $src1, $src2, $cond)
   Register DestReg = MI.getOperand(0).getReg();
   Register MaskReg = MI.getOperand(1).getReg();
   // choice a from __builtin_ct_select(cond, a, b)
@@ -1775,6 +1775,8 @@ bool ARMBaseInstrInfo::expandCtSelect(MachineInstr &MI) const {
       ARM::QPRRegClass.hasSubClassEq(RC)) {
       Builder = BuildMI(*MBB, MI, DL, get(BroadcastOp), MaskReg)
         .addReg(MaskReg)
+        .add(predOps(ARMCC::AL))
+        .add(condCodeOp())
         .setMIFlag(MachineInstr::MIFlag::NoMerge);
   }
  
@@ -1782,36 +1784,26 @@ bool ARMBaseInstrInfo::expandCtSelect(MachineInstr &MI) const {
   Builder = BuildMI(*MBB, MI, DL, get(AndOp), DestReg)
       .addReg(Src1Reg)
       .addReg(MaskReg)
+      .add(predOps(ARMCC::AL))
+      .add(condCodeOp())
       .setMIFlag(MachineInstr::MIFlag::NoMerge);
-
-  // Vector instrs don't support condition codes
-  if (!IsVector) {
-    Builder.add(predOps(ARMCC::AL))
-      .add(condCodeOp());
-  }
 
   // 3. B = src2 & ~mask 
   // B overwrites MaskReg, because we don't need the mask value after this.
   Builder = BuildMI(*MBB, MI, DL, get(BicOp), MaskReg)
       .addReg(Src2Reg)
       .addReg(MaskReg)
+      .add(predOps(ARMCC::AL))
+      .add(condCodeOp())
       .setMIFlag(MachineInstr::MIFlag::NoMerge);
-
-  if (!IsVector) {
-    Builder.add(predOps(ARMCC::AL))
-      .add(condCodeOp());
-  }
 
   // 4. result = A | B
   Builder = BuildMI(*MBB, MI, DL, get(OrrOp), DestReg)
                   .addReg(DestReg)
                   .addReg(MaskReg)
+                  .add(predOps(ARMCC::AL))
+                  .add(condCodeOp())
                   .setMIFlag(MachineInstr::MIFlag::NoMerge);
-  
-  if (!IsVector) {
-    Builder.add(predOps(ARMCC::AL))
-      .add(condCodeOp());
-  }
 
   MI.eraseFromParent();
   return true;
