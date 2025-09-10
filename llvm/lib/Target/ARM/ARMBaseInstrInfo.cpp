@@ -1903,9 +1903,9 @@ bool ARMBaseInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       opcode == ARM::CTSELECTv2f64 ||
       opcode == ARM::CTSELECTv8f16 ||
       opcode == ARM::CTSELECTv8bf16) {
-        LLVM_DEBUG(dbgs() << "Opcode (vector) " << opcode << "replaced by: " << MI);
-      return expandCtSelectVector(MI);
-      }
+    LLVM_DEBUG(dbgs() << "Opcode (vector) " << opcode << "replaced by: " << MI);
+    return expandCtSelectVector(MI);
+  }
 
   if (opcode == ARM::CTSELECTint  || 
       opcode == ARM::CTSELECTf16  ||
