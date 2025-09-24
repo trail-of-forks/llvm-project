@@ -664,7 +664,8 @@ void X86PassConfig::addPreEmitPass2() {
     return M->getModuleFlag("kcfi") ||
            (TT.isOSDarwin() &&
             (M->getFunction("objc_retainAutoreleasedReturnValue") ||
-             M->getFunction("objc_unsafeClaimAutoreleasedReturnValue")));
+             M->getFunction("objc_unsafeClaimAutoreleasedReturnValue"))) ||
+             F.hasFnAttribute("ct-select");
   }));
 }
 
