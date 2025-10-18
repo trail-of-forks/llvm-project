@@ -7,39 +7,33 @@ define i8 @test_ctselect_i8(i1 %cond, i8 %a, i8 %b) {
 ; W32-LABEL: test_ctselect_i8:
 ; W32:         .functype test_ctselect_i8 (i32, i32, i32) -> (i32)
 ; W32-NEXT:  # %bb.0:
+; W32-NEXT:    local.get 1
+; W32-NEXT:    local.get 2
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    i32.const 0
 ; W32-NEXT:    local.get 0
 ; W32-NEXT:    i32.const 1
 ; W32-NEXT:    i32.and
-; W32-NEXT:    local.tee 0
 ; W32-NEXT:    i32.sub
-; W32-NEXT:    local.get 1
 ; W32-NEXT:    i32.and
-; W32-NEXT:    local.get 0
-; W32-NEXT:    i32.const -1
-; W32-NEXT:    i32.add
 ; W32-NEXT:    local.get 2
-; W32-NEXT:    i32.and
-; W32-NEXT:    i32.or
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    # fallthrough-return
 ;
 ; W64-LABEL: test_ctselect_i8:
 ; W64:         .functype test_ctselect_i8 (i32, i32, i32) -> (i32)
 ; W64-NEXT:  # %bb.0:
+; W64-NEXT:    local.get 1
+; W64-NEXT:    local.get 2
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    i32.const 0
 ; W64-NEXT:    local.get 0
 ; W64-NEXT:    i32.const 1
 ; W64-NEXT:    i32.and
-; W64-NEXT:    local.tee 0
 ; W64-NEXT:    i32.sub
-; W64-NEXT:    local.get 1
 ; W64-NEXT:    i32.and
-; W64-NEXT:    local.get 0
-; W64-NEXT:    i32.const -1
-; W64-NEXT:    i32.add
 ; W64-NEXT:    local.get 2
-; W64-NEXT:    i32.and
-; W64-NEXT:    i32.or
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    # fallthrough-return
   %result = call i8 @llvm.ct.select.i8(i1 %cond, i8 %a, i8 %b)
   ret i8 %result
@@ -49,39 +43,33 @@ define i16 @test_ctselect_i16(i1 %cond, i16 %a, i16 %b) {
 ; W32-LABEL: test_ctselect_i16:
 ; W32:         .functype test_ctselect_i16 (i32, i32, i32) -> (i32)
 ; W32-NEXT:  # %bb.0:
+; W32-NEXT:    local.get 1
+; W32-NEXT:    local.get 2
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    i32.const 0
 ; W32-NEXT:    local.get 0
 ; W32-NEXT:    i32.const 1
 ; W32-NEXT:    i32.and
-; W32-NEXT:    local.tee 0
 ; W32-NEXT:    i32.sub
-; W32-NEXT:    local.get 1
 ; W32-NEXT:    i32.and
-; W32-NEXT:    local.get 0
-; W32-NEXT:    i32.const -1
-; W32-NEXT:    i32.add
 ; W32-NEXT:    local.get 2
-; W32-NEXT:    i32.and
-; W32-NEXT:    i32.or
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    # fallthrough-return
 ;
 ; W64-LABEL: test_ctselect_i16:
 ; W64:         .functype test_ctselect_i16 (i32, i32, i32) -> (i32)
 ; W64-NEXT:  # %bb.0:
+; W64-NEXT:    local.get 1
+; W64-NEXT:    local.get 2
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    i32.const 0
 ; W64-NEXT:    local.get 0
 ; W64-NEXT:    i32.const 1
 ; W64-NEXT:    i32.and
-; W64-NEXT:    local.tee 0
 ; W64-NEXT:    i32.sub
-; W64-NEXT:    local.get 1
 ; W64-NEXT:    i32.and
-; W64-NEXT:    local.get 0
-; W64-NEXT:    i32.const -1
-; W64-NEXT:    i32.add
 ; W64-NEXT:    local.get 2
-; W64-NEXT:    i32.and
-; W64-NEXT:    i32.or
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    # fallthrough-return
   %result = call i16 @llvm.ct.select.i16(i1 %cond, i16 %a, i16 %b)
   ret i16 %result
@@ -91,39 +79,33 @@ define i32 @test_ctselect_i32(i1 %cond, i32 %a, i32 %b) {
 ; W32-LABEL: test_ctselect_i32:
 ; W32:         .functype test_ctselect_i32 (i32, i32, i32) -> (i32)
 ; W32-NEXT:  # %bb.0:
+; W32-NEXT:    local.get 1
+; W32-NEXT:    local.get 2
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    i32.const 0
 ; W32-NEXT:    local.get 0
 ; W32-NEXT:    i32.const 1
 ; W32-NEXT:    i32.and
-; W32-NEXT:    local.tee 0
 ; W32-NEXT:    i32.sub
-; W32-NEXT:    local.get 1
 ; W32-NEXT:    i32.and
-; W32-NEXT:    local.get 0
-; W32-NEXT:    i32.const -1
-; W32-NEXT:    i32.add
 ; W32-NEXT:    local.get 2
-; W32-NEXT:    i32.and
-; W32-NEXT:    i32.or
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    # fallthrough-return
 ;
 ; W64-LABEL: test_ctselect_i32:
 ; W64:         .functype test_ctselect_i32 (i32, i32, i32) -> (i32)
 ; W64-NEXT:  # %bb.0:
+; W64-NEXT:    local.get 1
+; W64-NEXT:    local.get 2
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    i32.const 0
 ; W64-NEXT:    local.get 0
 ; W64-NEXT:    i32.const 1
 ; W64-NEXT:    i32.and
-; W64-NEXT:    local.tee 0
 ; W64-NEXT:    i32.sub
-; W64-NEXT:    local.get 1
 ; W64-NEXT:    i32.and
-; W64-NEXT:    local.get 0
-; W64-NEXT:    i32.const -1
-; W64-NEXT:    i32.add
 ; W64-NEXT:    local.get 2
-; W64-NEXT:    i32.and
-; W64-NEXT:    i32.or
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    # fallthrough-return
   %result = call i32 @llvm.ct.select.i32(i1 %cond, i32 %a, i32 %b)
   ret i32 %result
@@ -132,44 +114,36 @@ define i32 @test_ctselect_i32(i1 %cond, i32 %a, i32 %b) {
 define i64 @test_ctselect_i64(i1 %cond, i64 %a, i64 %b) {
 ; W32-LABEL: test_ctselect_i64:
 ; W32:         .functype test_ctselect_i64 (i32, i64, i64) -> (i64)
-; W32-NEXT:    .local i64
 ; W32-NEXT:  # %bb.0:
+; W32-NEXT:    local.get 1
+; W32-NEXT:    local.get 2
+; W32-NEXT:    i64.xor
 ; W32-NEXT:    i64.const 0
 ; W32-NEXT:    local.get 0
 ; W32-NEXT:    i64.extend_i32_u
 ; W32-NEXT:    i64.const 1
 ; W32-NEXT:    i64.and
-; W32-NEXT:    local.tee 3
 ; W32-NEXT:    i64.sub
-; W32-NEXT:    local.get 1
 ; W32-NEXT:    i64.and
-; W32-NEXT:    local.get 3
-; W32-NEXT:    i64.const -1
-; W32-NEXT:    i64.add
 ; W32-NEXT:    local.get 2
-; W32-NEXT:    i64.and
-; W32-NEXT:    i64.or
+; W32-NEXT:    i64.xor
 ; W32-NEXT:    # fallthrough-return
 ;
 ; W64-LABEL: test_ctselect_i64:
 ; W64:         .functype test_ctselect_i64 (i32, i64, i64) -> (i64)
-; W64-NEXT:    .local i64
 ; W64-NEXT:  # %bb.0:
+; W64-NEXT:    local.get 1
+; W64-NEXT:    local.get 2
+; W64-NEXT:    i64.xor
 ; W64-NEXT:    i64.const 0
 ; W64-NEXT:    local.get 0
 ; W64-NEXT:    i64.extend_i32_u
 ; W64-NEXT:    i64.const 1
 ; W64-NEXT:    i64.and
-; W64-NEXT:    local.tee 3
 ; W64-NEXT:    i64.sub
-; W64-NEXT:    local.get 1
 ; W64-NEXT:    i64.and
-; W64-NEXT:    local.get 3
-; W64-NEXT:    i64.const -1
-; W64-NEXT:    i64.add
 ; W64-NEXT:    local.get 2
-; W64-NEXT:    i64.and
-; W64-NEXT:    i64.or
+; W64-NEXT:    i64.xor
 ; W64-NEXT:    # fallthrough-return
   %result = call i64 @llvm.ct.select.i64(i1 %cond, i64 %a, i64 %b)
   ret i64 %result
@@ -179,41 +153,34 @@ define ptr @test_ctselect_ptr(i1 %cond, ptr %a, ptr %b) {
 ; W32-LABEL: test_ctselect_ptr:
 ; W32:         .functype test_ctselect_ptr (i32, i32, i32) -> (i32)
 ; W32-NEXT:  # %bb.0:
+; W32-NEXT:    local.get 1
+; W32-NEXT:    local.get 2
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    i32.const 0
 ; W32-NEXT:    local.get 0
 ; W32-NEXT:    i32.const 1
 ; W32-NEXT:    i32.and
-; W32-NEXT:    local.tee 0
 ; W32-NEXT:    i32.sub
-; W32-NEXT:    local.get 1
 ; W32-NEXT:    i32.and
-; W32-NEXT:    local.get 0
-; W32-NEXT:    i32.const -1
-; W32-NEXT:    i32.add
 ; W32-NEXT:    local.get 2
-; W32-NEXT:    i32.and
-; W32-NEXT:    i32.or
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    # fallthrough-return
 ;
 ; W64-LABEL: test_ctselect_ptr:
 ; W64:         .functype test_ctselect_ptr (i32, i64, i64) -> (i64)
-; W64-NEXT:    .local i64
 ; W64-NEXT:  # %bb.0:
+; W64-NEXT:    local.get 1
+; W64-NEXT:    local.get 2
+; W64-NEXT:    i64.xor
 ; W64-NEXT:    i64.const 0
 ; W64-NEXT:    local.get 0
 ; W64-NEXT:    i64.extend_i32_u
 ; W64-NEXT:    i64.const 1
 ; W64-NEXT:    i64.and
-; W64-NEXT:    local.tee 3
 ; W64-NEXT:    i64.sub
-; W64-NEXT:    local.get 1
 ; W64-NEXT:    i64.and
-; W64-NEXT:    local.get 3
-; W64-NEXT:    i64.const -1
-; W64-NEXT:    i64.add
 ; W64-NEXT:    local.get 2
-; W64-NEXT:    i64.and
-; W64-NEXT:    i64.or
+; W64-NEXT:    i64.xor
 ; W64-NEXT:    # fallthrough-return
   %result = call ptr @llvm.ct.select.p0(i1 %cond, ptr %a, ptr %b)
   ret ptr %result
@@ -257,41 +224,31 @@ define i32 @test_ctselect_icmp_eq(i32 %x, i32 %y, i32 %a, i32 %b) {
 ; W32-LABEL: test_ctselect_icmp_eq:
 ; W32:         .functype test_ctselect_icmp_eq (i32, i32, i32, i32) -> (i32)
 ; W32-NEXT:  # %bb.0:
-; W32-NEXT:    i32.const -1
+; W32-NEXT:    local.get 2
+; W32-NEXT:    local.get 3
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    i32.const 0
 ; W32-NEXT:    local.get 0
 ; W32-NEXT:    local.get 1
 ; W32-NEXT:    i32.eq
 ; W32-NEXT:    i32.select
-; W32-NEXT:    local.tee 1
-; W32-NEXT:    local.get 2
-; W32-NEXT:    i32.and
-; W32-NEXT:    local.get 1
-; W32-NEXT:    i32.const -1
-; W32-NEXT:    i32.xor
 ; W32-NEXT:    local.get 3
-; W32-NEXT:    i32.and
-; W32-NEXT:    i32.or
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    # fallthrough-return
 ;
 ; W64-LABEL: test_ctselect_icmp_eq:
 ; W64:         .functype test_ctselect_icmp_eq (i32, i32, i32, i32) -> (i32)
 ; W64-NEXT:  # %bb.0:
-; W64-NEXT:    i32.const -1
+; W64-NEXT:    local.get 2
+; W64-NEXT:    local.get 3
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    i32.const 0
 ; W64-NEXT:    local.get 0
 ; W64-NEXT:    local.get 1
 ; W64-NEXT:    i32.eq
 ; W64-NEXT:    i32.select
-; W64-NEXT:    local.tee 1
-; W64-NEXT:    local.get 2
-; W64-NEXT:    i32.and
-; W64-NEXT:    local.get 1
-; W64-NEXT:    i32.const -1
-; W64-NEXT:    i32.xor
 ; W64-NEXT:    local.get 3
-; W64-NEXT:    i32.and
-; W64-NEXT:    i32.or
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    # fallthrough-return
   %cond = icmp eq i32 %x, %y
   %result = call i32 @llvm.ct.select.i32(i1 %cond, i32 %a, i32 %b)
@@ -302,41 +259,31 @@ define i32 @test_ctselect_icmp_ne(i32 %x, i32 %y, i32 %a, i32 %b) {
 ; W32-LABEL: test_ctselect_icmp_ne:
 ; W32:         .functype test_ctselect_icmp_ne (i32, i32, i32, i32) -> (i32)
 ; W32-NEXT:  # %bb.0:
-; W32-NEXT:    i32.const -1
+; W32-NEXT:    local.get 2
+; W32-NEXT:    local.get 3
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    i32.const 0
 ; W32-NEXT:    local.get 0
 ; W32-NEXT:    local.get 1
 ; W32-NEXT:    i32.ne
 ; W32-NEXT:    i32.select
-; W32-NEXT:    local.tee 1
-; W32-NEXT:    local.get 2
-; W32-NEXT:    i32.and
-; W32-NEXT:    local.get 1
-; W32-NEXT:    i32.const -1
-; W32-NEXT:    i32.xor
 ; W32-NEXT:    local.get 3
-; W32-NEXT:    i32.and
-; W32-NEXT:    i32.or
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    # fallthrough-return
 ;
 ; W64-LABEL: test_ctselect_icmp_ne:
 ; W64:         .functype test_ctselect_icmp_ne (i32, i32, i32, i32) -> (i32)
 ; W64-NEXT:  # %bb.0:
-; W64-NEXT:    i32.const -1
+; W64-NEXT:    local.get 2
+; W64-NEXT:    local.get 3
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    i32.const 0
 ; W64-NEXT:    local.get 0
 ; W64-NEXT:    local.get 1
 ; W64-NEXT:    i32.ne
 ; W64-NEXT:    i32.select
-; W64-NEXT:    local.tee 1
-; W64-NEXT:    local.get 2
-; W64-NEXT:    i32.and
-; W64-NEXT:    local.get 1
-; W64-NEXT:    i32.const -1
-; W64-NEXT:    i32.xor
 ; W64-NEXT:    local.get 3
-; W64-NEXT:    i32.and
-; W64-NEXT:    i32.or
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    # fallthrough-return
   %cond = icmp ne i32 %x, %y
   %result = call i32 @llvm.ct.select.i32(i1 %cond, i32 %a, i32 %b)
@@ -347,41 +294,31 @@ define i32 @test_ctselect_icmp_slt(i32 %x, i32 %y, i32 %a, i32 %b) {
 ; W32-LABEL: test_ctselect_icmp_slt:
 ; W32:         .functype test_ctselect_icmp_slt (i32, i32, i32, i32) -> (i32)
 ; W32-NEXT:  # %bb.0:
-; W32-NEXT:    i32.const -1
+; W32-NEXT:    local.get 2
+; W32-NEXT:    local.get 3
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    i32.const 0
 ; W32-NEXT:    local.get 0
 ; W32-NEXT:    local.get 1
 ; W32-NEXT:    i32.lt_s
 ; W32-NEXT:    i32.select
-; W32-NEXT:    local.tee 1
-; W32-NEXT:    local.get 2
-; W32-NEXT:    i32.and
-; W32-NEXT:    local.get 1
-; W32-NEXT:    i32.const -1
-; W32-NEXT:    i32.xor
 ; W32-NEXT:    local.get 3
-; W32-NEXT:    i32.and
-; W32-NEXT:    i32.or
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    # fallthrough-return
 ;
 ; W64-LABEL: test_ctselect_icmp_slt:
 ; W64:         .functype test_ctselect_icmp_slt (i32, i32, i32, i32) -> (i32)
 ; W64-NEXT:  # %bb.0:
-; W64-NEXT:    i32.const -1
+; W64-NEXT:    local.get 2
+; W64-NEXT:    local.get 3
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    i32.const 0
 ; W64-NEXT:    local.get 0
 ; W64-NEXT:    local.get 1
 ; W64-NEXT:    i32.lt_s
 ; W64-NEXT:    i32.select
-; W64-NEXT:    local.tee 1
-; W64-NEXT:    local.get 2
-; W64-NEXT:    i32.and
-; W64-NEXT:    local.get 1
-; W64-NEXT:    i32.const -1
-; W64-NEXT:    i32.xor
 ; W64-NEXT:    local.get 3
-; W64-NEXT:    i32.and
-; W64-NEXT:    i32.or
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    # fallthrough-return
   %cond = icmp slt i32 %x, %y
   %result = call i32 @llvm.ct.select.i32(i1 %cond, i32 %a, i32 %b)
@@ -392,41 +329,31 @@ define i32 @test_ctselect_icmp_ult(i32 %x, i32 %y, i32 %a, i32 %b) {
 ; W32-LABEL: test_ctselect_icmp_ult:
 ; W32:         .functype test_ctselect_icmp_ult (i32, i32, i32, i32) -> (i32)
 ; W32-NEXT:  # %bb.0:
-; W32-NEXT:    i32.const -1
+; W32-NEXT:    local.get 2
+; W32-NEXT:    local.get 3
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    i32.const 0
 ; W32-NEXT:    local.get 0
 ; W32-NEXT:    local.get 1
 ; W32-NEXT:    i32.lt_u
 ; W32-NEXT:    i32.select
-; W32-NEXT:    local.tee 1
-; W32-NEXT:    local.get 2
-; W32-NEXT:    i32.and
-; W32-NEXT:    local.get 1
-; W32-NEXT:    i32.const -1
-; W32-NEXT:    i32.xor
 ; W32-NEXT:    local.get 3
-; W32-NEXT:    i32.and
-; W32-NEXT:    i32.or
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    # fallthrough-return
 ;
 ; W64-LABEL: test_ctselect_icmp_ult:
 ; W64:         .functype test_ctselect_icmp_ult (i32, i32, i32, i32) -> (i32)
 ; W64-NEXT:  # %bb.0:
-; W64-NEXT:    i32.const -1
+; W64-NEXT:    local.get 2
+; W64-NEXT:    local.get 3
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    i32.const 0
 ; W64-NEXT:    local.get 0
 ; W64-NEXT:    local.get 1
 ; W64-NEXT:    i32.lt_u
 ; W64-NEXT:    i32.select
-; W64-NEXT:    local.tee 1
-; W64-NEXT:    local.get 2
-; W64-NEXT:    i32.and
-; W64-NEXT:    local.get 1
-; W64-NEXT:    i32.const -1
-; W64-NEXT:    i32.xor
 ; W64-NEXT:    local.get 3
-; W64-NEXT:    i32.and
-; W64-NEXT:    i32.or
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    # fallthrough-return
   %cond = icmp ult i32 %x, %y
   %result = call i32 @llvm.ct.select.i32(i1 %cond, i32 %a, i32 %b)
@@ -438,43 +365,40 @@ define i32 @test_ctselect_load(i1 %cond, ptr %p1, ptr %p2) {
 ; W32-LABEL: test_ctselect_load:
 ; W32:         .functype test_ctselect_load (i32, i32, i32) -> (i32)
 ; W32-NEXT:  # %bb.0:
+; W32-NEXT:    local.get 1
+; W32-NEXT:    i32.load 0
+; W32-NEXT:    local.get 2
+; W32-NEXT:    i32.load 0
+; W32-NEXT:    local.tee 2
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    i32.const 0
 ; W32-NEXT:    local.get 0
 ; W32-NEXT:    i32.const 1
 ; W32-NEXT:    i32.and
-; W32-NEXT:    local.tee 0
 ; W32-NEXT:    i32.sub
-; W32-NEXT:    local.get 1
-; W32-NEXT:    i32.load 0
 ; W32-NEXT:    i32.and
-; W32-NEXT:    local.get 0
-; W32-NEXT:    i32.const -1
-; W32-NEXT:    i32.add
 ; W32-NEXT:    local.get 2
-; W32-NEXT:    i32.load 0
-; W32-NEXT:    i32.and
-; W32-NEXT:    i32.or
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    # fallthrough-return
 ;
 ; W64-LABEL: test_ctselect_load:
 ; W64:         .functype test_ctselect_load (i32, i64, i64) -> (i32)
+; W64-NEXT:    .local i32
 ; W64-NEXT:  # %bb.0:
+; W64-NEXT:    local.get 1
+; W64-NEXT:    i32.load 0
+; W64-NEXT:    local.get 2
+; W64-NEXT:    i32.load 0
+; W64-NEXT:    local.tee 3
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    i32.const 0
 ; W64-NEXT:    local.get 0
 ; W64-NEXT:    i32.const 1
 ; W64-NEXT:    i32.and
-; W64-NEXT:    local.tee 0
 ; W64-NEXT:    i32.sub
-; W64-NEXT:    local.get 1
-; W64-NEXT:    i32.load 0
 ; W64-NEXT:    i32.and
-; W64-NEXT:    local.get 0
-; W64-NEXT:    i32.const -1
-; W64-NEXT:    i32.add
-; W64-NEXT:    local.get 2
-; W64-NEXT:    i32.load 0
-; W64-NEXT:    i32.and
-; W64-NEXT:    i32.or
+; W64-NEXT:    local.get 3
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    # fallthrough-return
   %a = load i32, ptr %p1
   %b = load i32, ptr %p2
@@ -487,65 +411,53 @@ define i32 @test_ctselect_nested(i1 %cond1, i1 %cond2, i32 %a, i32 %b, i32 %c) {
 ; W32-LABEL: test_ctselect_nested:
 ; W32:         .functype test_ctselect_nested (i32, i32, i32, i32, i32) -> (i32)
 ; W32-NEXT:  # %bb.0:
-; W32-NEXT:    i32.const 0
-; W32-NEXT:    local.get 0
-; W32-NEXT:    i32.const 1
-; W32-NEXT:    i32.and
-; W32-NEXT:    local.tee 0
-; W32-NEXT:    i32.sub
-; W32-NEXT:    i32.const 0
-; W32-NEXT:    local.get 1
-; W32-NEXT:    i32.const 1
-; W32-NEXT:    i32.and
-; W32-NEXT:    local.tee 1
-; W32-NEXT:    i32.sub
 ; W32-NEXT:    local.get 2
-; W32-NEXT:    i32.and
-; W32-NEXT:    local.get 1
-; W32-NEXT:    i32.const -1
-; W32-NEXT:    i32.add
 ; W32-NEXT:    local.get 3
+; W32-NEXT:    i32.xor
+; W32-NEXT:    i32.const 0
+; W32-NEXT:    local.get 1
+; W32-NEXT:    i32.const 1
 ; W32-NEXT:    i32.and
-; W32-NEXT:    i32.or
+; W32-NEXT:    i32.sub
 ; W32-NEXT:    i32.and
-; W32-NEXT:    local.get 0
-; W32-NEXT:    i32.const -1
-; W32-NEXT:    i32.add
+; W32-NEXT:    local.get 3
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    local.get 4
+; W32-NEXT:    i32.xor
+; W32-NEXT:    i32.const 0
+; W32-NEXT:    local.get 0
+; W32-NEXT:    i32.const 1
 ; W32-NEXT:    i32.and
-; W32-NEXT:    i32.or
+; W32-NEXT:    i32.sub
+; W32-NEXT:    i32.and
+; W32-NEXT:    local.get 4
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    # fallthrough-return
 ;
 ; W64-LABEL: test_ctselect_nested:
 ; W64:         .functype test_ctselect_nested (i32, i32, i32, i32, i32) -> (i32)
 ; W64-NEXT:  # %bb.0:
-; W64-NEXT:    i32.const 0
-; W64-NEXT:    local.get 0
-; W64-NEXT:    i32.const 1
-; W64-NEXT:    i32.and
-; W64-NEXT:    local.tee 0
-; W64-NEXT:    i32.sub
-; W64-NEXT:    i32.const 0
-; W64-NEXT:    local.get 1
-; W64-NEXT:    i32.const 1
-; W64-NEXT:    i32.and
-; W64-NEXT:    local.tee 1
-; W64-NEXT:    i32.sub
 ; W64-NEXT:    local.get 2
-; W64-NEXT:    i32.and
-; W64-NEXT:    local.get 1
-; W64-NEXT:    i32.const -1
-; W64-NEXT:    i32.add
 ; W64-NEXT:    local.get 3
+; W64-NEXT:    i32.xor
+; W64-NEXT:    i32.const 0
+; W64-NEXT:    local.get 1
+; W64-NEXT:    i32.const 1
 ; W64-NEXT:    i32.and
-; W64-NEXT:    i32.or
+; W64-NEXT:    i32.sub
 ; W64-NEXT:    i32.and
-; W64-NEXT:    local.get 0
-; W64-NEXT:    i32.const -1
-; W64-NEXT:    i32.add
+; W64-NEXT:    local.get 3
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    local.get 4
+; W64-NEXT:    i32.xor
+; W64-NEXT:    i32.const 0
+; W64-NEXT:    local.get 0
+; W64-NEXT:    i32.const 1
 ; W64-NEXT:    i32.and
-; W64-NEXT:    i32.or
+; W64-NEXT:    i32.sub
+; W64-NEXT:    i32.and
+; W64-NEXT:    local.get 4
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    # fallthrough-return
   %inner = call i32 @llvm.ct.select.i32(i1 %cond2, i32 %a, i32 %b)
   %result = call i32 @llvm.ct.select.i32(i1 %cond1, i32 %inner, i32 %c)
@@ -556,45 +468,43 @@ define i32 @test_ctselect_nested(i1 %cond1, i1 %cond2, i32 %a, i32 %b, i32 %c) {
 define float @test_ctselect_f32(i1 %cond, float %a, float %b) {
 ; W32-LABEL: test_ctselect_f32:
 ; W32:         .functype test_ctselect_f32 (i32, f32, f32) -> (f32)
+; W32-NEXT:    .local i32
 ; W32-NEXT:  # %bb.0:
+; W32-NEXT:    local.get 1
+; W32-NEXT:    i32.reinterpret_f32
+; W32-NEXT:    local.get 2
+; W32-NEXT:    i32.reinterpret_f32
+; W32-NEXT:    local.tee 3
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    i32.const 0
 ; W32-NEXT:    local.get 0
 ; W32-NEXT:    i32.const 1
 ; W32-NEXT:    i32.and
-; W32-NEXT:    local.tee 0
 ; W32-NEXT:    i32.sub
-; W32-NEXT:    local.get 1
-; W32-NEXT:    i32.reinterpret_f32
 ; W32-NEXT:    i32.and
-; W32-NEXT:    local.get 0
-; W32-NEXT:    i32.const -1
-; W32-NEXT:    i32.add
-; W32-NEXT:    local.get 2
-; W32-NEXT:    i32.reinterpret_f32
-; W32-NEXT:    i32.and
-; W32-NEXT:    i32.or
+; W32-NEXT:    local.get 3
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    f32.reinterpret_i32
 ; W32-NEXT:    # fallthrough-return
 ;
 ; W64-LABEL: test_ctselect_f32:
 ; W64:         .functype test_ctselect_f32 (i32, f32, f32) -> (f32)
+; W64-NEXT:    .local i32
 ; W64-NEXT:  # %bb.0:
+; W64-NEXT:    local.get 1
+; W64-NEXT:    i32.reinterpret_f32
+; W64-NEXT:    local.get 2
+; W64-NEXT:    i32.reinterpret_f32
+; W64-NEXT:    local.tee 3
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    i32.const 0
 ; W64-NEXT:    local.get 0
 ; W64-NEXT:    i32.const 1
 ; W64-NEXT:    i32.and
-; W64-NEXT:    local.tee 0
 ; W64-NEXT:    i32.sub
-; W64-NEXT:    local.get 1
-; W64-NEXT:    i32.reinterpret_f32
 ; W64-NEXT:    i32.and
-; W64-NEXT:    local.get 0
-; W64-NEXT:    i32.const -1
-; W64-NEXT:    i32.add
-; W64-NEXT:    local.get 2
-; W64-NEXT:    i32.reinterpret_f32
-; W64-NEXT:    i32.and
-; W64-NEXT:    i32.or
+; W64-NEXT:    local.get 3
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    f32.reinterpret_i32
 ; W64-NEXT:    # fallthrough-return
   %result = call float @llvm.ct.select.f32(i1 %cond, float %a, float %b)
@@ -607,23 +517,21 @@ define double @test_ctselect_f64(i1 %cond, double %a, double %b) {
 ; W32:         .functype test_ctselect_f64 (i32, f64, f64) -> (f64)
 ; W32-NEXT:    .local i64
 ; W32-NEXT:  # %bb.0:
+; W32-NEXT:    local.get 1
+; W32-NEXT:    i64.reinterpret_f64
+; W32-NEXT:    local.get 2
+; W32-NEXT:    i64.reinterpret_f64
+; W32-NEXT:    local.tee 3
+; W32-NEXT:    i64.xor
 ; W32-NEXT:    i64.const 0
 ; W32-NEXT:    local.get 0
 ; W32-NEXT:    i64.extend_i32_u
 ; W32-NEXT:    i64.const 1
 ; W32-NEXT:    i64.and
-; W32-NEXT:    local.tee 3
 ; W32-NEXT:    i64.sub
-; W32-NEXT:    local.get 1
-; W32-NEXT:    i64.reinterpret_f64
 ; W32-NEXT:    i64.and
 ; W32-NEXT:    local.get 3
-; W32-NEXT:    i64.const -1
-; W32-NEXT:    i64.add
-; W32-NEXT:    local.get 2
-; W32-NEXT:    i64.reinterpret_f64
-; W32-NEXT:    i64.and
-; W32-NEXT:    i64.or
+; W32-NEXT:    i64.xor
 ; W32-NEXT:    f64.reinterpret_i64
 ; W32-NEXT:    # fallthrough-return
 ;
@@ -631,23 +539,21 @@ define double @test_ctselect_f64(i1 %cond, double %a, double %b) {
 ; W64:         .functype test_ctselect_f64 (i32, f64, f64) -> (f64)
 ; W64-NEXT:    .local i64
 ; W64-NEXT:  # %bb.0:
+; W64-NEXT:    local.get 1
+; W64-NEXT:    i64.reinterpret_f64
+; W64-NEXT:    local.get 2
+; W64-NEXT:    i64.reinterpret_f64
+; W64-NEXT:    local.tee 3
+; W64-NEXT:    i64.xor
 ; W64-NEXT:    i64.const 0
 ; W64-NEXT:    local.get 0
 ; W64-NEXT:    i64.extend_i32_u
 ; W64-NEXT:    i64.const 1
 ; W64-NEXT:    i64.and
-; W64-NEXT:    local.tee 3
 ; W64-NEXT:    i64.sub
-; W64-NEXT:    local.get 1
-; W64-NEXT:    i64.reinterpret_f64
 ; W64-NEXT:    i64.and
 ; W64-NEXT:    local.get 3
-; W64-NEXT:    i64.const -1
-; W64-NEXT:    i64.add
-; W64-NEXT:    local.get 2
-; W64-NEXT:    i64.reinterpret_f64
-; W64-NEXT:    i64.and
-; W64-NEXT:    i64.or
+; W64-NEXT:    i64.xor
 ; W64-NEXT:    f64.reinterpret_i64
 ; W64-NEXT:    # fallthrough-return
   %result = call double @llvm.ct.select.f64(i1 %cond, double %a, double %b)
@@ -659,73 +565,67 @@ define double @test_ctselect_f64(i1 %cond, double %a, double %b) {
 define float @test_ctselect_f32_chain(i1 %cond1, i1 %cond2, float %a, float %b, float %c) {
 ; W32-LABEL: test_ctselect_f32_chain:
 ; W32:         .functype test_ctselect_f32_chain (i32, i32, f32, f32, f32) -> (f32)
+; W32-NEXT:    .local i32
 ; W32-NEXT:  # %bb.0:
-; W32-NEXT:    i32.const 0
-; W32-NEXT:    local.get 1
-; W32-NEXT:    i32.const 1
-; W32-NEXT:    i32.and
-; W32-NEXT:    local.tee 1
-; W32-NEXT:    i32.sub
-; W32-NEXT:    i32.const 0
-; W32-NEXT:    local.get 0
-; W32-NEXT:    i32.const 1
-; W32-NEXT:    i32.and
-; W32-NEXT:    local.tee 0
-; W32-NEXT:    i32.sub
 ; W32-NEXT:    local.get 2
 ; W32-NEXT:    i32.reinterpret_f32
-; W32-NEXT:    i32.and
-; W32-NEXT:    local.get 0
-; W32-NEXT:    i32.const -1
-; W32-NEXT:    i32.add
 ; W32-NEXT:    local.get 3
 ; W32-NEXT:    i32.reinterpret_f32
+; W32-NEXT:    local.tee 5
+; W32-NEXT:    i32.xor
+; W32-NEXT:    i32.const 0
+; W32-NEXT:    local.get 0
+; W32-NEXT:    i32.const 1
 ; W32-NEXT:    i32.and
-; W32-NEXT:    i32.or
+; W32-NEXT:    i32.sub
 ; W32-NEXT:    i32.and
-; W32-NEXT:    local.get 1
-; W32-NEXT:    i32.const -1
-; W32-NEXT:    i32.add
+; W32-NEXT:    local.get 5
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    local.get 4
 ; W32-NEXT:    i32.reinterpret_f32
+; W32-NEXT:    local.tee 0
+; W32-NEXT:    i32.xor
+; W32-NEXT:    i32.const 0
+; W32-NEXT:    local.get 1
+; W32-NEXT:    i32.const 1
 ; W32-NEXT:    i32.and
-; W32-NEXT:    i32.or
+; W32-NEXT:    i32.sub
+; W32-NEXT:    i32.and
+; W32-NEXT:    local.get 0
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    f32.reinterpret_i32
 ; W32-NEXT:    # fallthrough-return
 ;
 ; W64-LABEL: test_ctselect_f32_chain:
 ; W64:         .functype test_ctselect_f32_chain (i32, i32, f32, f32, f32) -> (f32)
+; W64-NEXT:    .local i32
 ; W64-NEXT:  # %bb.0:
-; W64-NEXT:    i32.const 0
-; W64-NEXT:    local.get 1
-; W64-NEXT:    i32.const 1
-; W64-NEXT:    i32.and
-; W64-NEXT:    local.tee 1
-; W64-NEXT:    i32.sub
-; W64-NEXT:    i32.const 0
-; W64-NEXT:    local.get 0
-; W64-NEXT:    i32.const 1
-; W64-NEXT:    i32.and
-; W64-NEXT:    local.tee 0
-; W64-NEXT:    i32.sub
 ; W64-NEXT:    local.get 2
 ; W64-NEXT:    i32.reinterpret_f32
-; W64-NEXT:    i32.and
-; W64-NEXT:    local.get 0
-; W64-NEXT:    i32.const -1
-; W64-NEXT:    i32.add
 ; W64-NEXT:    local.get 3
 ; W64-NEXT:    i32.reinterpret_f32
+; W64-NEXT:    local.tee 5
+; W64-NEXT:    i32.xor
+; W64-NEXT:    i32.const 0
+; W64-NEXT:    local.get 0
+; W64-NEXT:    i32.const 1
 ; W64-NEXT:    i32.and
-; W64-NEXT:    i32.or
+; W64-NEXT:    i32.sub
 ; W64-NEXT:    i32.and
-; W64-NEXT:    local.get 1
-; W64-NEXT:    i32.const -1
-; W64-NEXT:    i32.add
+; W64-NEXT:    local.get 5
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    local.get 4
 ; W64-NEXT:    i32.reinterpret_f32
+; W64-NEXT:    local.tee 0
+; W64-NEXT:    i32.xor
+; W64-NEXT:    i32.const 0
+; W64-NEXT:    local.get 1
+; W64-NEXT:    i32.const 1
 ; W64-NEXT:    i32.and
-; W64-NEXT:    i32.or
+; W64-NEXT:    i32.sub
+; W64-NEXT:    i32.and
+; W64-NEXT:    local.get 0
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    f32.reinterpret_i32
 ; W64-NEXT:    # fallthrough-return
   %tmp = call float @llvm.ct.select.f32(i1 %cond1, float %a, float %b)
@@ -738,44 +638,41 @@ define float @test_ctselect_f32_load(i1 %cond, ptr %p1, ptr %p2) {
 ; W32-LABEL: test_ctselect_f32_load:
 ; W32:         .functype test_ctselect_f32_load (i32, i32, i32) -> (f32)
 ; W32-NEXT:  # %bb.0:
+; W32-NEXT:    local.get 1
+; W32-NEXT:    i32.load 0
+; W32-NEXT:    local.get 2
+; W32-NEXT:    i32.load 0
+; W32-NEXT:    local.tee 2
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    i32.const 0
 ; W32-NEXT:    local.get 0
 ; W32-NEXT:    i32.const 1
 ; W32-NEXT:    i32.and
-; W32-NEXT:    local.tee 0
 ; W32-NEXT:    i32.sub
-; W32-NEXT:    local.get 1
-; W32-NEXT:    i32.load 0
 ; W32-NEXT:    i32.and
-; W32-NEXT:    local.get 0
-; W32-NEXT:    i32.const -1
-; W32-NEXT:    i32.add
 ; W32-NEXT:    local.get 2
-; W32-NEXT:    i32.load 0
-; W32-NEXT:    i32.and
-; W32-NEXT:    i32.or
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    f32.reinterpret_i32
 ; W32-NEXT:    # fallthrough-return
 ;
 ; W64-LABEL: test_ctselect_f32_load:
 ; W64:         .functype test_ctselect_f32_load (i32, i64, i64) -> (f32)
+; W64-NEXT:    .local i32
 ; W64-NEXT:  # %bb.0:
+; W64-NEXT:    local.get 1
+; W64-NEXT:    i32.load 0
+; W64-NEXT:    local.get 2
+; W64-NEXT:    i32.load 0
+; W64-NEXT:    local.tee 3
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    i32.const 0
 ; W64-NEXT:    local.get 0
 ; W64-NEXT:    i32.const 1
 ; W64-NEXT:    i32.and
-; W64-NEXT:    local.tee 0
 ; W64-NEXT:    i32.sub
-; W64-NEXT:    local.get 1
-; W64-NEXT:    i32.load 0
 ; W64-NEXT:    i32.and
-; W64-NEXT:    local.get 0
-; W64-NEXT:    i32.const -1
-; W64-NEXT:    i32.add
-; W64-NEXT:    local.get 2
-; W64-NEXT:    i32.load 0
-; W64-NEXT:    i32.and
-; W64-NEXT:    i32.or
+; W64-NEXT:    local.get 3
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    f32.reinterpret_i32
 ; W64-NEXT:    # fallthrough-return
   %a = load float, ptr %p1
@@ -790,47 +687,42 @@ define double @test_ctselect_f64_load(i1 %cond, ptr %p1, ptr %p2) {
 ; W32:         .functype test_ctselect_f64_load (i32, i32, i32) -> (f64)
 ; W32-NEXT:    .local i64
 ; W32-NEXT:  # %bb.0:
+; W32-NEXT:    local.get 1
+; W32-NEXT:    i64.load 0
+; W32-NEXT:    local.get 2
+; W32-NEXT:    i64.load 0
+; W32-NEXT:    local.tee 3
+; W32-NEXT:    i64.xor
 ; W32-NEXT:    i64.const 0
 ; W32-NEXT:    local.get 0
 ; W32-NEXT:    i64.extend_i32_u
 ; W32-NEXT:    i64.const 1
 ; W32-NEXT:    i64.and
-; W32-NEXT:    local.tee 3
 ; W32-NEXT:    i64.sub
-; W32-NEXT:    local.get 1
-; W32-NEXT:    i64.load 0
 ; W32-NEXT:    i64.and
 ; W32-NEXT:    local.get 3
-; W32-NEXT:    i64.const -1
-; W32-NEXT:    i64.add
-; W32-NEXT:    local.get 2
-; W32-NEXT:    i64.load 0
-; W32-NEXT:    i64.and
-; W32-NEXT:    i64.or
+; W32-NEXT:    i64.xor
 ; W32-NEXT:    f64.reinterpret_i64
 ; W32-NEXT:    # fallthrough-return
 ;
 ; W64-LABEL: test_ctselect_f64_load:
 ; W64:         .functype test_ctselect_f64_load (i32, i64, i64) -> (f64)
-; W64-NEXT:    .local i64
 ; W64-NEXT:  # %bb.0:
+; W64-NEXT:    local.get 1
+; W64-NEXT:    i64.load 0
+; W64-NEXT:    local.get 2
+; W64-NEXT:    i64.load 0
+; W64-NEXT:    local.tee 2
+; W64-NEXT:    i64.xor
 ; W64-NEXT:    i64.const 0
 ; W64-NEXT:    local.get 0
 ; W64-NEXT:    i64.extend_i32_u
 ; W64-NEXT:    i64.const 1
 ; W64-NEXT:    i64.and
-; W64-NEXT:    local.tee 3
 ; W64-NEXT:    i64.sub
-; W64-NEXT:    local.get 1
-; W64-NEXT:    i64.load 0
 ; W64-NEXT:    i64.and
-; W64-NEXT:    local.get 3
-; W64-NEXT:    i64.const -1
-; W64-NEXT:    i64.add
 ; W64-NEXT:    local.get 2
-; W64-NEXT:    i64.load 0
-; W64-NEXT:    i64.and
-; W64-NEXT:    i64.or
+; W64-NEXT:    i64.xor
 ; W64-NEXT:    f64.reinterpret_i64
 ; W64-NEXT:    # fallthrough-return
   %a = load double, ptr %p1
@@ -843,53 +735,51 @@ define double @test_ctselect_f64_load(i1 %cond, ptr %p1, ptr %p2) {
 define float @test_ctselect_f32_arithmetic(i1 %cond, float %x, float %y) {
 ; W32-LABEL: test_ctselect_f32_arithmetic:
 ; W32:         .functype test_ctselect_f32_arithmetic (i32, f32, f32) -> (f32)
+; W32-NEXT:    .local i32
 ; W32-NEXT:  # %bb.0:
-; W32-NEXT:    i32.const 0
-; W32-NEXT:    local.get 0
-; W32-NEXT:    i32.const 1
-; W32-NEXT:    i32.and
-; W32-NEXT:    local.tee 0
-; W32-NEXT:    i32.sub
 ; W32-NEXT:    local.get 1
 ; W32-NEXT:    local.get 2
 ; W32-NEXT:    f32.add
 ; W32-NEXT:    i32.reinterpret_f32
-; W32-NEXT:    i32.and
-; W32-NEXT:    local.get 0
-; W32-NEXT:    i32.const -1
-; W32-NEXT:    i32.add
 ; W32-NEXT:    local.get 1
 ; W32-NEXT:    local.get 2
 ; W32-NEXT:    f32.sub
 ; W32-NEXT:    i32.reinterpret_f32
+; W32-NEXT:    local.tee 3
+; W32-NEXT:    i32.xor
+; W32-NEXT:    i32.const 0
+; W32-NEXT:    local.get 0
+; W32-NEXT:    i32.const 1
 ; W32-NEXT:    i32.and
-; W32-NEXT:    i32.or
+; W32-NEXT:    i32.sub
+; W32-NEXT:    i32.and
+; W32-NEXT:    local.get 3
+; W32-NEXT:    i32.xor
 ; W32-NEXT:    f32.reinterpret_i32
 ; W32-NEXT:    # fallthrough-return
 ;
 ; W64-LABEL: test_ctselect_f32_arithmetic:
 ; W64:         .functype test_ctselect_f32_arithmetic (i32, f32, f32) -> (f32)
+; W64-NEXT:    .local i32
 ; W64-NEXT:  # %bb.0:
-; W64-NEXT:    i32.const 0
-; W64-NEXT:    local.get 0
-; W64-NEXT:    i32.const 1
-; W64-NEXT:    i32.and
-; W64-NEXT:    local.tee 0
-; W64-NEXT:    i32.sub
 ; W64-NEXT:    local.get 1
 ; W64-NEXT:    local.get 2
 ; W64-NEXT:    f32.add
 ; W64-NEXT:    i32.reinterpret_f32
-; W64-NEXT:    i32.and
-; W64-NEXT:    local.get 0
-; W64-NEXT:    i32.const -1
-; W64-NEXT:    i32.add
 ; W64-NEXT:    local.get 1
 ; W64-NEXT:    local.get 2
 ; W64-NEXT:    f32.sub
 ; W64-NEXT:    i32.reinterpret_f32
+; W64-NEXT:    local.tee 3
+; W64-NEXT:    i32.xor
+; W64-NEXT:    i32.const 0
+; W64-NEXT:    local.get 0
+; W64-NEXT:    i32.const 1
 ; W64-NEXT:    i32.and
-; W64-NEXT:    i32.or
+; W64-NEXT:    i32.sub
+; W64-NEXT:    i32.and
+; W64-NEXT:    local.get 3
+; W64-NEXT:    i32.xor
 ; W64-NEXT:    f32.reinterpret_i32
 ; W64-NEXT:    # fallthrough-return
   %sum = fadd float %x, %y

@@ -6,22 +6,20 @@
 define i8 @test_ctselect_i8(i1 %cond, i8 %a, i8 %b) {
 ; RV64-LABEL: test_ctselect_i8:
 ; RV64:       # %bb.0:
-; RV64-NEXT:    andi a0, a0, 1
-; RV64-NEXT:    addi a3, a0, -1
-; RV64-NEXT:    neg a0, a0
-; RV64-NEXT:    and a2, a3, a2
-; RV64-NEXT:    and a0, a0, a1
-; RV64-NEXT:    or a0, a0, a2
+; RV64-NEXT:    xor a1, a1, a2
+; RV64-NEXT:    slli a0, a0, 63
+; RV64-NEXT:    srai a0, a0, 63
+; RV64-NEXT:    and a0, a1, a0
+; RV64-NEXT:    xor a0, a0, a2
 ; RV64-NEXT:    ret
 ;
 ; RV32-LABEL: test_ctselect_i8:
 ; RV32:       # %bb.0:
-; RV32-NEXT:    andi a0, a0, 1
-; RV32-NEXT:    addi a3, a0, -1
-; RV32-NEXT:    neg a0, a0
-; RV32-NEXT:    and a2, a3, a2
-; RV32-NEXT:    and a0, a0, a1
-; RV32-NEXT:    or a0, a0, a2
+; RV32-NEXT:    xor a1, a1, a2
+; RV32-NEXT:    slli a0, a0, 31
+; RV32-NEXT:    srai a0, a0, 31
+; RV32-NEXT:    and a0, a1, a0
+; RV32-NEXT:    xor a0, a0, a2
 ; RV32-NEXT:    ret
   %result = call i8 @llvm.ct.select.i8(i1 %cond, i8 %a, i8 %b)
   ret i8 %result
@@ -30,22 +28,20 @@ define i8 @test_ctselect_i8(i1 %cond, i8 %a, i8 %b) {
 define i16 @test_ctselect_i16(i1 %cond, i16 %a, i16 %b) {
 ; RV64-LABEL: test_ctselect_i16:
 ; RV64:       # %bb.0:
-; RV64-NEXT:    andi a0, a0, 1
-; RV64-NEXT:    addi a3, a0, -1
-; RV64-NEXT:    neg a0, a0
-; RV64-NEXT:    and a2, a3, a2
-; RV64-NEXT:    and a0, a0, a1
-; RV64-NEXT:    or a0, a0, a2
+; RV64-NEXT:    xor a1, a1, a2
+; RV64-NEXT:    slli a0, a0, 63
+; RV64-NEXT:    srai a0, a0, 63
+; RV64-NEXT:    and a0, a1, a0
+; RV64-NEXT:    xor a0, a0, a2
 ; RV64-NEXT:    ret
 ;
 ; RV32-LABEL: test_ctselect_i16:
 ; RV32:       # %bb.0:
-; RV32-NEXT:    andi a0, a0, 1
-; RV32-NEXT:    addi a3, a0, -1
-; RV32-NEXT:    neg a0, a0
-; RV32-NEXT:    and a2, a3, a2
-; RV32-NEXT:    and a0, a0, a1
-; RV32-NEXT:    or a0, a0, a2
+; RV32-NEXT:    xor a1, a1, a2
+; RV32-NEXT:    slli a0, a0, 31
+; RV32-NEXT:    srai a0, a0, 31
+; RV32-NEXT:    and a0, a1, a0
+; RV32-NEXT:    xor a0, a0, a2
 ; RV32-NEXT:    ret
   %result = call i16 @llvm.ct.select.i16(i1 %cond, i16 %a, i16 %b)
   ret i16 %result
@@ -54,22 +50,20 @@ define i16 @test_ctselect_i16(i1 %cond, i16 %a, i16 %b) {
 define i32 @test_ctselect_i32(i1 %cond, i32 %a, i32 %b) {
 ; RV64-LABEL: test_ctselect_i32:
 ; RV64:       # %bb.0:
-; RV64-NEXT:    andi a0, a0, 1
-; RV64-NEXT:    addi a3, a0, -1
-; RV64-NEXT:    neg a0, a0
-; RV64-NEXT:    and a2, a3, a2
-; RV64-NEXT:    and a0, a0, a1
-; RV64-NEXT:    or a0, a0, a2
+; RV64-NEXT:    xor a1, a1, a2
+; RV64-NEXT:    slli a0, a0, 63
+; RV64-NEXT:    srai a0, a0, 63
+; RV64-NEXT:    and a0, a1, a0
+; RV64-NEXT:    xor a0, a0, a2
 ; RV64-NEXT:    ret
 ;
 ; RV32-LABEL: test_ctselect_i32:
 ; RV32:       # %bb.0:
-; RV32-NEXT:    andi a0, a0, 1
-; RV32-NEXT:    addi a3, a0, -1
-; RV32-NEXT:    neg a0, a0
-; RV32-NEXT:    and a2, a3, a2
-; RV32-NEXT:    and a0, a0, a1
-; RV32-NEXT:    or a0, a0, a2
+; RV32-NEXT:    xor a1, a1, a2
+; RV32-NEXT:    slli a0, a0, 31
+; RV32-NEXT:    srai a0, a0, 31
+; RV32-NEXT:    and a0, a1, a0
+; RV32-NEXT:    xor a0, a0, a2
 ; RV32-NEXT:    ret
   %result = call i32 @llvm.ct.select.i32(i1 %cond, i32 %a, i32 %b)
   ret i32 %result
@@ -78,25 +72,23 @@ define i32 @test_ctselect_i32(i1 %cond, i32 %a, i32 %b) {
 define i64 @test_ctselect_i64(i1 %cond, i64 %a, i64 %b) {
 ; RV64-LABEL: test_ctselect_i64:
 ; RV64:       # %bb.0:
-; RV64-NEXT:    andi a0, a0, 1
-; RV64-NEXT:    addi a3, a0, -1
-; RV64-NEXT:    neg a0, a0
-; RV64-NEXT:    and a2, a3, a2
-; RV64-NEXT:    and a0, a0, a1
-; RV64-NEXT:    or a0, a0, a2
+; RV64-NEXT:    xor a1, a1, a2
+; RV64-NEXT:    slli a0, a0, 63
+; RV64-NEXT:    srai a0, a0, 63
+; RV64-NEXT:    and a0, a1, a0
+; RV64-NEXT:    xor a0, a0, a2
 ; RV64-NEXT:    ret
 ;
 ; RV32-LABEL: test_ctselect_i64:
 ; RV32:       # %bb.0:
-; RV32-NEXT:    andi a0, a0, 1
-; RV32-NEXT:    addi a5, a0, -1
-; RV32-NEXT:    neg a0, a0
-; RV32-NEXT:    and a3, a5, a3
-; RV32-NEXT:    and a1, a0, a1
-; RV32-NEXT:    and a4, a5, a4
-; RV32-NEXT:    and a2, a0, a2
-; RV32-NEXT:    or a0, a1, a3
-; RV32-NEXT:    or a1, a2, a4
+; RV32-NEXT:    xor a1, a1, a3
+; RV32-NEXT:    slli a0, a0, 31
+; RV32-NEXT:    xor a2, a2, a4
+; RV32-NEXT:    srai a0, a0, 31
+; RV32-NEXT:    and a1, a1, a0
+; RV32-NEXT:    and a2, a2, a0
+; RV32-NEXT:    xor a0, a1, a3
+; RV32-NEXT:    xor a1, a2, a4
 ; RV32-NEXT:    ret
   %result = call i64 @llvm.ct.select.i64(i1 %cond, i64 %a, i64 %b)
   ret i64 %result
@@ -105,22 +97,20 @@ define i64 @test_ctselect_i64(i1 %cond, i64 %a, i64 %b) {
 define ptr @test_ctselect_ptr(i1 %cond, ptr %a, ptr %b) {
 ; RV64-LABEL: test_ctselect_ptr:
 ; RV64:       # %bb.0:
-; RV64-NEXT:    andi a0, a0, 1
-; RV64-NEXT:    addi a3, a0, -1
-; RV64-NEXT:    neg a0, a0
-; RV64-NEXT:    and a2, a3, a2
-; RV64-NEXT:    and a0, a0, a1
-; RV64-NEXT:    or a0, a0, a2
+; RV64-NEXT:    xor a1, a1, a2
+; RV64-NEXT:    slli a0, a0, 63
+; RV64-NEXT:    srai a0, a0, 63
+; RV64-NEXT:    and a0, a1, a0
+; RV64-NEXT:    xor a0, a0, a2
 ; RV64-NEXT:    ret
 ;
 ; RV32-LABEL: test_ctselect_ptr:
 ; RV32:       # %bb.0:
-; RV32-NEXT:    andi a0, a0, 1
-; RV32-NEXT:    addi a3, a0, -1
-; RV32-NEXT:    neg a0, a0
-; RV32-NEXT:    and a2, a3, a2
-; RV32-NEXT:    and a0, a0, a1
-; RV32-NEXT:    or a0, a0, a2
+; RV32-NEXT:    xor a1, a1, a2
+; RV32-NEXT:    slli a0, a0, 31
+; RV32-NEXT:    srai a0, a0, 31
+; RV32-NEXT:    and a0, a1, a0
+; RV32-NEXT:    xor a0, a0, a2
 ; RV32-NEXT:    ret
   %result = call ptr @llvm.ct.select.p0(i1 %cond, ptr %a, ptr %b)
   ret ptr %result
@@ -161,22 +151,20 @@ define i32 @test_ctselect_icmp_eq(i32 %x, i32 %y, i32 %a, i32 %b) {
 ; RV64-NEXT:    sext.w a0, a0
 ; RV64-NEXT:    xor a0, a0, a1
 ; RV64-NEXT:    snez a0, a0
-; RV64-NEXT:    neg a1, a0
+; RV64-NEXT:    xor a2, a2, a3
 ; RV64-NEXT:    addi a0, a0, -1
-; RV64-NEXT:    and a1, a1, a3
-; RV64-NEXT:    and a0, a0, a2
-; RV64-NEXT:    or a0, a0, a1
+; RV64-NEXT:    and a0, a2, a0
+; RV64-NEXT:    xor a0, a0, a3
 ; RV64-NEXT:    ret
 ;
 ; RV32-LABEL: test_ctselect_icmp_eq:
 ; RV32:       # %bb.0:
 ; RV32-NEXT:    xor a0, a0, a1
 ; RV32-NEXT:    snez a0, a0
-; RV32-NEXT:    neg a1, a0
+; RV32-NEXT:    xor a2, a2, a3
 ; RV32-NEXT:    addi a0, a0, -1
-; RV32-NEXT:    and a1, a1, a3
-; RV32-NEXT:    and a0, a0, a2
-; RV32-NEXT:    or a0, a0, a1
+; RV32-NEXT:    and a0, a2, a0
+; RV32-NEXT:    xor a0, a0, a3
 ; RV32-NEXT:    ret
   %cond = icmp eq i32 %x, %y
   %result = call i32 @llvm.ct.select.i32(i1 %cond, i32 %a, i32 %b)
@@ -190,22 +178,20 @@ define i32 @test_ctselect_icmp_ne(i32 %x, i32 %y, i32 %a, i32 %b) {
 ; RV64-NEXT:    sext.w a0, a0
 ; RV64-NEXT:    xor a0, a0, a1
 ; RV64-NEXT:    seqz a0, a0
-; RV64-NEXT:    neg a1, a0
+; RV64-NEXT:    xor a2, a2, a3
 ; RV64-NEXT:    addi a0, a0, -1
-; RV64-NEXT:    and a1, a1, a3
-; RV64-NEXT:    and a0, a0, a2
-; RV64-NEXT:    or a0, a0, a1
+; RV64-NEXT:    and a0, a2, a0
+; RV64-NEXT:    xor a0, a0, a3
 ; RV64-NEXT:    ret
 ;
 ; RV32-LABEL: test_ctselect_icmp_ne:
 ; RV32:       # %bb.0:
 ; RV32-NEXT:    xor a0, a0, a1
 ; RV32-NEXT:    seqz a0, a0
-; RV32-NEXT:    neg a1, a0
+; RV32-NEXT:    xor a2, a2, a3
 ; RV32-NEXT:    addi a0, a0, -1
-; RV32-NEXT:    and a1, a1, a3
-; RV32-NEXT:    and a0, a0, a2
-; RV32-NEXT:    or a0, a0, a1
+; RV32-NEXT:    and a0, a2, a0
+; RV32-NEXT:    xor a0, a0, a3
 ; RV32-NEXT:    ret
   %cond = icmp ne i32 %x, %y
   %result = call i32 @llvm.ct.select.i32(i1 %cond, i32 %a, i32 %b)
@@ -218,21 +204,19 @@ define i32 @test_ctselect_icmp_slt(i32 %x, i32 %y, i32 %a, i32 %b) {
 ; RV64-NEXT:    sext.w a1, a1
 ; RV64-NEXT:    sext.w a0, a0
 ; RV64-NEXT:    slt a0, a0, a1
-; RV64-NEXT:    addi a1, a0, -1
+; RV64-NEXT:    xor a2, a2, a3
 ; RV64-NEXT:    neg a0, a0
-; RV64-NEXT:    and a1, a1, a3
-; RV64-NEXT:    and a0, a0, a2
-; RV64-NEXT:    or a0, a0, a1
+; RV64-NEXT:    and a0, a2, a0
+; RV64-NEXT:    xor a0, a0, a3
 ; RV64-NEXT:    ret
 ;
 ; RV32-LABEL: test_ctselect_icmp_slt:
 ; RV32:       # %bb.0:
 ; RV32-NEXT:    slt a0, a0, a1
-; RV32-NEXT:    addi a1, a0, -1
+; RV32-NEXT:    xor a2, a2, a3
 ; RV32-NEXT:    neg a0, a0
-; RV32-NEXT:    and a1, a1, a3
-; RV32-NEXT:    and a0, a0, a2
-; RV32-NEXT:    or a0, a0, a1
+; RV32-NEXT:    and a0, a2, a0
+; RV32-NEXT:    xor a0, a0, a3
 ; RV32-NEXT:    ret
   %cond = icmp slt i32 %x, %y
   %result = call i32 @llvm.ct.select.i32(i1 %cond, i32 %a, i32 %b)
@@ -245,21 +229,19 @@ define i32 @test_ctselect_icmp_ult(i32 %x, i32 %y, i32 %a, i32 %b) {
 ; RV64-NEXT:    sext.w a1, a1
 ; RV64-NEXT:    sext.w a0, a0
 ; RV64-NEXT:    sltu a0, a0, a1
-; RV64-NEXT:    addi a1, a0, -1
+; RV64-NEXT:    xor a2, a2, a3
 ; RV64-NEXT:    neg a0, a0
-; RV64-NEXT:    and a1, a1, a3
-; RV64-NEXT:    and a0, a0, a2
-; RV64-NEXT:    or a0, a0, a1
+; RV64-NEXT:    and a0, a2, a0
+; RV64-NEXT:    xor a0, a0, a3
 ; RV64-NEXT:    ret
 ;
 ; RV32-LABEL: test_ctselect_icmp_ult:
 ; RV32:       # %bb.0:
 ; RV32-NEXT:    sltu a0, a0, a1
-; RV32-NEXT:    addi a1, a0, -1
+; RV32-NEXT:    xor a2, a2, a3
 ; RV32-NEXT:    neg a0, a0
-; RV32-NEXT:    and a1, a1, a3
-; RV32-NEXT:    and a0, a0, a2
-; RV32-NEXT:    or a0, a0, a1
+; RV32-NEXT:    and a0, a2, a0
+; RV32-NEXT:    xor a0, a0, a3
 ; RV32-NEXT:    ret
   %cond = icmp ult i32 %x, %y
   %result = call i32 @llvm.ct.select.i32(i1 %cond, i32 %a, i32 %b)
@@ -272,24 +254,22 @@ define i32 @test_ctselect_load(i1 %cond, ptr %p1, ptr %p2) {
 ; RV64:       # %bb.0:
 ; RV64-NEXT:    lw a1, 0(a1)
 ; RV64-NEXT:    lw a2, 0(a2)
-; RV64-NEXT:    andi a0, a0, 1
-; RV64-NEXT:    addi a3, a0, -1
-; RV64-NEXT:    neg a0, a0
-; RV64-NEXT:    and a2, a3, a2
-; RV64-NEXT:    and a0, a0, a1
-; RV64-NEXT:    or a0, a0, a2
+; RV64-NEXT:    slli a0, a0, 63
+; RV64-NEXT:    xor a1, a1, a2
+; RV64-NEXT:    srai a0, a0, 63
+; RV64-NEXT:    and a0, a1, a0
+; RV64-NEXT:    xor a0, a0, a2
 ; RV64-NEXT:    ret
 ;
 ; RV32-LABEL: test_ctselect_load:
 ; RV32:       # %bb.0:
 ; RV32-NEXT:    lw a1, 0(a1)
 ; RV32-NEXT:    lw a2, 0(a2)
-; RV32-NEXT:    andi a0, a0, 1
-; RV32-NEXT:    addi a3, a0, -1
-; RV32-NEXT:    neg a0, a0
-; RV32-NEXT:    and a2, a3, a2
-; RV32-NEXT:    and a0, a0, a1
-; RV32-NEXT:    or a0, a0, a2
+; RV32-NEXT:    slli a0, a0, 31
+; RV32-NEXT:    xor a1, a1, a2
+; RV32-NEXT:    srai a0, a0, 31
+; RV32-NEXT:    and a0, a1, a0
+; RV32-NEXT:    xor a0, a0, a2
 ; RV32-NEXT:    ret
   %a = load i32, ptr %p1
   %b = load i32, ptr %p2
@@ -301,34 +281,30 @@ define i32 @test_ctselect_load(i1 %cond, ptr %p1, ptr %p2) {
 define i32 @test_ctselect_nested(i1 %cond1, i1 %cond2, i32 %a, i32 %b, i32 %c) {
 ; RV64-LABEL: test_ctselect_nested:
 ; RV64:       # %bb.0:
-; RV64-NEXT:    andi a1, a1, 1
-; RV64-NEXT:    andi a0, a0, 1
-; RV64-NEXT:    addi a5, a1, -1
-; RV64-NEXT:    neg a1, a1
-; RV64-NEXT:    and a3, a5, a3
-; RV64-NEXT:    neg a5, a0
-; RV64-NEXT:    addi a0, a0, -1
-; RV64-NEXT:    and a1, a1, a2
-; RV64-NEXT:    or a1, a1, a3
-; RV64-NEXT:    and a1, a5, a1
-; RV64-NEXT:    and a0, a0, a4
-; RV64-NEXT:    or a0, a1, a0
+; RV64-NEXT:    xor a2, a2, a3
+; RV64-NEXT:    slli a1, a1, 63
+; RV64-NEXT:    xor a3, a3, a4
+; RV64-NEXT:    slli a0, a0, 63
+; RV64-NEXT:    srai a1, a1, 63
+; RV64-NEXT:    and a1, a2, a1
+; RV64-NEXT:    xor a1, a1, a3
+; RV64-NEXT:    srai a0, a0, 63
+; RV64-NEXT:    and a0, a1, a0
+; RV64-NEXT:    xor a0, a0, a4
 ; RV64-NEXT:    ret
 ;
 ; RV32-LABEL: test_ctselect_nested:
 ; RV32:       # %bb.0:
-; RV32-NEXT:    andi a1, a1, 1
-; RV32-NEXT:    andi a0, a0, 1
-; RV32-NEXT:    addi a5, a1, -1
-; RV32-NEXT:    neg a1, a1
-; RV32-NEXT:    and a3, a5, a3
-; RV32-NEXT:    neg a5, a0
-; RV32-NEXT:    addi a0, a0, -1
-; RV32-NEXT:    and a1, a1, a2
-; RV32-NEXT:    or a1, a1, a3
-; RV32-NEXT:    and a1, a5, a1
-; RV32-NEXT:    and a0, a0, a4
-; RV32-NEXT:    or a0, a1, a0
+; RV32-NEXT:    xor a2, a2, a3
+; RV32-NEXT:    slli a1, a1, 31
+; RV32-NEXT:    xor a3, a3, a4
+; RV32-NEXT:    slli a0, a0, 31
+; RV32-NEXT:    srai a1, a1, 31
+; RV32-NEXT:    and a1, a2, a1
+; RV32-NEXT:    xor a1, a1, a3
+; RV32-NEXT:    srai a0, a0, 31
+; RV32-NEXT:    and a0, a1, a0
+; RV32-NEXT:    xor a0, a0, a4
 ; RV32-NEXT:    ret
   %inner = call i32 @llvm.ct.select.i32(i1 %cond2, i32 %a, i32 %b)
   %result = call i32 @llvm.ct.select.i32(i1 %cond1, i32 %inner, i32 %c)
@@ -339,22 +315,20 @@ define i32 @test_ctselect_nested(i1 %cond1, i1 %cond2, i32 %a, i32 %b, i32 %c) {
 define float @test_ctselect_f32(i1 %cond, float %a, float %b) {
 ; RV64-LABEL: test_ctselect_f32:
 ; RV64:       # %bb.0:
-; RV64-NEXT:    andi a0, a0, 1
-; RV64-NEXT:    addi a3, a0, -1
-; RV64-NEXT:    neg a0, a0
-; RV64-NEXT:    and a2, a3, a2
-; RV64-NEXT:    and a0, a0, a1
-; RV64-NEXT:    or a0, a0, a2
+; RV64-NEXT:    xor a1, a1, a2
+; RV64-NEXT:    slli a0, a0, 63
+; RV64-NEXT:    srai a0, a0, 63
+; RV64-NEXT:    and a0, a1, a0
+; RV64-NEXT:    xor a0, a0, a2
 ; RV64-NEXT:    ret
 ;
 ; RV32-LABEL: test_ctselect_f32:
 ; RV32:       # %bb.0:
-; RV32-NEXT:    andi a0, a0, 1
-; RV32-NEXT:    addi a3, a0, -1
-; RV32-NEXT:    neg a0, a0
-; RV32-NEXT:    and a2, a3, a2
-; RV32-NEXT:    and a0, a0, a1
-; RV32-NEXT:    or a0, a0, a2
+; RV32-NEXT:    xor a1, a1, a2
+; RV32-NEXT:    slli a0, a0, 31
+; RV32-NEXT:    srai a0, a0, 31
+; RV32-NEXT:    and a0, a1, a0
+; RV32-NEXT:    xor a0, a0, a2
 ; RV32-NEXT:    ret
   %result = call float @llvm.ct.select.f32(i1 %cond, float %a, float %b)
   ret float %result
@@ -364,25 +338,23 @@ define float @test_ctselect_f32(i1 %cond, float %a, float %b) {
 define double @test_ctselect_f64(i1 %cond, double %a, double %b) {
 ; RV64-LABEL: test_ctselect_f64:
 ; RV64:       # %bb.0:
-; RV64-NEXT:    andi a0, a0, 1
-; RV64-NEXT:    addi a3, a0, -1
-; RV64-NEXT:    neg a0, a0
-; RV64-NEXT:    and a2, a3, a2
-; RV64-NEXT:    and a0, a0, a1
-; RV64-NEXT:    or a0, a0, a2
+; RV64-NEXT:    xor a1, a1, a2
+; RV64-NEXT:    slli a0, a0, 63
+; RV64-NEXT:    srai a0, a0, 63
+; RV64-NEXT:    and a0, a1, a0
+; RV64-NEXT:    xor a0, a0, a2
 ; RV64-NEXT:    ret
 ;
 ; RV32-LABEL: test_ctselect_f64:
 ; RV32:       # %bb.0:
-; RV32-NEXT:    andi a0, a0, 1
-; RV32-NEXT:    addi a5, a0, -1
-; RV32-NEXT:    neg a0, a0
-; RV32-NEXT:    and a3, a5, a3
-; RV32-NEXT:    and a1, a0, a1
-; RV32-NEXT:    and a4, a5, a4
-; RV32-NEXT:    and a2, a0, a2
-; RV32-NEXT:    or a0, a1, a3
-; RV32-NEXT:    or a1, a2, a4
+; RV32-NEXT:    xor a1, a1, a3
+; RV32-NEXT:    slli a0, a0, 31
+; RV32-NEXT:    xor a2, a2, a4
+; RV32-NEXT:    srai a0, a0, 31
+; RV32-NEXT:    and a1, a1, a0
+; RV32-NEXT:    and a2, a2, a0
+; RV32-NEXT:    xor a0, a1, a3
+; RV32-NEXT:    xor a1, a2, a4
 ; RV32-NEXT:    ret
   %result = call double @llvm.ct.select.f64(i1 %cond, double %a, double %b)
   ret double %result
@@ -393,34 +365,30 @@ define double @test_ctselect_f64(i1 %cond, double %a, double %b) {
 define float @test_ctselect_f32_chain(i1 %cond1, i1 %cond2, float %a, float %b, float %c) {
 ; RV64-LABEL: test_ctselect_f32_chain:
 ; RV64:       # %bb.0:
-; RV64-NEXT:    andi a0, a0, 1
-; RV64-NEXT:    andi a1, a1, 1
-; RV64-NEXT:    addi a5, a0, -1
-; RV64-NEXT:    neg a0, a0
-; RV64-NEXT:    and a3, a5, a3
-; RV64-NEXT:    neg a5, a1
-; RV64-NEXT:    addi a1, a1, -1
-; RV64-NEXT:    and a0, a0, a2
-; RV64-NEXT:    or a0, a0, a3
-; RV64-NEXT:    and a0, a5, a0
-; RV64-NEXT:    and a1, a1, a4
-; RV64-NEXT:    or a0, a0, a1
+; RV64-NEXT:    xor a2, a2, a3
+; RV64-NEXT:    slli a0, a0, 63
+; RV64-NEXT:    xor a3, a3, a4
+; RV64-NEXT:    slli a1, a1, 63
+; RV64-NEXT:    srai a0, a0, 63
+; RV64-NEXT:    and a0, a2, a0
+; RV64-NEXT:    xor a0, a0, a3
+; RV64-NEXT:    srai a1, a1, 63
+; RV64-NEXT:    and a0, a0, a1
+; RV64-NEXT:    xor a0, a0, a4
 ; RV64-NEXT:    ret
 ;
 ; RV32-LABEL: test_ctselect_f32_chain:
 ; RV32:       # %bb.0:
-; RV32-NEXT:    andi a0, a0, 1
-; RV32-NEXT:    andi a1, a1, 1
-; RV32-NEXT:    addi a5, a0, -1
-; RV32-NEXT:    neg a0, a0
-; RV32-NEXT:    and a3, a5, a3
-; RV32-NEXT:    neg a5, a1
-; RV32-NEXT:    addi a1, a1, -1
-; RV32-NEXT:    and a0, a0, a2
-; RV32-NEXT:    or a0, a0, a3
-; RV32-NEXT:    and a0, a5, a0
-; RV32-NEXT:    and a1, a1, a4
-; RV32-NEXT:    or a0, a0, a1
+; RV32-NEXT:    xor a2, a2, a3
+; RV32-NEXT:    slli a0, a0, 31
+; RV32-NEXT:    xor a3, a3, a4
+; RV32-NEXT:    slli a1, a1, 31
+; RV32-NEXT:    srai a0, a0, 31
+; RV32-NEXT:    and a0, a2, a0
+; RV32-NEXT:    xor a0, a0, a3
+; RV32-NEXT:    srai a1, a1, 31
+; RV32-NEXT:    and a0, a0, a1
+; RV32-NEXT:    xor a0, a0, a4
 ; RV32-NEXT:    ret
   %tmp = call float @llvm.ct.select.f32(i1 %cond1, float %a, float %b)
   %result = call float @llvm.ct.select.f32(i1 %cond2, float %tmp, float %c)
@@ -433,24 +401,22 @@ define float @test_ctselect_f32_load(i1 %cond, ptr %p1, ptr %p2) {
 ; RV64:       # %bb.0:
 ; RV64-NEXT:    lw a1, 0(a1)
 ; RV64-NEXT:    lw a2, 0(a2)
-; RV64-NEXT:    andi a0, a0, 1
-; RV64-NEXT:    addi a3, a0, -1
-; RV64-NEXT:    neg a0, a0
-; RV64-NEXT:    and a2, a3, a2
-; RV64-NEXT:    and a0, a0, a1
-; RV64-NEXT:    or a0, a0, a2
+; RV64-NEXT:    slli a0, a0, 63
+; RV64-NEXT:    xor a1, a1, a2
+; RV64-NEXT:    srai a0, a0, 63
+; RV64-NEXT:    and a0, a1, a0
+; RV64-NEXT:    xor a0, a0, a2
 ; RV64-NEXT:    ret
 ;
 ; RV32-LABEL: test_ctselect_f32_load:
 ; RV32:       # %bb.0:
 ; RV32-NEXT:    lw a1, 0(a1)
 ; RV32-NEXT:    lw a2, 0(a2)
-; RV32-NEXT:    andi a0, a0, 1
-; RV32-NEXT:    addi a3, a0, -1
-; RV32-NEXT:    neg a0, a0
-; RV32-NEXT:    and a2, a3, a2
-; RV32-NEXT:    and a0, a0, a1
-; RV32-NEXT:    or a0, a0, a2
+; RV32-NEXT:    slli a0, a0, 31
+; RV32-NEXT:    xor a1, a1, a2
+; RV32-NEXT:    srai a0, a0, 31
+; RV32-NEXT:    and a0, a1, a0
+; RV32-NEXT:    xor a0, a0, a2
 ; RV32-NEXT:    ret
   %a = load float, ptr %p1
   %b = load float, ptr %p2
@@ -464,12 +430,11 @@ define double @test_ctselect_f64_load(i1 %cond, ptr %p1, ptr %p2) {
 ; RV64:       # %bb.0:
 ; RV64-NEXT:    ld a1, 0(a1)
 ; RV64-NEXT:    ld a2, 0(a2)
-; RV64-NEXT:    andi a0, a0, 1
-; RV64-NEXT:    addi a3, a0, -1
-; RV64-NEXT:    neg a0, a0
-; RV64-NEXT:    and a2, a3, a2
-; RV64-NEXT:    and a0, a0, a1
-; RV64-NEXT:    or a0, a0, a2
+; RV64-NEXT:    slli a0, a0, 63
+; RV64-NEXT:    xor a1, a1, a2
+; RV64-NEXT:    srai a0, a0, 63
+; RV64-NEXT:    and a0, a1, a0
+; RV64-NEXT:    xor a0, a0, a2
 ; RV64-NEXT:    ret
 ;
 ; RV32-LABEL: test_ctselect_f64_load:
@@ -478,15 +443,14 @@ define double @test_ctselect_f64_load(i1 %cond, ptr %p1, ptr %p2) {
 ; RV32-NEXT:    lw a1, 4(a1)
 ; RV32-NEXT:    lw a4, 0(a2)
 ; RV32-NEXT:    lw a2, 4(a2)
-; RV32-NEXT:    andi a0, a0, 1
-; RV32-NEXT:    addi a5, a0, -1
-; RV32-NEXT:    neg a0, a0
-; RV32-NEXT:    and a4, a5, a4
-; RV32-NEXT:    and a3, a0, a3
-; RV32-NEXT:    and a2, a5, a2
-; RV32-NEXT:    and a1, a0, a1
-; RV32-NEXT:    or a0, a3, a4
-; RV32-NEXT:    or a1, a1, a2
+; RV32-NEXT:    slli a0, a0, 31
+; RV32-NEXT:    srai a0, a0, 31
+; RV32-NEXT:    xor a3, a3, a4
+; RV32-NEXT:    xor a1, a1, a2
+; RV32-NEXT:    and a3, a3, a0
+; RV32-NEXT:    and a1, a1, a0
+; RV32-NEXT:    xor a0, a3, a4
+; RV32-NEXT:    xor a1, a1, a2
 ; RV32-NEXT:    ret
   %a = load double, ptr %p1
   %b = load double, ptr %p2
@@ -520,12 +484,11 @@ define float @test_ctselect_f32_arithmetic(i1 %cond, float %x, float %y) {
 ; RV64-NEXT:    mv a0, s1
 ; RV64-NEXT:    mv a1, s0
 ; RV64-NEXT:    call __subsf3
-; RV64-NEXT:    andi a1, s2, 1
-; RV64-NEXT:    neg a2, a1
-; RV64-NEXT:    addi a1, a1, -1
-; RV64-NEXT:    and a2, a2, s3
-; RV64-NEXT:    and a0, a1, a0
-; RV64-NEXT:    or a0, a2, a0
+; RV64-NEXT:    xor a1, s3, a0
+; RV64-NEXT:    slli s2, s2, 63
+; RV64-NEXT:    srai a2, s2, 63
+; RV64-NEXT:    and a1, a1, a2
+; RV64-NEXT:    xor a0, a1, a0
 ; RV64-NEXT:    ld ra, 40(sp) # 8-byte Folded Reload
 ; RV64-NEXT:    ld s0, 32(sp) # 8-byte Folded Reload
 ; RV64-NEXT:    ld s1, 24(sp) # 8-byte Folded Reload
@@ -564,12 +527,11 @@ define float @test_ctselect_f32_arithmetic(i1 %cond, float %x, float %y) {
 ; RV32-NEXT:    mv a0, s1
 ; RV32-NEXT:    mv a1, s0
 ; RV32-NEXT:    call __subsf3
-; RV32-NEXT:    andi a1, s2, 1
-; RV32-NEXT:    neg a2, a1
-; RV32-NEXT:    addi a1, a1, -1
-; RV32-NEXT:    and a2, a2, s3
-; RV32-NEXT:    and a0, a1, a0
-; RV32-NEXT:    or a0, a2, a0
+; RV32-NEXT:    xor a1, s3, a0
+; RV32-NEXT:    slli s2, s2, 31
+; RV32-NEXT:    srai a2, s2, 31
+; RV32-NEXT:    and a1, a1, a2
+; RV32-NEXT:    xor a0, a1, a0
 ; RV32-NEXT:    lw ra, 28(sp) # 4-byte Folded Reload
 ; RV32-NEXT:    lw s0, 24(sp) # 4-byte Folded Reload
 ; RV32-NEXT:    lw s1, 20(sp) # 4-byte Folded Reload
