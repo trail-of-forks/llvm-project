@@ -1638,16 +1638,20 @@ bool ARMBaseInstrInfo::expandCtSelectThumb(MachineInstr &MI) const {
     .setMIFlag(MachineInstr::MIFlag::NoMerge);
 
   // Instead of using RSB, we can use LSL and ASR to get the mask. This is to avoid the flag modification caused by RSB.
+  // tLSLri: (outs tGPR:$Rd, s_cc_out:$s), (ins tGPR:$Rm, imm0_31:$imm5, pred:$p)
   BuildMI(*MBB, MI, DL, get(ARM::tLSLri), MaskReg)
-    .addReg(MaskReg)
-    .addImm(ShiftAmount)
-    .add(predOps(ARMCC::AL))
+    .addReg(ARM::CPSR, RegState::Define | RegState::Dead)  // s_cc_out:$s
+    .addReg(MaskReg)  // $Rm
+    .addImm(ShiftAmount)  // imm0_31:$imm5
+    .add(predOps(ARMCC::AL))  // pred:$p
     .setMIFlag(MachineInstr::MIFlag::NoMerge);
 
+  // tASRri: (outs tGPR:$Rd, s_cc_out:$s), (ins tGPR:$Rm, imm_sr:$imm5, pred:$p)
   BuildMI(*MBB, MI, DL, get(ARM::tASRri), MaskReg)
-    .addReg(MaskReg)
-    .addImm(ShiftAmount)
-    .add(predOps(ARMCC::AL))
+    .addReg(ARM::CPSR, RegState::Define | RegState::Dead)  // s_cc_out:$s
+    .addReg(MaskReg)  // $Rm
+    .addImm(ShiftAmount)  // imm_sr:$imm5
+    .add(predOps(ARMCC::AL))  // pred:$p
     .setMIFlag(MachineInstr::MIFlag::NoMerge);
 
   // 2. xor_diff = src1 ^ src2
@@ -1656,24 +1660,30 @@ bool ARMBaseInstrInfo::expandCtSelectThumb(MachineInstr &MI) const {
     .add(predOps(ARMCC::AL))
     .setMIFlag(MachineInstr::MIFlag::NoMerge);
 
+  // tEOR has tied operands: (outs tGPR:$Rdn, s_cc_out:$s), (ins tGPR:$Rn, pred:$p) with constraint "$Rn = $Rdn"
   BuildMI(*MBB, MI, DL, get(ARM::tEOR), DestReg)
-    .addReg(DestReg)
-    .addReg(Src2Reg)
-    .add(predOps(ARMCC::AL))
+    .addReg(ARM::CPSR, RegState::Define | RegState::Dead)  // s_cc_out:$s
+    .addReg(DestReg)  // tied input $Rn
+    .addReg(Src2Reg)  // $Rm
+    .add(predOps(ARMCC::AL))  // pred:$p
     .setMIFlag(MachineInstr::MIFlag::NoMerge);
 
   // 3. masked_xor = xor_diff & mask
+  // tAND has tied operands: (outs tGPR:$Rdn, s_cc_out:$s), (ins tGPR:$Rn, pred:$p) with constraint "$Rn = $Rdn"
   BuildMI(*MBB, MI, DL, get(ARM::tAND), DestReg)
-    .addReg(DestReg)
-    .addReg(MaskReg, RegState::Kill)
-    .add(predOps(ARMCC::AL))
+    .addReg(ARM::CPSR, RegState::Define | RegState::Dead)  // s_cc_out:$s
+    .addReg(DestReg)  // tied input $Rn
+    .addReg(MaskReg, RegState::Kill)  // $Rm
+    .add(predOps(ARMCC::AL))  // pred:$p
     .setMIFlag(MachineInstr::MIFlag::NoMerge);
 
   // 4. result = src2 ^ masked_xor
+  // tEOR has tied operands: (outs tGPR:$Rdn, s_cc_out:$s), (ins tGPR:$Rn, pred:$p) with constraint "$Rn = $Rdn"
   auto LastMI = BuildMI(*MBB, MI, DL, get(ARM::tEOR), DestReg)
-    .addReg(DestReg)
-    .addReg(Src2Reg)
-    .add(predOps(ARMCC::AL))
+    .addReg(ARM::CPSR, RegState::Define | RegState::Dead)  // s_cc_out:$s
+    .addReg(DestReg)  // tied input $Rn
+    .addReg(Src2Reg)  // $Rm
+    .add(predOps(ARMCC::AL))  // pred:$p
     .setMIFlag(MachineInstr::MIFlag::NoMerge);
 
   // Add instruction bundling

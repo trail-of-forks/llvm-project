@@ -271,16 +271,16 @@ define i64 @ct_int64(i1 %cond, i64 %a, i64 %b) {
 ; CT:       @ %bb.0: @ %entry
 ; CT-NEXT:    .save {r4, lr}
 ; CT-NEXT:    push {r4, lr}
+; CT-NEXT:    ldr r1, [sp, #8]
 ; CT-NEXT:    and lr, r0, #1
 ; CT-NEXT:    ldr r12, [sp, #12]
 ; CT-NEXT:    rsb r4, lr, #0
-; CT-NEXT:    ldr r1, [sp, #8]
 ; CT-NEXT:    and r0, r2, r4
-; CT-NEXT:    rsb r2, lr, #0
 ; CT-NEXT:    bic r4, r1, r4
+; CT-NEXT:    orr r0, r0, r4
+; CT-NEXT:    rsb r2, lr, #0
 ; CT-NEXT:    and r1, r3, r2
 ; CT-NEXT:    bic r2, r12, r2
-; CT-NEXT:    orr r0, r0, r4
 ; CT-NEXT:    orr r1, r1, r2
 ; CT-NEXT:    pop {r4, pc}
 ;
@@ -292,8 +292,8 @@ define i64 @ct_int64(i1 %cond, i64 %a, i64 %b) {
 ; DEFAULT-NEXT:    rsb lr, r12, #0
 ; DEFAULT-NEXT:    and r0, r2, lr
 ; DEFAULT-NEXT:    bic lr, r1, lr
-; DEFAULT-NEXT:    ldr r2, [sp, #12]
 ; DEFAULT-NEXT:    orr r0, r0, lr
+; DEFAULT-NEXT:    ldr r2, [sp, #12]
 ; DEFAULT-NEXT:    rsb lr, r12, #0
 ; DEFAULT-NEXT:    and r1, r3, lr
 ; DEFAULT-NEXT:    bic lr, r2, lr
@@ -333,8 +333,8 @@ define i64 @ct_int64(i1 %cond, i64 %a, i64 %b) {
 ; THUMB2-NEXT:    rsb.w lr, r12, #0
 ; THUMB2-NEXT:    and.w r0, r2, lr
 ; THUMB2-NEXT:    bic.w lr, r1, lr
-; THUMB2-NEXT:    ldr r2, [sp, #12]
 ; THUMB2-NEXT:    orr.w r0, r0, lr
+; THUMB2-NEXT:    ldr r2, [sp, #12]
 ; THUMB2-NEXT:    rsb.w lr, r12, #0
 ; THUMB2-NEXT:    and.w r1, r3, lr
 ; THUMB2-NEXT:    bic.w lr, r2, lr
@@ -345,15 +345,15 @@ define i64 @ct_int64(i1 %cond, i64 %a, i64 %b) {
 ; CORTEXA9:       @ %bb.0: @ %entry
 ; CORTEXA9-NEXT:    .save {r4, lr}
 ; CORTEXA9-NEXT:    push {r4, lr}
-; CORTEXA9-NEXT:    and lr, r0, #1
 ; CORTEXA9-NEXT:    ldrd r1, r12, [sp, #8]
+; CORTEXA9-NEXT:    and lr, r0, #1
 ; CORTEXA9-NEXT:    rsb.w r4, lr, #0
 ; CORTEXA9-NEXT:    and.w r0, r2, r4
-; CORTEXA9-NEXT:    rsb.w r2, lr, #0
 ; CORTEXA9-NEXT:    bic.w r4, r1, r4
+; CORTEXA9-NEXT:    orrs r0, r4
+; CORTEXA9-NEXT:    rsb.w r2, lr, #0
 ; CORTEXA9-NEXT:    and.w r1, r3, r2
 ; CORTEXA9-NEXT:    bic.w r2, r12, r2
-; CORTEXA9-NEXT:    orrs r0, r4
 ; CORTEXA9-NEXT:    orr.w r1, r1, r2
 ; CORTEXA9-NEXT:    pop {r4, pc}
 ;
@@ -361,16 +361,16 @@ define i64 @ct_int64(i1 %cond, i64 %a, i64 %b) {
 ; CORTEX-NOTHUMB:       @ %bb.0: @ %entry
 ; CORTEX-NOTHUMB-NEXT:    .save {r4, lr}
 ; CORTEX-NOTHUMB-NEXT:    push {r4, lr}
-; CORTEX-NOTHUMB-NEXT:    and lr, r0, #1
 ; CORTEX-NOTHUMB-NEXT:    ldr r12, [sp, #12]
+; CORTEX-NOTHUMB-NEXT:    and lr, r0, #1
 ; CORTEX-NOTHUMB-NEXT:    ldr r1, [sp, #8]
 ; CORTEX-NOTHUMB-NEXT:    rsb r4, lr, #0
 ; CORTEX-NOTHUMB-NEXT:    and r0, r2, r4
-; CORTEX-NOTHUMB-NEXT:    rsb r2, lr, #0
 ; CORTEX-NOTHUMB-NEXT:    bic r4, r1, r4
+; CORTEX-NOTHUMB-NEXT:    orr r0, r0, r4
+; CORTEX-NOTHUMB-NEXT:    rsb r2, lr, #0
 ; CORTEX-NOTHUMB-NEXT:    and r1, r3, r2
 ; CORTEX-NOTHUMB-NEXT:    bic r2, r12, r2
-; CORTEX-NOTHUMB-NEXT:    orr r0, r0, r4
 ; CORTEX-NOTHUMB-NEXT:    orr r1, r1, r2
 ; CORTEX-NOTHUMB-NEXT:    pop {r4, pc}
 entry:
@@ -381,12 +381,12 @@ entry:
 define float @ct_float(i1 %cond, float %a, float %b) {
 ; CT-LABEL: ct_float:
 ; CT:       @ %bb.0: @ %entry
-; CT-NEXT:    vmov s0, r2
 ; CT-NEXT:    and r0, r0, #1
+; CT-NEXT:    vmov s0, r2
 ; CT-NEXT:    vmov s2, r1
-; CT-NEXT:    rsb r1, r0, #0
-; CT-NEXT:    vmov r3, s0
 ; CT-NEXT:    vmov r2, s2
+; CT-NEXT:    vmov r3, s0
+; CT-NEXT:    rsb r1, r0, #0
 ; CT-NEXT:    and r2, r2, r1
 ; CT-NEXT:    bic r1, r3, r1
 ; CT-NEXT:    orr r2, r2, r1
@@ -460,10 +460,10 @@ entry:
 define double @ct_f64(i1 %cond, double %a, double %b) {
 ; CT-LABEL: ct_f64:
 ; CT:       @ %bb.0: @ %entry
-; CT-NEXT:    and r0, r0, #1
 ; CT-NEXT:    vldr d16, [sp]
-; CT-NEXT:    rsb r1, r0, #0
 ; CT-NEXT:    vmov d17, r2, r3
+; CT-NEXT:    and r0, r0, #1
+; CT-NEXT:    rsb r1, r0, #0
 ; CT-NEXT:    vdup.32 d19, r1
 ; CT-NEXT:    vand d18, d17, d19
 ; CT-NEXT:    vbic d19, d16, d19
@@ -479,8 +479,8 @@ define double @ct_f64(i1 %cond, double %a, double %b) {
 ; DEFAULT-NEXT:    rsb lr, r12, #0
 ; DEFAULT-NEXT:    and r0, r2, lr
 ; DEFAULT-NEXT:    bic lr, r1, lr
-; DEFAULT-NEXT:    ldr r2, [sp, #12]
 ; DEFAULT-NEXT:    orr r0, r0, lr
+; DEFAULT-NEXT:    ldr r2, [sp, #12]
 ; DEFAULT-NEXT:    rsb lr, r12, #0
 ; DEFAULT-NEXT:    and r1, r3, lr
 ; DEFAULT-NEXT:    bic lr, r2, lr
@@ -520,8 +520,8 @@ define double @ct_f64(i1 %cond, double %a, double %b) {
 ; THUMB2-NEXT:    rsb.w lr, r12, #0
 ; THUMB2-NEXT:    and.w r0, r2, lr
 ; THUMB2-NEXT:    bic.w lr, r1, lr
-; THUMB2-NEXT:    ldr r2, [sp, #12]
 ; THUMB2-NEXT:    orr.w r0, r0, lr
+; THUMB2-NEXT:    ldr r2, [sp, #12]
 ; THUMB2-NEXT:    rsb.w lr, r12, #0
 ; THUMB2-NEXT:    and.w r1, r3, lr
 ; THUMB2-NEXT:    bic.w lr, r2, lr
@@ -536,7 +536,7 @@ define double @ct_f64(i1 %cond, double %a, double %b) {
 ; CORTEXA9-NEXT:    vand d16, d0, d17
 ; CORTEXA9-NEXT:    vbic d17, d1, d17
 ; CORTEXA9-NEXT:    vorr d16, d16, d17
-; CORTEXA9-NEXT:    vorr d0, d16, d16
+; CORTEXA9-NEXT:    vmov.f64 d0, d16
 ; CORTEXA9-NEXT:    bx lr
 ;
 ; CORTEX-NOTHUMB-LABEL: ct_f64:
@@ -547,7 +547,7 @@ define double @ct_f64(i1 %cond, double %a, double %b) {
 ; CORTEX-NOTHUMB-NEXT:    vand d16, d0, d17
 ; CORTEX-NOTHUMB-NEXT:    vbic d17, d1, d17
 ; CORTEX-NOTHUMB-NEXT:    vorr d16, d16, d17
-; CORTEX-NOTHUMB-NEXT:    vorr d0, d16, d16
+; CORTEX-NOTHUMB-NEXT:    vmov.f64 d0, d16
 ; CORTEX-NOTHUMB-NEXT:    bx lr
 entry:
   %sel = call double @llvm.ct.select.f64(i1 %cond, double %a, double %b)
