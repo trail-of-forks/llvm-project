@@ -273,7 +273,7 @@ Type *WinEHStatePass::getSEHRegistrationType() {
 // fs:00) and the personality function for the current frame. The data before
 // and after that is personality function specific.
 void WinEHStatePass::emitExceptionRegistrationRecord(Function *F) {
-  assert(Personality == EHPersonality::MSVC_CXX ||
+  assert(Personality == EHPersonality::MSVC_CXX_3 ||
          Personality == EHPersonality::MSVC_X86SEH);
 
   IRBuilder<> Builder(&F->getEntryBlock(), F->getEntryBlock().begin());
@@ -281,7 +281,7 @@ void WinEHStatePass::emitExceptionRegistrationRecord(Function *F) {
   Type *Int32Ty = Builder.getInt32Ty();
   Type *VoidTy = Builder.getVoidTy();
 
-  if (Personality == EHPersonality::MSVC_CXX) {
+  if (Personality == EHPersonality::MSVC_CXX_3) {
     RegNodeTy = getCXXEHRegistrationType();
     RegNode = Builder.CreateAlloca(RegNodeTy);
     // SavedESP = llvm.stacksave()
@@ -465,7 +465,7 @@ void WinEHStatePass::rewriteSetJmpCall(IRBuilder<> &Builder, Function &F,
   Call.getOperandBundlesAsDefs(OpBundles);
 
   SmallVector<Value *, 3> OptionalArgs;
-  if (Personality == EHPersonality::MSVC_CXX) {
+  if (Personality == EHPersonality::MSVC_CXX_3) {
     OptionalArgs.push_back(CxxLongjmpUnwind.getCallee());
     OptionalArgs.push_back(State);
     OptionalArgs.push_back(emitEHLSDA(Builder, &F));

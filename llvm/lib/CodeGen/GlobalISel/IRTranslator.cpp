@@ -2894,7 +2894,7 @@ bool IRTranslator::findUnwindDestinations(
         &UnwindDests) {
   EHPersonality Personality = classifyEHPersonality(
       EHPadBB->getParent()->getFunction().getPersonalityFn());
-  bool IsMSVCCXX = Personality == EHPersonality::MSVC_CXX;
+  bool IsMSVCCXX = Personality == EHPersonality::MSVC_CXX_3;
   bool IsCoreCLR = Personality == EHPersonality::CoreCLR;
   bool IsWasmCXX = Personality == EHPersonality::Wasm_CXX;
   bool IsSEH = isAsynchronousEHPersonality(Personality);

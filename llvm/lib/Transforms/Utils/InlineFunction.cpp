@@ -2559,7 +2559,7 @@ llvm::InlineResult llvm::CanInlineCallSite(const CallBase &CB,
       // OK, the inlining site is legal.  What about the target function?
 
       if (IFI.CallSiteEHPad) {
-        if (Personality == EHPersonality::MSVC_CXX) {
+        if (Personality == EHPersonality::MSVC_CXX_3) {
           // The MSVC personality cannot tolerate catches getting inlined into
           // cleanup funclets.
           if (isa<CleanupPadInst>(IFI.CallSiteEHPad)) {

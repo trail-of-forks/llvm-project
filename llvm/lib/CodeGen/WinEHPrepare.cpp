@@ -1189,7 +1189,7 @@ bool WinEHPrepareImpl::removeImplausibleInstructions(Function &F) {
         Changed = true;
         changeToUnreachable(TI);
       } else if (isa<InvokeInst>(TI)) {
-        if (Personality == EHPersonality::MSVC_CXX && CleanupPad) {
+        if (Personality == EHPersonality::MSVC_CXX_3 && CleanupPad) {
           Changed = true;
           // Invokes within a cleanuppad for the MSVC++ personality never
           // transfer control to their unwind edge: the personality will

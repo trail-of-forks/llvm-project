@@ -26339,7 +26339,7 @@ static int getSEHRegistrationNodeSize(const Function *Fn) {
   // WinEHStatePass for the full struct definition.
   switch (classifyEHPersonality(Fn->getPersonalityFn())) {
   case EHPersonality::MSVC_X86SEH: return 24;
-  case EHPersonality::MSVC_CXX: return 16;
+  case EHPersonality::MSVC_CXX_3: return 16;
   default: break;
   }
   report_fatal_error(

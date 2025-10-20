@@ -1,0 +1,265 @@
+diff --git a/llvm/include/llvm/IR/EHPersonalities.h b/llvm/include/llvm/IR/EHPersonalities.h
+index 39f6817b3dc3..21ccf96342d8 100644
+--- a/llvm/include/llvm/IR/EHPersonalities.h
++++ b/llvm/include/llvm/IR/EHPersonalities.h
+@@ -29,7 +29,8 @@ enum class EHPersonality {
+   GNU_ObjC,
+   MSVC_X86SEH,
+   MSVC_TableSEH,
+-  MSVC_CXX,
++  MSVC_CXX_3,
++  MSVC_CXX_4,
+   CoreCLR,
+   Rust,
+   Wasm_CXX,
+@@ -65,7 +66,8 @@ inline bool isAsynchronousEHPersonality(EHPersonality Pers) {
+ /// handler funclets (which must return to it).
+ inline bool isFuncletEHPersonality(EHPersonality Pers) {
+   switch (Pers) {
+-  case EHPersonality::MSVC_CXX:
++  case EHPersonality::MSVC_CXX_3:
++  case EHPersonality::MSVC_CXX_4:
+   case EHPersonality::MSVC_X86SEH:
+   case EHPersonality::MSVC_TableSEH:
+   case EHPersonality::CoreCLR:
+@@ -80,7 +82,8 @@ inline bool isFuncletEHPersonality(EHPersonality Pers) {
+ /// catchswitch, catchpad/ret, and cleanuppad/ret.
+ inline bool isScopedEHPersonality(EHPersonality Pers) {
+   switch (Pers) {
+-  case EHPersonality::MSVC_CXX:
++  case EHPersonality::MSVC_CXX_3:
++  case EHPersonality::MSVC_CXX_4:
+   case EHPersonality::MSVC_X86SEH:
+   case EHPersonality::MSVC_TableSEH:
+   case EHPersonality::CoreCLR:
+diff --git a/llvm/lib/CodeGen/AsmPrinter/WinException.cpp b/llvm/lib/CodeGen/AsmPrinter/WinException.cpp
+index dccd71fffe05..0653a3c35911 100644
+--- a/llvm/lib/CodeGen/AsmPrinter/WinException.cpp
++++ b/llvm/lib/CodeGen/AsmPrinter/WinException.cpp
+@@ -150,8 +150,10 @@ void WinException::endFunction(const MachineFunction *MF) {
+       emitCSpecificHandlerTable(MF);
+     else if (Per == EHPersonality::MSVC_X86SEH)
+       emitExceptHandlerTable(MF);
+-    else if (Per == EHPersonality::MSVC_CXX)
++    else if (Per == EHPersonality::MSVC_CXX_3)
+       emitCXXFrameHandler3Table(MF);
++    else if (Per == EHPersonality::MSVC_CXX_4)
++      emitCXXFrameHandler4Table(MF);
+     else if (Per == EHPersonality::CoreCLR)
+       emitCLRExceptionTable(MF);
+     else
+@@ -258,7 +260,7 @@ void WinException::endFuncletImpl() {
+     if (F.hasPersonalityFn())
+       Per = classifyEHPersonality(F.getPersonalityFn()->stripPointerCasts());
+ 
+-    if (Per == EHPersonality::MSVC_CXX && shouldEmitPersonality &&
++    if (Per == EHPersonality::MSVC_CXX_3 && shouldEmitPersonality &&
+         !CurrentFuncletEntry->isCleanupFuncletEntry()) {
+       // Emit an UNWIND_INFO struct describing the prologue.
+       Asm->OutStreamer->emitWinEHHandlerData();
+@@ -903,6 +905,10 @@ void WinException::emitCXXFrameHandler3Table(const MachineFunction *MF) {
+   }
+ }
+ 
++void WinException::emitCXXFrameHandler4Table(const MachineFunction *MF) {
++
++}
++
+ void WinException::computeIP2StateTable(
+     const MachineFunction *MF, const WinEHFuncInfo &FuncInfo,
+     SmallVectorImpl<std::pair<const MCExpr *, int>> &IPToStateTable) {
+diff --git a/llvm/lib/CodeGen/AsmPrinter/WinException.h b/llvm/lib/CodeGen/AsmPrinter/WinException.h
+index 638589adf0dd..48074c2a50d9 100644
+--- a/llvm/lib/CodeGen/AsmPrinter/WinException.h
++++ b/llvm/lib/CodeGen/AsmPrinter/WinException.h
+@@ -61,6 +61,10 @@ class LLVM_LIBRARY_VISIBILITY WinException : public EHStreamer {
+   /// the __CxxFrameHandler3 personality.
+   void emitCXXFrameHandler3Table(const MachineFunction *MF);
+ 
++  /// Emit the EH table data for 64-bit functions using the __CxxFrameHandler4
++  /// personality.
++  void emitCXXFrameHandler4Table(const MachineFunction *MF);
++
+   /// Emit the EH table data for _except_handler3 and _except_handler4
+   /// personality functions. These are only used on 32-bit and do not use CFI
+   /// tables.
+diff --git a/llvm/lib/CodeGen/GlobalISel/IRTranslator.cpp b/llvm/lib/CodeGen/GlobalISel/IRTranslator.cpp
+index d7280eaba244..3604783c13be 100644
+--- a/llvm/lib/CodeGen/GlobalISel/IRTranslator.cpp
++++ b/llvm/lib/CodeGen/GlobalISel/IRTranslator.cpp
+@@ -2870,7 +2870,7 @@ bool IRTranslator::findUnwindDestinations(
+         &UnwindDests) {
+   EHPersonality Personality = classifyEHPersonality(
+       EHPadBB->getParent()->getFunction().getPersonalityFn());
+-  bool IsMSVCCXX = Personality == EHPersonality::MSVC_CXX;
++  bool IsMSVCCXX = Personality == EHPersonality::MSVC_CXX_3;
+   bool IsCoreCLR = Personality == EHPersonality::CoreCLR;
+   bool IsWasmCXX = Personality == EHPersonality::Wasm_CXX;
+   bool IsSEH = isAsynchronousEHPersonality(Personality);
+diff --git a/llvm/lib/CodeGen/SelectionDAG/FunctionLoweringInfo.cpp b/llvm/lib/CodeGen/SelectionDAG/FunctionLoweringInfo.cpp
+index 098005b6adfa..520a1029c670 100644
+--- a/llvm/lib/CodeGen/SelectionDAG/FunctionLoweringInfo.cpp
++++ b/llvm/lib/CodeGen/SelectionDAG/FunctionLoweringInfo.cpp
+@@ -108,7 +108,7 @@ void FunctionLoweringInfo::set(const Function &fn, MachineFunction &mf,
+   if (isFuncletEHPersonality(Personality)) {
+     // Calculate state numbers if we haven't already.
+     WinEHFuncInfo &EHInfo = *MF->getWinEHFuncInfo();
+-    if (Personality == EHPersonality::MSVC_CXX)
++    if (Personality == EHPersonality::MSVC_CXX_3)
+       calculateWinCXXEHStateNumbers(&fn, EHInfo);
+     else if (isAsynchronousEHPersonality(Personality))
+       calculateSEHStateNumbers(&fn, EHInfo);
+diff --git a/llvm/lib/CodeGen/SelectionDAG/SelectionDAGBuilder.cpp b/llvm/lib/CodeGen/SelectionDAG/SelectionDAGBuilder.cpp
+index 4954e23f9846..1dd90f617162 100644
+--- a/llvm/lib/CodeGen/SelectionDAG/SelectionDAGBuilder.cpp
++++ b/llvm/lib/CodeGen/SelectionDAG/SelectionDAGBuilder.cpp
+@@ -1981,7 +1981,7 @@ SDValue SelectionDAGBuilder::getValueImpl(const Value *V) {
+ 
+ void SelectionDAGBuilder::visitCatchPad(const CatchPadInst &I) {
+   auto Pers = classifyEHPersonality(FuncInfo.Fn->getPersonalityFn());
+-  bool IsMSVCCXX = Pers == EHPersonality::MSVC_CXX;
++  bool IsMSVCCXX = Pers == EHPersonality::MSVC_CXX_3;
+   bool IsCoreCLR = Pers == EHPersonality::CoreCLR;
+   bool IsSEH = isAsynchronousEHPersonality(Pers);
+   MachineBasicBlock *CatchPadMBB = FuncInfo.MBB;
+@@ -2064,7 +2064,7 @@ static void findUnwindDestinations(
+         &UnwindDests) {
+   EHPersonality Personality =
+     classifyEHPersonality(FuncInfo.Fn->getPersonalityFn());
+-  bool IsMSVCCXX = Personality == EHPersonality::MSVC_CXX;
++  bool IsMSVCCXX = Personality == EHPersonality::MSVC_CXX_3;
+   bool IsCoreCLR = Personality == EHPersonality::CoreCLR;
+   bool IsWasmCXX = Personality == EHPersonality::Wasm_CXX;
+   bool IsSEH = isAsynchronousEHPersonality(Personality);
+diff --git a/llvm/lib/CodeGen/WinEHPrepare.cpp b/llvm/lib/CodeGen/WinEHPrepare.cpp
+index 66d29cb5d65e..eb243861b60f 100644
+--- a/llvm/lib/CodeGen/WinEHPrepare.cpp
++++ b/llvm/lib/CodeGen/WinEHPrepare.cpp
+@@ -1189,7 +1189,7 @@ bool WinEHPrepareImpl::removeImplausibleInstructions(Function &F) {
+         Changed = true;
+         changeToUnreachable(TI);
+       } else if (isa<InvokeInst>(TI)) {
+-        if (Personality == EHPersonality::MSVC_CXX && CleanupPad) {
++        if (Personality == EHPersonality::MSVC_CXX_3 && CleanupPad) {
+           Changed = true;
+           // Invokes within a cleanuppad for the MSVC++ personality never
+           // transfer control to their unwind edge: the personality will
+diff --git a/llvm/lib/IR/EHPersonalities.cpp b/llvm/lib/IR/EHPersonalities.cpp
+index 9297a82e7d2b..952d02aa214c 100644
+--- a/llvm/lib/IR/EHPersonalities.cpp
++++ b/llvm/lib/IR/EHPersonalities.cpp
+@@ -45,7 +45,8 @@ EHPersonality llvm::classifyEHPersonality(const Value *Pers) {
+       .Case("_except_handler3", EHPersonality::MSVC_X86SEH)
+       .Case("_except_handler4", EHPersonality::MSVC_X86SEH)
+       .Case("__C_specific_handler", EHPersonality::MSVC_TableSEH)
+-      .Case("__CxxFrameHandler3", EHPersonality::MSVC_CXX)
++      .Case("__CxxFrameHandler3", EHPersonality::MSVC_CXX_3)
++      .Case("__CxxFrameHandler4", EHPersonality::MSVC_CXX_4)
+       .Case("ProcessCLRException", EHPersonality::CoreCLR)
+       .Case("rust_eh_personality", EHPersonality::Rust)
+       .Case("__gxx_wasm_personality_v0", EHPersonality::Wasm_CXX)
+@@ -72,8 +73,10 @@ StringRef llvm::getEHPersonalityName(EHPersonality Pers) {
+     return "_except_handler3";
+   case EHPersonality::MSVC_TableSEH:
+     return "__C_specific_handler";
+-  case EHPersonality::MSVC_CXX:
++  case EHPersonality::MSVC_CXX_3:
+     return "__CxxFrameHandler3";
++  case EHPersonality::MSVC_CXX_4:
++    return "__CxxFrameHandler4";
+   case EHPersonality::CoreCLR:
+     return "ProcessCLRException";
+   case EHPersonality::Rust:
+diff --git a/llvm/lib/Target/X86/X86FrameLowering.cpp b/llvm/lib/Target/X86/X86FrameLowering.cpp
+index 80b51cc5ab89..0b53a6f9ffa5 100644
+--- a/llvm/lib/Target/X86/X86FrameLowering.cpp
++++ b/llvm/lib/Target/X86/X86FrameLowering.cpp
+@@ -2140,7 +2140,7 @@ void X86FrameLowering::emitPrologue(MachineFunction &MF,
+     // If we're a catch funclet, we can be returned to via catchret. Save ESP
+     // into the registration node so that the runtime will restore it for us.
+     if (!MBB.isCleanupFuncletEntry()) {
+-      assert(Personality == EHPersonality::MSVC_CXX);
++      assert(Personality == EHPersonality::MSVC_CXX_3);
+       Register FrameReg;
+       int FI = MF.getWinEHFuncInfo()->EHRegNodeFrameIndex;
+       int64_t EHRegOffset = getFrameIndexReference(MF, FI, FrameReg).getFixed();
+@@ -4221,7 +4221,7 @@ void X86FrameLowering::processFunctionBeforeFrameFinalized(
+   // anything.
+   if (STI.is64Bit() && MF.hasEHFunclets() &&
+       classifyEHPersonality(MF.getFunction().getPersonalityFn()) ==
+-          EHPersonality::MSVC_CXX) {
++          EHPersonality::MSVC_CXX_3) {
+     adjustFrameForMsvcCxxEh(MF);
+   }
+ }
+diff --git a/llvm/lib/Target/X86/X86ISelLowering.cpp b/llvm/lib/Target/X86/X86ISelLowering.cpp
+index c91bf269076e..91e3637dc9ac 100644
+--- a/llvm/lib/Target/X86/X86ISelLowering.cpp
++++ b/llvm/lib/Target/X86/X86ISelLowering.cpp
+@@ -26276,7 +26276,7 @@ static int getSEHRegistrationNodeSize(const Function *Fn) {
+   // WinEHStatePass for the full struct definition.
+   switch (classifyEHPersonality(Fn->getPersonalityFn())) {
+   case EHPersonality::MSVC_X86SEH: return 24;
+-  case EHPersonality::MSVC_CXX: return 16;
++  case EHPersonality::MSVC_CXX_3: return 16;
+   default: break;
+   }
+   report_fatal_error(
+diff --git a/llvm/lib/Target/X86/X86WinEHState.cpp b/llvm/lib/Target/X86/X86WinEHState.cpp
+index 27111fce4566..afa346563bf4 100644
+--- a/llvm/lib/Target/X86/X86WinEHState.cpp
++++ b/llvm/lib/Target/X86/X86WinEHState.cpp
+@@ -273,7 +273,7 @@ Type *WinEHStatePass::getSEHRegistrationType() {
+ // fs:00) and the personality function for the current frame. The data before
+ // and after that is personality function specific.
+ void WinEHStatePass::emitExceptionRegistrationRecord(Function *F) {
+-  assert(Personality == EHPersonality::MSVC_CXX ||
++  assert(Personality == EHPersonality::MSVC_CXX_3 ||
+          Personality == EHPersonality::MSVC_X86SEH);
+ 
+   IRBuilder<> Builder(&F->getEntryBlock(), F->getEntryBlock().begin());
+@@ -281,7 +281,7 @@ void WinEHStatePass::emitExceptionRegistrationRecord(Function *F) {
+   Type *Int32Ty = Builder.getInt32Ty();
+   Type *VoidTy = Builder.getVoidTy();
+ 
+-  if (Personality == EHPersonality::MSVC_CXX) {
++  if (Personality == EHPersonality::MSVC_CXX_3) {
+     RegNodeTy = getCXXEHRegistrationType();
+     RegNode = Builder.CreateAlloca(RegNodeTy);
+     // SavedESP = llvm.stacksave()
+@@ -465,7 +465,7 @@ void WinEHStatePass::rewriteSetJmpCall(IRBuilder<> &Builder, Function &F,
+   Call.getOperandBundlesAsDefs(OpBundles);
+ 
+   SmallVector<Value *, 3> OptionalArgs;
+-  if (Personality == EHPersonality::MSVC_CXX) {
++  if (Personality == EHPersonality::MSVC_CXX_3) {
+     OptionalArgs.push_back(CxxLongjmpUnwind.getCallee());
+     OptionalArgs.push_back(State);
+     OptionalArgs.push_back(emitEHLSDA(Builder, &F));
+diff --git a/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp b/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
+index 91a1b61ddc48..670a15633837 100644
+--- a/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
++++ b/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
+@@ -4537,7 +4537,8 @@ static bool isCatchAll(EHPersonality Personality, Constant *TypeInfo) {
+   case EHPersonality::GNU_ObjC:
+   case EHPersonality::MSVC_X86SEH:
+   case EHPersonality::MSVC_TableSEH:
+-  case EHPersonality::MSVC_CXX:
++  case EHPersonality::MSVC_CXX_3:
++  case EHPersonality::MSVC_CXX_4:
+   case EHPersonality::CoreCLR:
+   case EHPersonality::Wasm_CXX:
+   case EHPersonality::XL_CXX:
+diff --git a/llvm/lib/Transforms/Utils/InlineFunction.cpp b/llvm/lib/Transforms/Utils/InlineFunction.cpp
+index 6929d14bc56e..8e7dfca90a06 100644
+--- a/llvm/lib/Transforms/Utils/InlineFunction.cpp
++++ b/llvm/lib/Transforms/Utils/InlineFunction.cpp
+@@ -2559,7 +2559,7 @@ llvm::InlineResult llvm::InlineFunction(CallBase &CB, InlineFunctionInfo &IFI,
+       // OK, the inlining site is legal.  What about the target function?
+
+       if (IFI.CallSiteEHPad) {
+-        if (Personality == EHPersonality::MSVC_CXX) {
++        if (Personality == EHPersonality::MSVC_CXX_3) {
+           // The MSVC personality cannot tolerate catches getting inlined into
+           // cleanup funclets.
+           if (isa<CleanupPadInst>(IFI.CallSiteEHPad)) {

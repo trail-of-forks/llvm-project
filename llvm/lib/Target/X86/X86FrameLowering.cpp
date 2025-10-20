@@ -2140,7 +2140,7 @@ void X86FrameLowering::emitPrologue(MachineFunction &MF,
     // If we're a catch funclet, we can be returned to via catchret. Save ESP
     // into the registration node so that the runtime will restore it for us.
     if (!MBB.isCleanupFuncletEntry()) {
-      assert(Personality == EHPersonality::MSVC_CXX);
+      assert(Personality == EHPersonality::MSVC_CXX_3);
       Register FrameReg;
       int FI = MF.getWinEHFuncInfo()->EHRegNodeFrameIndex;
       int64_t EHRegOffset = getFrameIndexReference(MF, FI, FrameReg).getFixed();
@@ -4230,7 +4230,7 @@ void X86FrameLowering::processFunctionBeforeFrameFinalized(
   // anything.
   if (STI.is64Bit() && MF.hasEHFunclets() &&
       classifyEHPersonality(MF.getFunction().getPersonalityFn()) ==
-          EHPersonality::MSVC_CXX) {
+          EHPersonality::MSVC_CXX_3) {
     adjustFrameForMsvcCxxEh(MF);
   }
 }

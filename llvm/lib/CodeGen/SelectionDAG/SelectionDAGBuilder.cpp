@@ -1994,7 +1994,7 @@ SDValue SelectionDAGBuilder::getValueImpl(const Value *V) {
 
 void SelectionDAGBuilder::visitCatchPad(const CatchPadInst &I) {
   auto Pers = classifyEHPersonality(FuncInfo.Fn->getPersonalityFn());
-  bool IsMSVCCXX = Pers == EHPersonality::MSVC_CXX;
+  bool IsMSVCCXX = Pers == EHPersonality::MSVC_CXX_3;
   bool IsCoreCLR = Pers == EHPersonality::CoreCLR;
   bool IsSEH = isAsynchronousEHPersonality(Pers);
   MachineBasicBlock *CatchPadMBB = FuncInfo.MBB;
@@ -2077,7 +2077,7 @@ static void findUnwindDestinations(
         &UnwindDests) {
   EHPersonality Personality =
     classifyEHPersonality(FuncInfo.Fn->getPersonalityFn());
-  bool IsMSVCCXX = Personality == EHPersonality::MSVC_CXX;
+  bool IsMSVCCXX = Personality == EHPersonality::MSVC_CXX_3;
   bool IsCoreCLR = Personality == EHPersonality::CoreCLR;
   bool IsWasmCXX = Personality == EHPersonality::Wasm_CXX;
   bool IsSEH = isAsynchronousEHPersonality(Personality);

@@ -150,8 +150,10 @@ void WinException::endFunction(const MachineFunction *MF) {
       emitCSpecificHandlerTable(MF);
     else if (Per == EHPersonality::MSVC_X86SEH)
       emitExceptHandlerTable(MF);
-    else if (Per == EHPersonality::MSVC_CXX)
+    else if (Per == EHPersonality::MSVC_CXX_3)
       emitCXXFrameHandler3Table(MF);
+    else if (Per == EHPersonality::MSVC_CXX_4)
+      emitCXXFrameHandler4Table(MF);
     else if (Per == EHPersonality::CoreCLR)
       emitCLRExceptionTable(MF);
     else
@@ -258,7 +260,7 @@ void WinException::endFuncletImpl() {
     if (F.hasPersonalityFn())
       Per = classifyEHPersonality(F.getPersonalityFn()->stripPointerCasts());
 
-    if (Per == EHPersonality::MSVC_CXX && shouldEmitPersonality &&
+    if (Per == EHPersonality::MSVC_CXX_3 && shouldEmitPersonality &&
         !CurrentFuncletEntry->isCleanupFuncletEntry()) {
       // Emit an UNWIND_INFO struct describing the prologue.
       Asm->OutStreamer->emitWinEHHandlerData();
@@ -895,6 +897,10 @@ void WinException::emitCXXFrameHandler3Table(const MachineFunction *MF) {
       OS.emitInt32(IPStatePair.second);
     }
   }
+}
+
+void WinException::emitCXXFrameHandler4Table(const MachineFunction *MF) {
+
 }
 
 void WinException::computeIP2StateTable(
