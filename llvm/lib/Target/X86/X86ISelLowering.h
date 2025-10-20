@@ -105,6 +105,13 @@ namespace llvm {
     /// used to implement constant-time select.
     CTSELECT,
 
+    /// X86 Constant-time Select for i386 with pre-materialized condition byte.
+    /// Operands: false_value, true_value, condition_byte (GR8)
+    /// This variant takes an i8 condition instead of EFLAGS to avoid sharing
+    /// EFLAGS across multiple ct_select operations where intervening code might
+    /// clobber flags.
+    CTSELECT_I386,
+
     // Same as SETCC except it's materialized with a sbb and the value is all
     // one's or all zero's.
     SETCC_CARRY, // R = carry_bit ? ~0 : 0

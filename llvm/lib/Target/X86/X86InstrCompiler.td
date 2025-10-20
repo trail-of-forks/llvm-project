@@ -726,6 +726,29 @@ let isCodeGenOnly = 1, hasSideEffects = 1, ForceDisassemble = 1 in {
   }
 }
 
+// Phase 1 pseudos with pre-materialized condition byte (no EFLAGS dependency)
+// These receive the condition as a GR8 register instead of EFLAGS, avoiding the
+// EFLAGS sharing issue that occurs when multiple ct_selects with same condition
+// are optimized and intervening code clobbers flags
+let isPseudo = 1, isNotDuplicable = 1 in {
+  class CTSELECT_I386_BYTE_INITIAL<RegisterClass RC, ValueType VT>
+      : PseudoI<(outs RC:$dst),
+                (ins RC:$src1, RC:$src2, GR8:$cond_byte),
+                [(set RC:$dst, (VT(X86ctselect_i386 RC:$src1, RC:$src2, GR8:$cond_byte)))]> {
+    // No Uses = [EFLAGS]!
+    let usesCustomInserter = 1;
+    let hasNoSchedulingInfo = 1;
+  }
+}
+
+let isCodeGenOnly = 1, hasSideEffects = 1, ForceDisassemble = 1 in {
+  let Predicates = [NoNativeCMOV] in {
+    def CTSELECT_I386_BYTE_GR8rr : CTSELECT_I386_BYTE_INITIAL<GR8, i8>;
+    def CTSELECT_I386_BYTE_GR16rr : CTSELECT_I386_BYTE_INITIAL<GR16, i16>;
+    def CTSELECT_I386_BYTE_GR32rr : CTSELECT_I386_BYTE_INITIAL<GR32, i32>;
+  }
+}
+
 // Phase 2 pseudos (post-RA expansion with pre-materialized condition byte)
 let isCodeGenOnly = 1, hasSideEffects = 1, ForceDisassemble = 1 in {
   let Predicates = [NoNativeCMOV] in {
@@ -738,17 +761,18 @@ let isCodeGenOnly = 1, hasSideEffects = 1, ForceDisassemble = 1 in {
   }
 }
 
+// Floating point types (take pre-materialized condition byte to avoid EFLAGS sharing)
 let hasSideEffects = 1,
     ForceDisassemble = 1,
     Constraints = "$dst = $src1" in {
 
   let Predicates = [FPStackf32] in
-    def CTSELECT_I386_FP32rr : CTSELECT_I386_INITIAL<RFP32, f32>;
+    def CTSELECT_I386_FP32rr : CTSELECT_I386_BYTE_INITIAL<RFP32, f32>;
 
   let Predicates = [FPStackf64] in
-    def CTSELECT_I386_FP64rr : CTSELECT_I386_INITIAL<RFP64, f64>;
+    def CTSELECT_I386_FP64rr : CTSELECT_I386_BYTE_INITIAL<RFP64, f64>;
 
-  def CTSELECT_I386_FP80rr : CTSELECT_I386_INITIAL<RFP80, f80>;
+  def CTSELECT_I386_FP80rr : CTSELECT_I386_BYTE_INITIAL<RFP80, f80>;
 }
 
 // Pattern matching for non-native-CMOV CTSELECT (routes to custom inserter for condition materialization)
@@ -766,6 +790,33 @@ let Predicates = [NoNativeCMOV] in {
 
   // i64 patterns handled automatically by type legalization
 }
+
+// Pattern matching for CTSELECT_I386 with pre-materialized condition byte
+// These patterns catch the new X86ISD::CTSELECT_I386 nodes created by LowerCTSELECT
+let Predicates = [NoNativeCMOV] in {
+  def : Pat<(i8(X86ctselect_i386 GR8:$src1, GR8:$src2, GR8:$cond_byte)),
+            (CTSELECT_I386_BYTE_GR8rr GR8:$src1, GR8:$src2, GR8:$cond_byte)>;
+
+  def : Pat<(i16(X86ctselect_i386 GR16:$src1, GR16:$src2, GR8:$cond_byte)),
+            (CTSELECT_I386_BYTE_GR16rr GR16:$src1, GR16:$src2, GR8:$cond_byte)>;
+
+  def : Pat<(i32(X86ctselect_i386 GR32:$src1, GR32:$src2, GR8:$cond_byte)),
+            (CTSELECT_I386_BYTE_GR32rr GR32:$src1, GR32:$src2, GR8:$cond_byte)>;
+
+  // i64 patterns handled automatically by type legalization
+}
+
+// Floating point patterns for CTSELECT_I386 with pre-materialized byte condition
+let Predicates = [FPStackf32] in
+  def : Pat<(f32(X86ctselect_i386 RFP32:$src1, RFP32:$src2, GR8:$cond_byte)),
+            (CTSELECT_I386_FP32rr RFP32:$src1, RFP32:$src2, GR8:$cond_byte)>;
+
+let Predicates = [FPStackf64] in
+  def : Pat<(f64(X86ctselect_i386 RFP64:$src1, RFP64:$src2, GR8:$cond_byte)),
+            (CTSELECT_I386_FP64rr RFP64:$src1, RFP64:$src2, GR8:$cond_byte)>;
+
+def : Pat<(f80(X86ctselect_i386 RFP80:$src1, RFP80:$src2, GR8:$cond_byte)),
+          (CTSELECT_I386_FP80rr RFP80:$src1, RFP80:$src2, GR8:$cond_byte)>;
 
 //===----------------------------------------------------------------------===//
 // Normal-Instructions-With-Lock-Prefix Pseudo Instructions

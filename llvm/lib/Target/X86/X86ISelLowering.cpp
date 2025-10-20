@@ -24946,6 +24946,33 @@ static SDValue LowerSIGN_EXTEND_Mask(SDValue Op, const SDLoc &dl,
   return V;
 }
 
+/// Helper to create appropriate CTSELECT node for target.
+/// For i386 without CMOV, materializes condition to byte to avoid EFLAGS sharing issues.
+static SDValue createTargetCTSELECT(SDLoc DL, MVT VT,
+                                     SDValue FalseOp, SDValue TrueOp,
+                                     SDValue CC, SDValue ProcessedCond,
+                                     SelectionDAG &DAG,
+                                     const X86Subtarget &Subtarget,
+                                     SDNodeFlags Flags = SDNodeFlags()) {
+  if (!Subtarget.hasCMOV() && !VT.isVector()) {
+    // Materialize condition for i386 to prevent EFLAGS sharing
+    // Extract condition code and materialize EFLAGS to byte immediately
+    auto *CCNode = dyn_cast<ConstantSDNode>(CC);
+    if (CCNode) {
+      X86::CondCode CCVal = static_cast<X86::CondCode>(CCNode->getZExtValue());
+      X86::CondCode OppCC = X86::GetOppositeBranchCondition(CCVal);
+      SDValue CondByte = getSETCC(OppCC, ProcessedCond, DL, DAG);
+      SDValue Ops[] = {FalseOp, TrueOp, CondByte};
+      return DAG.getNode(X86ISD::CTSELECT_I386, DL, VT, Ops, Flags);
+    }
+    // If CC is not constant, fall through to standard CTSELECT
+    // (This happens in some edge cases where condition code is dynamically computed)
+  }
+
+  SDValue Ops[] = {FalseOp, TrueOp, CC, ProcessedCond};
+  return DAG.getNode(X86ISD::CTSELECT, DL, VT, Ops, Flags);
+}
+
 SDValue X86TargetLowering::LowerCTSELECT(SDValue Op, SelectionDAG &DAG) const {
   SDValue Cond = Op.getOperand(0); // condition
   SDValue TrueOp = Op.getOperand(1);  // true_value
@@ -25080,8 +25107,9 @@ SDValue X86TargetLowering::LowerCTSELECT(SDValue Op, SelectionDAG &DAG) const {
     if (T1.getValueType() == T2.getValueType() &&
         T1.getOpcode() != ISD::CopyFromReg &&
         T2.getOpcode() != ISD::CopyFromReg) {
-      SDValue CtSelect = DAG.getNode(X86ISD::CTSELECT, DL, T1.getValueType(),
-                                     T2, T1, CC, ProcessedCond);
+      SDValue CtSelect = createTargetCTSELECT(DL, T1.getSimpleValueType(),
+                                               T2, T1, CC, ProcessedCond,
+                                               DAG, Subtarget);
       return DAG.getNode(ISD::TRUNCATE, DL, Op.getValueType(), CtSelect);
     }
   }
@@ -25094,8 +25122,9 @@ SDValue X86TargetLowering::LowerCTSELECT(SDValue Op, SelectionDAG &DAG) const {
        !X86::mayFoldLoad(FalseOp, Subtarget))) {
     TrueOp = DAG.getNode(ISD::ANY_EXTEND, DL, MVT::i32, TrueOp);
     FalseOp = DAG.getNode(ISD::ANY_EXTEND, DL, MVT::i32, FalseOp);
-    SDValue Ops[] = {FalseOp, TrueOp, CC, ProcessedCond};
-    SDValue CtSelect = DAG.getNode(X86ISD::CTSELECT, DL, MVT::i32, Ops);
+    SDValue CtSelect = createTargetCTSELECT(DL, MVT::i32,
+                                             FalseOp, TrueOp, CC, ProcessedCond,
+                                             DAG, Subtarget);
     return DAG.getNode(ISD::TRUNCATE, DL, Op.getValueType(), CtSelect);
   }
 
@@ -25103,15 +25132,16 @@ SDValue X86TargetLowering::LowerCTSELECT(SDValue Op, SelectionDAG &DAG) const {
     MVT IntVT = (VT == MVT::f32) ? MVT::i32 : MVT::i64;
     TrueOp = DAG.getBitcast(IntVT, TrueOp);
     FalseOp = DAG.getBitcast(IntVT, FalseOp);
-    SDValue Ops[] = {FalseOp, TrueOp, CC, ProcessedCond};
-    SDValue CtSelect = DAG.getNode(X86ISD::CTSELECT, DL, IntVT, Ops);
+    SDValue CtSelect = createTargetCTSELECT(DL, IntVT,
+                                             FalseOp, TrueOp, CC, ProcessedCond,
+                                             DAG, Subtarget);
     return DAG.getBitcast(VT, CtSelect);
   }
 
   // Create final CTSELECT node
-  SDValue Ops[] = {FalseOp, TrueOp, CC, ProcessedCond};
-  return DAG.getNode(X86ISD::CTSELECT, DL, Op.getValueType(), Ops,
-                     Op->getFlags());
+  return createTargetCTSELECT(DL, Op.getSimpleValueType(),
+                               FalseOp, TrueOp, CC, ProcessedCond,
+                               DAG, Subtarget, Op->getFlags());
 }
 
 static SDValue LowerANY_EXTEND(SDValue Op, const X86Subtarget &Subtarget,
@@ -34790,6 +34820,7 @@ const char *X86TargetLowering::getTargetNodeName(unsigned Opcode) const {
   NODE_NAME_CASE(CMPMM_SAE)
   NODE_NAME_CASE(SETCC)
   NODE_NAME_CASE(CTSELECT)
+  NODE_NAME_CASE(CTSELECT_I386)
   NODE_NAME_CASE(SETCC_CARRY)
   NODE_NAME_CASE(FSETCC)
   NODE_NAME_CASE(FSETCCM)
@@ -37634,6 +37665,50 @@ emitCTSelectI386WithConditionMaterialization(MachineInstr &MI,
   return BB;
 }
 
+static MachineBasicBlock *
+emitCTSelectI386WithByteCondition(MachineInstr &MI,
+                                   MachineBasicBlock *BB,
+                                   unsigned InternalPseudoOpcode) {
+  const TargetInstrInfo *TII = BB->getParent()->getSubtarget().getInstrInfo();
+  const MIMetadata MIMD(MI);
+  MachineFunction *MF = BB->getParent();
+  MachineRegisterInfo &MRI = MF->getRegInfo();
+
+  // Operands: (outs dst), (ins src1, src2, cond_byte)
+  Register DstReg = MI.getOperand(0).getReg();
+  Register Src1Reg = MI.getOperand(1).getReg();
+  Register Src2Reg = MI.getOperand(2).getReg();
+  Register CondByteReg = MI.getOperand(3).getReg(); // Pre-materialized at DAG level!
+
+  // Create virtual registers for the temporary outputs
+  Register TmpByteReg = MRI.createVirtualRegister(&X86::GR8RegClass);
+  Register TmpMaskReg;
+
+  // Determine register class for tmp_mask based on data type
+  if (InternalPseudoOpcode == X86::CTSELECT_I386_INT_GR8rr) {
+    TmpMaskReg = MRI.createVirtualRegister(&X86::GR8RegClass);
+  } else if (InternalPseudoOpcode == X86::CTSELECT_I386_INT_GR16rr) {
+    TmpMaskReg = MRI.createVirtualRegister(&X86::GR16RegClass);
+  } else if (InternalPseudoOpcode == X86::CTSELECT_I386_INT_GR32rr) {
+    TmpMaskReg = MRI.createVirtualRegister(&X86::GR32RegClass);
+  } else {
+    llvm_unreachable("Unknown internal pseudo opcode");
+  }
+
+  // Create internal pseudo with pre-materialized condition byte
+  // No SETCC needed - condition already materialized at DAG level!
+  BuildMI(*BB, MI, MIMD, TII->get(InternalPseudoOpcode))
+      .addDef(DstReg)
+      .addDef(TmpByteReg)
+      .addDef(TmpMaskReg)
+      .addReg(Src1Reg)
+      .addReg(Src2Reg)
+      .addReg(CondByteReg);  // Already materialized!
+
+  MI.eraseFromParent();
+  return BB;
+}
+
 // Helper structure to hold memory operand information for FP loads
 struct FPLoadMemOperands {
   bool IsValid = false;
@@ -37749,9 +37824,9 @@ static FPLoadMemOperands getFPLoadMemOperands(Register Reg,
   return Result;
 }
 
-static MachineBasicBlock *emitCTSelectI386WithFpType(MachineInstr &MI,
-                                                     MachineBasicBlock *BB,
-                                                     unsigned pseudoInstr) {
+/// FP constant-time select with pre-materialized condition byte.
+static MachineBasicBlock *emitCTSelectI386WithFpType(
+    MachineInstr &MI, MachineBasicBlock *BB, unsigned pseudoInstr) {
   const TargetInstrInfo *TII = BB->getParent()->getSubtarget().getInstrInfo();
   const MIMetadata MIMD(MI);
   MachineFunction *MF = BB->getParent();
@@ -37759,17 +37834,11 @@ static MachineBasicBlock *emitCTSelectI386WithFpType(MachineInstr &MI,
   MachineFrameInfo &MFI = MF->getFrameInfo();
   unsigned RegSizeInByte = 4;
 
-  // Get operands
-  // MI operands: %result:rfp80 = CTSELECT_I386 %false:rfp80, %true:rfp80, %cond:i8imm
+  // Get operands (pre-materialized condition byte at operand 3)
   unsigned DestReg = MI.getOperand(0).getReg();
   unsigned FalseReg = MI.getOperand(1).getReg();
   unsigned TrueReg = MI.getOperand(2).getReg();
-  X86::CondCode CC = static_cast<X86::CondCode>(MI.getOperand(3).getImm());
-  X86::CondCode OppCC = X86::GetOppositeBranchCondition(CC);
-
-  // Materialize condition byte from EFLAGS
-  Register CondByteReg = MRI.createVirtualRegister(&X86::GR8RegClass);
-  BuildMI(*BB, MI, MIMD, TII->get(X86::SETCCr), CondByteReg).addImm(OppCC);
+  Register CondByteReg = MI.getOperand(3).getReg();
 
   auto storeFpToSlot = [&](unsigned Opcode, int Slot, Register Reg) {
     addFrameReference(BuildMI(*BB, MI, MIMD, TII->get(Opcode)), Slot)
@@ -37858,7 +37927,7 @@ static MachineBasicBlock *emitCTSelectI386WithFpType(MachineInstr &MI,
   auto emitCtSelectWithPseudo = [&](unsigned NumValues, int TrueSlot, int FalseSlot, int ResultSlot) {
     for (unsigned Val = 0; Val < NumValues; ++Val) {
       unsigned Offset = Val * RegSizeInByte;
-      
+
       // Load true and false values from stack as 32-bit integers
       unsigned TrueIntReg = MRI.createVirtualRegister(&X86::GR32RegClass);
       BuildMI(*BB, MI, MIMD, TII->get(X86::MOV32rm), TrueIntReg)
@@ -37880,7 +37949,7 @@ static MachineBasicBlock *emitCTSelectI386WithFpType(MachineInstr &MI,
       unsigned ResultIntReg = MRI.createVirtualRegister(&X86::GR32RegClass);
       unsigned TmpByteReg = MRI.createVirtualRegister(&X86::GR8RegClass);
       unsigned TmpMaskReg = MRI.createVirtualRegister(&X86::GR32RegClass);
-      
+
       BuildMI(*BB, MI, MIMD, TII->get(X86::CTSELECT_I386_INT_GR32rr))
           .addDef(ResultIntReg)     // dst (output)
           .addDef(TmpByteReg)       // tmp_byte (output)
@@ -38032,7 +38101,7 @@ static MachineBasicBlock *emitCTSelectI386WithFpType(MachineInstr &MI,
     break;
   }
   default:
-    llvm_unreachable("Invalid CTSELECT opcode");
+    llvm_unreachable("Invalid CTSELECT_I386_BYTE opcode");
   }
 
   MI.eraseFromParent();
@@ -38113,13 +38182,25 @@ X86TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
     return emitCTSelectI386WithConditionMaterialization(
         MI, BB, X86::CTSELECT_I386_INT_GR32rr);
 
+  case X86::CTSELECT_I386_BYTE_GR8rr:
+    return emitCTSelectI386WithByteCondition(
+        MI, BB, X86::CTSELECT_I386_INT_GR8rr);
+
+  case X86::CTSELECT_I386_BYTE_GR16rr:
+    return emitCTSelectI386WithByteCondition(
+        MI, BB, X86::CTSELECT_I386_INT_GR16rr);
+
+  case X86::CTSELECT_I386_BYTE_GR32rr:
+    return emitCTSelectI386WithByteCondition(
+        MI, BB, X86::CTSELECT_I386_INT_GR32rr);
+
   case X86::CTSELECT_I386_FP32rr:
     return emitCTSelectI386WithFpType(MI, BB, X86::CTSELECT_I386_FP32rr);
   case X86::CTSELECT_I386_FP64rr:
     return emitCTSelectI386WithFpType(MI, BB, X86::CTSELECT_I386_FP64rr);
   case X86::CTSELECT_I386_FP80rr:
     return emitCTSelectI386WithFpType(MI, BB, X86::CTSELECT_I386_FP80rr);
-    
+
   case X86::FP80_ADDr:
   case X86::FP80_ADDm32: {
     // Change the floating point control register to use double extended
