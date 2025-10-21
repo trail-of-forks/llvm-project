@@ -720,6 +720,7 @@ let isPseudo = 1, isNotDuplicable = 1 in {
                 (ins RC:$src1, RC:$src2, ByteRC:$cond_byte), []> {
     let hasNoSchedulingInfo = 1;
     let Constraints = "@earlyclobber $dst,@earlyclobber $tmp_byte,@earlyclobber $tmp_mask";
+    let Defs = [EFLAGS];  // NEG instruction in post-RA expansion clobbers EFLAGS
   }
 }
 

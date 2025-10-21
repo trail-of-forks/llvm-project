@@ -160,28 +160,31 @@ define i64 @test_ctselect_i64(i1 %cond, i64 %a, i64 %b) {
 ; X32-NOCMOV-NEXT:    .cfi_offset %edi, -16
 ; X32-NOCMOV-NEXT:    .cfi_offset %ebx, -12
 ; X32-NOCMOV-NEXT:    .cfi_offset %ebp, -8
-; X32-NOCMOV-NEXT:    movl {{[0-9]+}}(%esp), %ecx
-; X32-NOCMOV-NEXT:    movl {{[0-9]+}}(%esp), %esi
+; X32-NOCMOV-NEXT:    movl {{[0-9]+}}(%esp), %ebp
 ; X32-NOCMOV-NEXT:    movl {{[0-9]+}}(%esp), %edx
 ; X32-NOCMOV-NEXT:    movl {{[0-9]+}}(%esp), %edi
-; X32-NOCMOV-NEXT:    testb $1, {{[0-9]+}}(%esp)
-; X32-NOCMOV-NEXT:    sete %bl
-; X32-NOCMOV-NEXT:    movb %bl, %bh
-; X32-NOCMOV-NEXT:    movzbl %bh, %ebp
-; X32-NOCMOV-NEXT:    negl %ebp
+; X32-NOCMOV-NEXT:    movzbl {{[0-9]+}}(%esp), %ebx
+; X32-NOCMOV-NEXT:    testb $1, %bl
+; X32-NOCMOV-NEXT:    sete %bh
+; X32-NOCMOV-NEXT:    movb %bh, %cl
+; X32-NOCMOV-NEXT:    movzbl %cl, %esi
+; X32-NOCMOV-NEXT:    negl %esi
 ; X32-NOCMOV-NEXT:    movl %edx, %eax
-; X32-NOCMOV-NEXT:    andl %ebp, %eax
-; X32-NOCMOV-NEXT:    notl %ebp
-; X32-NOCMOV-NEXT:    andl %ecx, %ebp
-; X32-NOCMOV-NEXT:    orl %ebp, %eax
-; X32-NOCMOV-NEXT:    movb %bl, %cl
-; X32-NOCMOV-NEXT:    movzbl %cl, %ebp
-; X32-NOCMOV-NEXT:    negl %ebp
+; X32-NOCMOV-NEXT:    andl %esi, %eax
+; X32-NOCMOV-NEXT:    notl %esi
+; X32-NOCMOV-NEXT:    andl %ebp, %esi
+; X32-NOCMOV-NEXT:    orl %esi, %eax
+; X32-NOCMOV-NEXT:    testb $1, %bl
+; X32-NOCMOV-NEXT:    sete %cl
+; X32-NOCMOV-NEXT:    movl {{[0-9]+}}(%esp), %ebx
+; X32-NOCMOV-NEXT:    movb %cl, %ch
+; X32-NOCMOV-NEXT:    movzbl %ch, %esi
+; X32-NOCMOV-NEXT:    negl %esi
 ; X32-NOCMOV-NEXT:    movl %edi, %edx
-; X32-NOCMOV-NEXT:    andl %ebp, %edx
-; X32-NOCMOV-NEXT:    notl %ebp
-; X32-NOCMOV-NEXT:    andl %esi, %ebp
-; X32-NOCMOV-NEXT:    orl %ebp, %edx
+; X32-NOCMOV-NEXT:    andl %esi, %edx
+; X32-NOCMOV-NEXT:    notl %esi
+; X32-NOCMOV-NEXT:    andl %ebx, %esi
+; X32-NOCMOV-NEXT:    orl %esi, %edx
 ; X32-NOCMOV-NEXT:    popl %esi
 ; X32-NOCMOV-NEXT:    .cfi_def_cfa_offset 16
 ; X32-NOCMOV-NEXT:    popl %edi
