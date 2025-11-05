@@ -495,8 +495,8 @@ public:
   MachineMemOperand::Flags
   getVPIntrinsicMemOperandFlags(const VPIntrinsic &VPIntrin) const;
 
-  virtual bool isSelectSupported(SelectSupportKind /*kind*/) const {
-    return true;
+  virtual bool isSelectSupported(SelectSupportKind kind) const {
+    return kind != CtSelect;
   }
 
   /// Return true if the @llvm.get.active.lane.mask intrinsic should be expanded
