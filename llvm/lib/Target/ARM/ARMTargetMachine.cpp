@@ -518,9 +518,8 @@ void ARMPassConfig::addPreEmitPass() {
   addPass(createThumb2SizeReductionPass());
 
   // Constant island pass work on unbundled instructions.
-  addPass(createUnpackMachineBundles([](const MachineFunction &MF) {
-    return MF.getSubtarget<ARMSubtarget>().isThumb2();
-  }));
+  // Always unpack bundles to handle CTSELECT expansion
+  addPass(createUnpackMachineBundles(nullptr));
 
   // Don't optimize barriers or block placement at -O0.
   if (getOptLevel() != CodeGenOptLevel::None) {
