@@ -435,6 +435,9 @@ public:
                             NonNeg | NoNaNs | NoInfs | SameSign | InBounds,
     FastMathFlags = NoNaNs | NoInfs | NoSignedZeros | AllowReciprocal |
                     AllowContract | ApproximateFuncs | AllowReassociation,
+
+    // Flag for disabling optimization
+    NoMerge = 1 << 15,
   };
 
   /// Default constructor turns off all optimization flags.
@@ -468,6 +471,7 @@ public:
   void setNoFPExcept(bool b) { setFlag<NoFPExcept>(b); }
   void setUnpredictable(bool b) { setFlag<Unpredictable>(b); }
   void setInBounds(bool b) { setFlag<InBounds>(b); }
+  void setNoMerge(bool b) { setFlag<NoMerge>(b); }
 
   // These are accessors for each flag.
   bool hasNoUnsignedWrap() const { return Flags & NoUnsignedWrap; }
@@ -486,6 +490,7 @@ public:
   bool hasNoFPExcept() const { return Flags & NoFPExcept; }
   bool hasUnpredictable() const { return Flags & Unpredictable; }
   bool hasInBounds() const { return Flags & InBounds; }
+  bool hasNoMerge() const { return Flags & NoMerge; }
 
   bool operator==(const SDNodeFlags &Other) const {
     return Flags == Other.Flags;
