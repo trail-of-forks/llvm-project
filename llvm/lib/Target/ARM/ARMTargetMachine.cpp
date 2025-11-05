@@ -524,9 +524,11 @@ void ARMPassConfig::addPreEmitPass() {
   // Unpack bundles for:
   // - Thumb2: Constant island pass requires unbundled instructions
   // - KCFI: KCFI_CHECK pseudo instructions need to be unbundled for AsmPrinter
+  // - CTSELECT: CTSELECT pseudo instructions need to be unbundled
   addPass(createUnpackMachineBundles([](const MachineFunction &MF) {
     return MF.getSubtarget<ARMSubtarget>().isThumb2() ||
-           MF.getFunction().getParent()->getModuleFlag("kcfi");
+           MF.getFunction().getParent()->getModuleFlag("kcfi") ||
+           MF.getFunction().hasFnAttribute("ct-select");
   }));
 
   // Don't optimize barriers or block placement at -O0.
