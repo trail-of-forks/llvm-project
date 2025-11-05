@@ -214,6 +214,11 @@ def SDTSelect : SDTypeProfile<1, 3, [       // select
   SDTCisInt<1>, SDTCisSameAs<0, 2>, SDTCisSameAs<2, 3>
 ]>;
 
+def SDTCtSelect
+    : SDTypeProfile<1, 3,
+                    [ // ctselect
+                        SDTCisInt<1>, SDTCisSameAs<0, 2>, SDTCisSameAs<2, 3>]>;
+
 def SDTVSelect : SDTypeProfile<1, 3, [       // vselect
   SDTCisVec<0>, SDTCisInt<1>, SDTCisSameAs<0, 2>, SDTCisSameAs<2, 3>, SDTCisSameNumEltsAs<0, 1>
 ]>;
