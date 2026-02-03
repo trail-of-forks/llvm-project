@@ -248,9 +248,6 @@ public:
     VectorMaskSelect,    // The target supports vector selects with a vector
                          // mask (ex: x86 blends).
     CtSelect,            // The target implements a custom constant-time select.
-    ScalarCondVectorValCtSelect, // The target supports selects with a scalar
-                                 // condition and vector values.
-    VectorMaskValCtSelect, // The target supports vector selects with a vector
   };
 
   /// Enum that specifies what an atomic load/AtomicRMWInst is expanded

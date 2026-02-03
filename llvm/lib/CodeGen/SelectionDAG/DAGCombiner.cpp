@@ -1905,7 +1905,6 @@ void DAGCombiner::Run(CombineLevel AtLevel) {
 }
 
 SDValue DAGCombiner::visit(SDNode *N) {
-
   // clang-format off
   switch (N->getOpcode()) {
   default: break;
