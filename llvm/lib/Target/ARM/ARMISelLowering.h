@@ -119,7 +119,7 @@ class VectorType;
       return (Kind != ScalarCondVectorVal);
     }
 
-    bool isCtSelectSupported(EVT VT) const override { return true; }
+    bool isCtSelectSupported(EVT VT) const override { return false; }
 
     bool isReadOnly(const GlobalValue *GV) const;
 
