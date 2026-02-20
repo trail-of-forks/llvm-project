@@ -2598,7 +2598,6 @@ SDValue DAGTypeLegalizer::PromoteIntOp_CT_SELECT(SDNode *N, unsigned OpNo) {
   // Promote all the way up to the canonical SetCC type. The condition is
   // always scalar, so derive the boolean type from the operands' scalar type.
   Cond = PromoteTargetBoolean(Cond, OpTy.getScalarType());
-
   return SDValue(
       DAG.UpdateNodeOperands(N, Cond, N->getOperand(1), N->getOperand(2)), 0);
 }
