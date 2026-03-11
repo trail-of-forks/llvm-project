@@ -16,11 +16,12 @@ add_clang_library(clangCIRFrontendAction
   LINK_LIBS
   clangAST
   clangBasic
-  clangFrontend
   clangCIR
+  clangCIRAnalysis
   clangCIRLoweringCommon
   clangCIRLoweringDirectToLLVM
   clangCodeGen
+  clangFrontend
   MLIRCIR
   MLIRIR
   )

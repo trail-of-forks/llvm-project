@@ -7,11 +7,15 @@
 //===----------------------------------------------------------------------===//
 
 #include "clang/CIR/FrontendAction/CIRGenAction.h"
+#include "mlir/IR/Location.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/OwningOpRef.h"
 #include "clang/Basic/DiagnosticFrontend.h"
+#include "clang/Basic/LangOptions.h"
+#include "clang/Basic/SourceManager.h"
 #include "clang/CIR/CIRGenerator.h"
 #include "clang/CIR/CIRToCIRPasses.h"
+#include "clang/CIR/FrontendAction/CIRAnalysisKind.h"
 #include "clang/CIR/LowerToLLVM.h"
 #include "clang/CodeGen/BackendUtil.h"
 #include "clang/Frontend/CompilerInstance.h"
@@ -21,6 +25,32 @@ using namespace cir;
 using namespace clang;
 
 namespace cir {
+
+/// Convert an MLIR Location (as created by CIR codegen) back to a
+/// Clang SourceLocation for diagnostic emission from CIR analyses.
+///
+/// Handles the common location kinds produced by CIRGen:
+///  - FileLineColLoc: the most common, from CIRGenFunction::getLoc()
+///  - FusedLoc: from CIRGenFunction::getLoc(SourceRange), extracts first sub-loc
+///  - Unknown/other: returns an invalid SourceLocation (graceful fallback)
+static clang::SourceLocation mlirLocToClangLoc(mlir::Location Loc,
+                                               clang::SourceManager &SM) {
+  // Handle FileLineColLoc (most common from CIR codegen).
+  if (auto FileLoc = mlir::dyn_cast<mlir::FileLineColLoc>(Loc)) {
+    auto FileRef =
+        SM.getFileManager().getOptionalFileRef(FileLoc.getFilename());
+    if (FileRef)
+      return SM.translateFileLineCol(&FileRef->getFileEntry(),
+                                     FileLoc.getLine(), FileLoc.getColumn());
+  }
+  // Handle FusedLoc (from CIRGenFunction::getLoc(SourceRange)).
+  if (auto Fused = mlir::dyn_cast<mlir::FusedLoc>(Loc)) {
+    if (!Fused.getLocations().empty())
+      return mlirLocToClangLoc(Fused.getLocations().front(), SM);
+  }
+  // Unknown location fallback -- return invalid SourceLocation.
+  return clang::SourceLocation();
+}
 
 static BackendAction
 getBackendActionFromOutputType(CIRGenAction::OutputType Action) {
@@ -112,6 +142,36 @@ public:
 
     mlir::ModuleOp MlirModule = Gen->getModule();
     mlir::MLIRContext &MlirCtx = Gen->getMLIRContext();
+
+    // Run CIR analyses before any CIR-to-CIR transformation passes.
+    // Analysis must see the original CIR structure, not canonicalized IR.
+    {
+      const LangOptions &LangOpts = CI.getLangOpts();
+      // Build CIRAnalysisKind bitmask from LangOptions
+      // (set by -fclangir-analysis= flag parsing in CompilerInvocation).
+      CIRAnalysisKind AnalysisSet = CIRAnalysisKind::None;
+      if (LangOpts.CIRSwitchFallthroughAnalysis)
+        AnalysisSet = AnalysisSet | CIRAnalysisKind::SwitchFallthrough;
+      if (LangOpts.CIRMissingReturnAnalysis)
+        AnalysisSet = AnalysisSet | CIRAnalysisKind::MissingReturn;
+      if (LangOpts.CIRUninitAnalysis)
+        AnalysisSet = AnalysisSet | CIRAnalysisKind::UninitVars;
+      if (LangOpts.CIRLifetimeAnalysis)
+        AnalysisSet = AnalysisSet | CIRAnalysisKind::Lifetime;
+      if (LangOpts.CIRBufferOverflowAnalysis)
+        AnalysisSet = AnalysisSet | CIRAnalysisKind::BufferOverflow;
+
+      if (AnalysisSet != CIRAnalysisKind::None) {
+        // TODO(Phase 11+): Dispatch individual analyses here.
+        // Each analysis will:
+        //   1. Check DiagnosticsEngine::isIgnored() for its diagnostics
+        //   2. Walk cir::FuncOp ops in MlirModule
+        //   3. Emit diagnostics via CI.getDiagnostics().Report(
+        //        mlirLocToClangLoc(op.getLoc(), CI.getSourceManager()),
+        //        diagID)
+        (void)&mlirLocToClangLoc; // Used by Phase 11+ analysis dispatch.
+      }
+    }
 
     if (!FEOptions.ClangIRDisablePasses) {
       // Setup and run CIR pipeline.
