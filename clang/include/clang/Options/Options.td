@@ -3300,6 +3300,9 @@ defm clangir : BoolFOption<"clangir",
   BothFlags<[], [ClangOption, CC1Option], "">>;
 def emit_cir : Flag<["-"], "emit-cir">, Visibility<[ClangOption, CC1Option]>,
   Group<Action_Group>, HelpText<"Build ASTs and then lower to ClangIR">;
+def fclangir_analysis_EQ : CommaJoined<["-"], "fclangir-analysis=">,
+  Visibility<[ClangOption, CC1Option]>,
+  HelpText<"Enable CIR-based analysis (comma-separated: switch-fallthrough,missing-return,uninit,lifetime,buffer-overflow)">;
 /// ClangIR-specific options - END
 
 def flto_EQ : Joined<["-"], "flto=">,

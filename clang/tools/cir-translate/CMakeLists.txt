@@ -12,6 +12,7 @@ add_clang_tool(cir-translate
 clang_target_link_libraries(cir-translate
   PRIVATE
   clangCIR
+  clangCIRAnalysis
   clangCIRLoweringDirectToLLVM
   MLIRCIR
   MLIRCIRTransforms

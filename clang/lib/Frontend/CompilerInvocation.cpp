@@ -3161,6 +3161,10 @@ static bool ParseFrontendArgs(FrontendOptions &Opts, ArgList &Args,
 
   if (Args.hasArg(OPT_clangir_disable_verifier))
     Opts.ClangIRDisableCIRVerifier = true;
+
+  if (const Arg *A = Args.getLastArg(OPT_fclangir_analysis_EQ))
+    for (const char *Val : A->getValues())
+      Opts.ClangIRAnalysisList.push_back(Val);
 #endif // CLANG_ENABLE_CIR
 
   if (Args.hasArg(OPT_aux_target_cpu))
@@ -5101,6 +5105,37 @@ bool CompilerInvocation::CreateFromArgsImpl(
   if (LangOpts.OpenACC && !Res.getFrontendOpts().UseClangIRPipeline &&
       isCodeGenAction(Res.getFrontendOpts().ProgramAction))
     Diags.Report(diag::warn_drv_openacc_without_cir);
+
+  // Map -fclangir-analysis= values from FrontendOpts to LangOpts booleans.
+  // This two-step approach is needed because ParseFrontendArgs does not have
+  // access to LangOpts, but AnalysisBasedWarnings.cpp needs S.getLangOpts().
+#if CLANG_ENABLE_CIR
+  for (const auto &Analysis : Res.getFrontendOpts().ClangIRAnalysisList) {
+    bool Known =
+        llvm::StringSwitch<bool>(Analysis)
+            .Case("switch-fallthrough", true)
+            .Case("missing-return", true)
+            .Case("uninit", true)
+            .Case("lifetime", true)
+            .Case("buffer-overflow", true)
+            .Default(false);
+    if (!Known) {
+      Diags.Report(diag::err_drv_invalid_value)
+          << "-fclangir-analysis=" << Analysis;
+      continue;
+    }
+    if (Analysis == "switch-fallthrough")
+      LangOpts.CIRSwitchFallthroughAnalysis = true;
+    else if (Analysis == "missing-return")
+      LangOpts.CIRMissingReturnAnalysis = true;
+    else if (Analysis == "uninit")
+      LangOpts.CIRUninitAnalysis = true;
+    else if (Analysis == "lifetime")
+      LangOpts.CIRLifetimeAnalysis = true;
+    else if (Analysis == "buffer-overflow")
+      LangOpts.CIRBufferOverflowAnalysis = true;
+  }
+#endif // CLANG_ENABLE_CIR
 
   // Set the triple of the host for OpenMP device compile.
   if (LangOpts.OpenMPIsTargetDevice)

@@ -20,6 +20,7 @@ if(CLANG_ENABLE_CIR)
     MLIRBuiltinOpsIncGen
   )
   list(APPEND link_libs
+    clangCIRAnalysis
     clangCIRFrontendAction
     MLIRCIRTransforms
     MLIRIR

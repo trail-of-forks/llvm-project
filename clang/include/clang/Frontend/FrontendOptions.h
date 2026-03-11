@@ -422,6 +422,11 @@ public:
   LLVM_PREFERRED_TYPE(bool)
   unsigned ClangIRDisableCIRVerifier : 1;
 
+  /// CIR analysis names passed via -fclangir-analysis= (comma-separated).
+  /// Stored here during ParseFrontendArgs, then copied to LangOpts booleans
+  /// in CreateFromArgsImpl where both option sets are accessible.
+  std::vector<std::string> ClangIRAnalysisList;
+
   CodeCompleteOptions CodeCompleteOpts;
 
   /// Specifies the output format of the AST.

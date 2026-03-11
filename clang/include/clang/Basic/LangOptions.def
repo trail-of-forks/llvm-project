@@ -524,6 +524,18 @@ LANGOPT(EnableLifetimeSafetyTUAnalysis, 1, 0, NotCompatible, "Lifetime safety at
 LANGOPT(PreserveVec3Type, 1, 0, NotCompatible, "Preserve 3-component vector type")
 LANGOPT(Reflection      , 1, 0, NotCompatible, "C++26 Reflection")
 
+// CIR analysis per-analysis flags (used for CFG suppression guards)
+LANGOPT(CIRSwitchFallthroughAnalysis, 1, 0, NotCompatible,
+        "CIR handles switch fallthrough analysis")
+LANGOPT(CIRMissingReturnAnalysis, 1, 0, NotCompatible,
+        "CIR handles missing return analysis")
+LANGOPT(CIRUninitAnalysis, 1, 0, NotCompatible,
+        "CIR handles uninitialized variable analysis")
+LANGOPT(CIRLifetimeAnalysis, 1, 0, NotCompatible,
+        "CIR handles lifetime safety analysis")
+LANGOPT(CIRBufferOverflowAnalysis, 1, 0, NotCompatible,
+        "CIR handles buffer overflow analysis")
+
 #undef LANGOPT
 #undef ENUM_LANGOPT
 #undef VALUE_LANGOPT
