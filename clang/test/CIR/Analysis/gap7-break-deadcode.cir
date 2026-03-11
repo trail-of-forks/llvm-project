@@ -1,0 +1,31 @@
+// RUN: cir-opt %s -cir-gap7-verify -o /dev/null 2>&1 | FileCheck %s
+//
+// Gap 7 Verification: Test whether DataFlowSolver + DeadCodeAnalysis
+// correctly identifies code after cir.break as dead.
+//
+// Expected result: If Gap 7 is NOT broken, ^after_break is DEAD.
+// If Gap 7 IS broken (cir.break lacks RegionBranchTerminatorOpInterface),
+// ^after_break may be incorrectly marked LIVE.
+
+!s32i = !cir.int<s, 32>
+!boolTy = !cir.bool
+
+module {
+  cir.func @test_break_deadcode() {
+    %true = cir.const #cir.bool<true> : !boolTy
+    cir.while {
+      cir.condition(%true)
+    } do {
+      cir.break
+    ^after_break:
+      // This block should be unreachable -- code after break is dead
+      %alloca = cir.alloca !s32i, !cir.ptr<!s32i>, ["x"] {alignment = 4 : i64}
+      %one = cir.const #cir.int<1> : !s32i
+      cir.store %one, %alloca : !s32i, !cir.ptr<!s32i>
+      cir.yield
+    }
+    cir.return
+  }
+}
+
+// CHECK: Gap 7 verification
