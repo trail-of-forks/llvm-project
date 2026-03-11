@@ -3071,6 +3071,8 @@ void clang::sema::AnalysisBasedWarnings::IssueWarnings(
       return;
 
     // Perform unsafe buffer usage analysis:
+    // TODO(Phase 16): Add CIRBufferOverflowAnalysis suppression guard here
+    // when -fclangir-analysis=buffer-overflow CIR analysis is implemented.
     if (!Diags.isIgnored(diag::warn_unsafe_buffer_operation,
                          Node->getBeginLoc()) ||
         !Diags.isIgnored(diag::warn_unsafe_buffer_variable,
@@ -3202,8 +3204,20 @@ void clang::sema::AnalysisBasedWarnings::IssueWarnings(
   auto &PUDs = fscope->PossiblyUnreachableDiags;
   emitPossiblyUnreachableDiags(S, AC, std::make_pair(PUDs.begin(), PUDs.end()));
 
+  // CIR Analysis CFG Suppression Guards
+  // When a CIR analysis is active for a warning category, the corresponding
+  // CFG-based analysis is suppressed to prevent duplicate warnings.
+  // Guards are added per-phase as CIR analyses are implemented:
+  //   Phase 11: switch-fallthrough  Phase 12: missing-return
+  //   Phase 13: uninit              Phase 14: lifetime
+  //   Phase 16: buffer-overflow
+
   // Warning: check missing 'return'
-  if (P.enableCheckFallThrough) {
+  // CIR analysis handles missing-return warnings when
+  // -fclangir-analysis=missing-return is active. Suppress CFG path to
+  // avoid duplicate warnings.
+  if (P.enableCheckFallThrough &&
+      !S.getLangOpts().CIRMissingReturnAnalysis) {
     const CheckFallThroughDiagnostics &CD =
         (isa<BlockDecl>(D) ? CheckFallThroughDiagnostics::MakeForBlock()
          : (isa<CXXMethodDecl>(D) &&
@@ -3251,6 +3265,8 @@ void clang::sema::AnalysisBasedWarnings::IssueWarnings(
     Analyzer.run(AC);
   }
 
+  // TODO(Phase 13): Add CIRUninitAnalysis suppression guard here when
+  // -fclangir-analysis=uninit CIR analysis is implemented.
   if (!Diags.isIgnored(diag::warn_uninit_var, D->getBeginLoc()) ||
       !Diags.isIgnored(diag::warn_sometimes_uninit_var, D->getBeginLoc()) ||
       !Diags.isIgnored(diag::warn_maybe_uninit_var, D->getBeginLoc()) ||
@@ -3279,6 +3295,8 @@ void clang::sema::AnalysisBasedWarnings::IssueWarnings(
 
   // TODO: Enable lifetime safety analysis for other languages once it is
   // stable.
+  // TODO(Phase 14): Add CIRLifetimeAnalysis suppression guard here when
+  // -fclangir-analysis=lifetime CIR analysis is implemented.
   if (EnableLifetimeSafetyAnalysis && S.getLangOpts().CPlusPlus) {
     if (AC.getCFG()) {
       lifetimes::LifetimeSafetySemaHelperImpl LifetimeSafetySemaHelper(S);
@@ -3297,12 +3315,16 @@ void clang::sema::AnalysisBasedWarnings::IssueWarnings(
     }
   }
 
+  // CIR analysis handles switch fallthrough warnings when
+  // -fclangir-analysis=switch-fallthrough is active. Suppress CFG path
+  // to avoid duplicate warnings.
   bool FallThroughDiagFull =
       !Diags.isIgnored(diag::warn_unannotated_fallthrough, D->getBeginLoc());
   bool FallThroughDiagPerFunction = !Diags.isIgnored(
       diag::warn_unannotated_fallthrough_per_function, D->getBeginLoc());
-  if (FallThroughDiagFull || FallThroughDiagPerFunction ||
-      fscope->HasFallthroughStmt) {
+  if ((FallThroughDiagFull || FallThroughDiagPerFunction ||
+       fscope->HasFallthroughStmt) &&
+      !S.getLangOpts().CIRSwitchFallthroughAnalysis) {
     DiagnoseSwitchLabelsFallthrough(S, AC, !FallThroughDiagFull);
   }
 
