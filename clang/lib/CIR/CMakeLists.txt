@@ -12,6 +12,7 @@ if (LLVM_COMPILER_IS_GCC_COMPATIBLE AND (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES 
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-overloaded-virtual")
 endif()
 
+add_subdirectory(Analysis)
 add_subdirectory(Dialect)
 add_subdirectory(CodeGen)
 add_subdirectory(FrontendAction)
