@@ -1,11 +1,23 @@
-// RUN: cir-opt %s -cir-gap7-verify -o /dev/null 2>&1 | FileCheck %s
+// RUN: not --crash cir-opt %s -cir-gap7-verify -o /dev/null 2>&1 | FileCheck %s
 //
 // Gap 7 Verification: Test whether DataFlowSolver + DeadCodeAnalysis
-// correctly identifies code after cir.break as dead.
+// can handle cir.break inside a loop region.
 //
-// Expected result: If Gap 7 is NOT broken, ^after_break is DEAD.
-// If Gap 7 IS broken (cir.break lacks RegionBranchTerminatorOpInterface),
-// ^after_break may be incorrectly marked LIVE.
+// RESULT: Gap 7 IS BROKEN. The DataFlowSolver CRASHES when encountering
+// cir.break because it lacks RegionBranchTerminatorOpInterface.
+// DeadCodeAnalysis::visitRegionTerminator attempts to query region
+// branch successors from cir.break via RegionBranchTerminatorOpInterface,
+// but since cir.break only has the [Terminator] trait and NOT
+// RegionBranchTerminatorOpInterface, this results in a null dereference
+// in visitRegionBranchEdges.
+//
+// Resolution: Before any DataFlowSolver-based analysis (A4, A7, NC-1, NC-2)
+// can work on pre-flattened CIR, either:
+//   (a) Add RegionBranchTerminatorOpInterface to BreakOp/ContinueOp, OR
+//   (b) Fix LoopOpInterface::getLoopOpSuccessorRegions to account for
+//       break/continue, OR
+//   (c) Run DataFlowSolver-based analyses on flattened CIR (post cir-flatten-cfg)
+//       where break/continue have been lowered to branches.
 
 !s32i = !cir.int<s, 32>
 !boolTy = !cir.bool
@@ -18,7 +30,8 @@ module {
     } do {
       cir.break
     ^after_break:
-      // This block should be unreachable -- code after break is dead
+      // This block should be unreachable -- code after break is dead.
+      // However, the DataFlowSolver crashes before it can determine this.
       %alloca = cir.alloca !s32i, !cir.ptr<!s32i>, ["x"] {alignment = 4 : i64}
       %one = cir.const #cir.int<1> : !s32i
       cir.store %one, %alloca : !s32i, !cir.ptr<!s32i>
@@ -28,4 +41,6 @@ module {
   }
 }
 
-// CHECK: Gap 7 verification
+// The crash occurs in DeadCodeAnalysis::visitRegionBranchEdges when
+// processing cir.break as a region terminator without the required interface.
+// CHECK: PLEASE submit a bug report
