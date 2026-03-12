@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
 
   // CIR Analysis Passes
   ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
-    return mlir::createCIRGap7VerifyPass();
+    return mlir::createCIRDataFlowVerifyPass();
   });
 
   mlir::registerTransformsPasses();

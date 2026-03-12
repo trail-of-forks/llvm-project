@@ -3071,8 +3071,8 @@ void clang::sema::AnalysisBasedWarnings::IssueWarnings(
       return;
 
     // Perform unsafe buffer usage analysis:
-    // TODO(Phase 16): Add CIRBufferOverflowAnalysis suppression guard here
-    // when -fclangir-analysis=buffer-overflow CIR analysis is implemented.
+    // TODO: Add CIRBufferOverflowAnalysis suppression guard here when
+    // -fclangir-analysis=buffer-overflow is implemented.
     if (!Diags.isIgnored(diag::warn_unsafe_buffer_operation,
                          Node->getBeginLoc()) ||
         !Diags.isIgnored(diag::warn_unsafe_buffer_variable,
@@ -3207,10 +3207,8 @@ void clang::sema::AnalysisBasedWarnings::IssueWarnings(
   // CIR Analysis CFG Suppression Guards
   // When a CIR analysis is active for a warning category, the corresponding
   // CFG-based analysis is suppressed to prevent duplicate warnings.
-  // Guards are added per-phase as CIR analyses are implemented:
-  //   Phase 11: switch-fallthrough  Phase 12: missing-return
-  //   Phase 13: uninit              Phase 14: lifetime
-  //   Phase 16: buffer-overflow
+  // When a CIR-based analysis is active for a given warning category,
+  // the corresponding CFG-based check is suppressed to avoid duplicates.
 
   // Warning: check missing 'return'
   // CIR analysis handles missing-return warnings when
@@ -3265,8 +3263,8 @@ void clang::sema::AnalysisBasedWarnings::IssueWarnings(
     Analyzer.run(AC);
   }
 
-  // TODO(Phase 13): Add CIRUninitAnalysis suppression guard here when
-  // -fclangir-analysis=uninit CIR analysis is implemented.
+  // TODO: Add CIRUninitAnalysis suppression guard here when
+  // -fclangir-analysis=uninit is implemented.
   if (!Diags.isIgnored(diag::warn_uninit_var, D->getBeginLoc()) ||
       !Diags.isIgnored(diag::warn_sometimes_uninit_var, D->getBeginLoc()) ||
       !Diags.isIgnored(diag::warn_maybe_uninit_var, D->getBeginLoc()) ||
@@ -3295,8 +3293,8 @@ void clang::sema::AnalysisBasedWarnings::IssueWarnings(
 
   // TODO: Enable lifetime safety analysis for other languages once it is
   // stable.
-  // TODO(Phase 14): Add CIRLifetimeAnalysis suppression guard here when
-  // -fclangir-analysis=lifetime CIR analysis is implemented.
+  // TODO: Add CIRLifetimeAnalysis suppression guard here when
+  // -fclangir-analysis=lifetime is implemented.
   if (EnableLifetimeSafetyAnalysis && S.getLangOpts().CPlusPlus) {
     if (AC.getCFG()) {
       lifetimes::LifetimeSafetySemaHelperImpl LifetimeSafetySemaHelper(S);

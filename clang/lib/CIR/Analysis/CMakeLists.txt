@@ -1,6 +1,6 @@
 add_clang_library(clangCIRAnalysis
   CIRAnalysis.cpp
-  Gap7Verify.cpp
+  DataFlowVerify.cpp
 
   DEPENDS
   MLIRCIRPassIncGen

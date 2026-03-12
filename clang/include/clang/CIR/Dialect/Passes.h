@@ -32,7 +32,7 @@ std::unique_ptr<Pass> createLoweringPreparePass(clang::ASTContext *astCtx);
 std::unique_ptr<Pass> createGotoSolverPass();
 
 // CIR Analysis Passes
-std::unique_ptr<Pass> createCIRGap7VerifyPass();
+std::unique_ptr<Pass> createCIRDataFlowVerifyPass();
 
 void populateCIRPreLoweringPasses(mlir::OpPassManager &pm);
 

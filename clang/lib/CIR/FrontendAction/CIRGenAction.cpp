@@ -15,7 +15,6 @@
 #include "clang/Basic/SourceManager.h"
 #include "clang/CIR/CIRGenerator.h"
 #include "clang/CIR/CIRToCIRPasses.h"
-#include "clang/CIR/FrontendAction/CIRAnalysisKind.h"
 #include "clang/CIR/LowerToLLVM.h"
 #include "clang/CodeGen/BackendUtil.h"
 #include "clang/Frontend/CompilerInstance.h"
@@ -144,32 +143,25 @@ public:
     mlir::MLIRContext &MlirCtx = Gen->getMLIRContext();
 
     // Run CIR analyses before any CIR-to-CIR transformation passes.
-    // Analysis must see the original CIR structure, not canonicalized IR.
+    // Analyses must see the original CIR structure, not canonicalized IR.
     {
       const LangOptions &LangOpts = CI.getLangOpts();
-      // Build CIRAnalysisKind bitmask from LangOptions
-      // (set by -fclangir-analysis= flag parsing in CompilerInvocation).
-      CIRAnalysisKind AnalysisSet = CIRAnalysisKind::None;
-      if (LangOpts.CIRSwitchFallthroughAnalysis)
-        AnalysisSet = AnalysisSet | CIRAnalysisKind::SwitchFallthrough;
-      if (LangOpts.CIRMissingReturnAnalysis)
-        AnalysisSet = AnalysisSet | CIRAnalysisKind::MissingReturn;
-      if (LangOpts.CIRUninitAnalysis)
-        AnalysisSet = AnalysisSet | CIRAnalysisKind::UninitVars;
-      if (LangOpts.CIRLifetimeAnalysis)
-        AnalysisSet = AnalysisSet | CIRAnalysisKind::Lifetime;
-      if (LangOpts.CIRBufferOverflowAnalysis)
-        AnalysisSet = AnalysisSet | CIRAnalysisKind::BufferOverflow;
+      bool AnyAnalysisEnabled =
+          LangOpts.CIRSwitchFallthroughAnalysis ||
+          LangOpts.CIRMissingReturnAnalysis ||
+          LangOpts.CIRUninitAnalysis ||
+          LangOpts.CIRLifetimeAnalysis ||
+          LangOpts.CIRBufferOverflowAnalysis;
 
-      if (AnalysisSet != CIRAnalysisKind::None) {
-        // TODO(Phase 11+): Dispatch individual analyses here.
+      if (AnyAnalysisEnabled) {
+        // TODO: Dispatch individual analyses here.
         // Each analysis will:
         //   1. Check DiagnosticsEngine::isIgnored() for its diagnostics
         //   2. Walk cir::FuncOp ops in MlirModule
         //   3. Emit diagnostics via CI.getDiagnostics().Report(
         //        mlirLocToClangLoc(op.getLoc(), CI.getSourceManager()),
         //        diagID)
-        (void)&mlirLocToClangLoc; // Used by Phase 11+ analysis dispatch.
+        (void)&mlirLocToClangLoc; // Used by analysis dispatch.
       }
     }
 

@@ -1,4 +1,4 @@
-//===- Gap7Verify.cpp - Verify DataFlowSolver compat with CIR loops ------===//
+//===- DataFlowVerify.cpp - Verify DataFlowSolver on CIR --------*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -6,10 +6,10 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// Gap 7 Verification: Runs MLIR DataFlowSolver + DeadCodeAnalysis on CIR to
-// empirically verify that cir.break and cir.continue terminators are correctly
-// handled by the dataflow framework. This is a diagnostic pass used for
-// infrastructure verification, not a user-facing analysis.
+// Runs MLIR DataFlowSolver + DeadCodeAnalysis on CIR to empirically verify
+// that cir.break and cir.continue terminators are correctly handled by the
+// dataflow framework. This is a diagnostic pass used for infrastructure
+// verification, not a user-facing analysis.
 //
 //===----------------------------------------------------------------------===//
 
@@ -20,7 +20,7 @@
 #include "clang/CIR/Dialect/Passes.h"
 
 namespace mlir {
-#define GEN_PASS_DEF_CIRGAP7VERIFY
+#define GEN_PASS_DEF_CIRDATAFLOWVERIFY
 #include "clang/CIR/Dialect/Passes.h.inc"
 } // namespace mlir
 
@@ -29,8 +29,8 @@ using namespace mlir::dataflow;
 
 namespace {
 
-struct CIRGap7VerifyPass
-    : public mlir::impl::CIRGap7VerifyBase<CIRGap7VerifyPass> {
+struct CIRDataFlowVerifyPass
+    : public mlir::impl::CIRDataFlowVerifyBase<CIRDataFlowVerifyPass> {
   void runOnOperation() override {
     Operation *op = getOperation();
 
@@ -40,7 +40,7 @@ struct CIRGap7VerifyPass
 
     if (failed(solver.initializeAndRun(op))) {
       op->emitError(
-          "Gap 7: DataFlowSolver failed to initialize/run on CIR module");
+          "DataFlowSolver failed to initialize/run on CIR module");
       return signalPassFailure();
     }
 
@@ -84,7 +84,7 @@ struct CIRGap7VerifyPass
           if (afterBreakOrContinue) {
             locOp->emitRemark()
                 << "block after " << terminatorName << " is "
-                << status << " (Gap 7 verification)";
+                << status << " (dataflow verification)";
           } else {
             locOp->emitRemark() << "block is " << status;
           }
@@ -96,6 +96,6 @@ struct CIRGap7VerifyPass
 
 } // namespace
 
-std::unique_ptr<mlir::Pass> mlir::createCIRGap7VerifyPass() {
-  return std::make_unique<CIRGap7VerifyPass>();
+std::unique_ptr<mlir::Pass> mlir::createCIRDataFlowVerifyPass() {
+  return std::make_unique<CIRDataFlowVerifyPass>();
 }

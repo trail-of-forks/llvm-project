@@ -163,14 +163,14 @@ def LoweringPrepare : Pass<"cir-lowering-prepare"> {
 
 // CIR Analysis Passes
 
-def CIRGap7Verify : Pass<"cir-gap7-verify"> {
-  let summary = "Verify DataFlowSolver compatibility with CIR loop terminators (Gap 7)";
+def CIRDataFlowVerify : Pass<"cir-dataflow-verify"> {
+  let summary = "Verify DataFlowSolver compatibility with CIR loop terminators";
   let description = [{
     Runs MLIR DataFlowSolver + DeadCodeAnalysis on CIR to verify that
     cir.break and cir.continue are correctly handled. This is a diagnostic
     pass used to verify infrastructure, not a user-facing analysis.
   }];
-  let constructor = "mlir::createCIRGap7VerifyPass()";
+  let constructor = "mlir::createCIRDataFlowVerifyPass()";
   let dependentDialects = ["cir::CIRDialect"];
 }
 

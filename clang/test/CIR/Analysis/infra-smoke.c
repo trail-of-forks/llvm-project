@@ -11,26 +11,18 @@
 //   4. Invalid analysis names produce a diagnostic error
 //
 // NOTE: No actual CIR analysis warnings are expected yet -- concrete analyses
-// are implemented in Phases 11-12. This test validates flag parsing, analysis
-// dispatch infrastructure, and that the pipeline completes without crashes.
-//
-// NOTE: INFRA-02 (diagnostic emission via DiagnosticsEngine::Report() with
-// correct source locations) is validated as infrastructure (compiles, links)
-// but not exercised observably in Phase 10. The first observable INFRA-02
-// validation occurs in Phase 11 when switch-fallthrough analysis emits
-// real warnings through mlirLocToClangLoc -> DiagnosticsEngine::Report().
+// are not implemented. This test validates flag parsing, analysis dispatch
+// infrastructure, and that the pipeline completes without crashes.
 
-// A minimal non-void function that would eventually trigger missing-return
-// analysis once the CIR analysis is implemented in Phase 12.
+// A minimal non-void function that would trigger missing-return analysis.
 int foo(int x) {
   if (x > 0)
     return x;
   // Missing return on this path -- no warning expected yet (analysis is a
-  // stub until Phase 12), but the flag must be accepted without errors.
+  // stub), but the flag must be accepted without errors.
 }
 
-// A switch statement that would eventually trigger switch-fallthrough
-// analysis once implemented in Phase 11.
+// A switch statement that would trigger switch-fallthrough analysis.
 void bar(int x) {
   switch (x) {
   case 1:
