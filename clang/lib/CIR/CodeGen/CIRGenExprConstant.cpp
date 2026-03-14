@@ -1232,7 +1232,6 @@ struct ConstantLValue {
       : value(nullptr), hasOffsetApplied(false) {}
   /*implicit*/ ConstantLValue(cir::GlobalViewAttr address)
       : value(address), hasOffsetApplied(false) {}
-
   ConstantLValue() : value(nullptr), hasOffsetApplied(false) {}
 };
 
@@ -1463,7 +1462,11 @@ ConstantLValueEmitter::VisitPredefinedExpr(const PredefinedExpr *e) {
 
 ConstantLValue
 ConstantLValueEmitter::VisitAddrLabelExpr(const AddrLabelExpr *e) {
-  cgm.errorNYI(e->getSourceRange(), "ConstantLValueEmitter: addr label expr");
+  // TODO: Implement proper constant emission using BlockAddrInfoAttr.
+  // This requires teaching CIRAttrToValue and the global initializer lowering
+  // to handle BlockAddrInfoAttr -> llvm.blockaddress conversion.
+  // For now, return null to fall through to the non-constant initialization
+  // path, which handles &&label via the scalar emitter's BlockAddressOp.
   return {};
 }
 
