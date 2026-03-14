@@ -7,12 +7,13 @@
 //===----------------------------------------------------------------------===//
 
 #include "clang/CIR/FrontendAction/CIRGenAction.h"
-#include "mlir/IR/Location.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/OwningOpRef.h"
 #include "clang/Basic/DiagnosticFrontend.h"
+#include "clang/Basic/DiagnosticSema.h"
 #include "clang/Basic/LangOptions.h"
 #include "clang/Basic/SourceManager.h"
+#include "clang/CIR/Analysis/SwitchFallthrough.h"
 #include "clang/CIR/CIRGenerator.h"
 #include "clang/CIR/CIRToCIRPasses.h"
 #include "clang/CIR/LowerToLLVM.h"
@@ -24,32 +25,6 @@ using namespace cir;
 using namespace clang;
 
 namespace cir {
-
-/// Convert an MLIR Location (as created by CIR codegen) back to a
-/// Clang SourceLocation for diagnostic emission from CIR analyses.
-///
-/// Handles the common location kinds produced by CIRGen:
-///  - FileLineColLoc: the most common, from CIRGenFunction::getLoc()
-///  - FusedLoc: from CIRGenFunction::getLoc(SourceRange), extracts first sub-loc
-///  - Unknown/other: returns an invalid SourceLocation (graceful fallback)
-static clang::SourceLocation mlirLocToClangLoc(mlir::Location Loc,
-                                               clang::SourceManager &SM) {
-  // Handle FileLineColLoc (most common from CIR codegen).
-  if (auto FileLoc = mlir::dyn_cast<mlir::FileLineColLoc>(Loc)) {
-    auto FileRef =
-        SM.getFileManager().getOptionalFileRef(FileLoc.getFilename());
-    if (FileRef)
-      return SM.translateFileLineCol(&FileRef->getFileEntry(),
-                                     FileLoc.getLine(), FileLoc.getColumn());
-  }
-  // Handle FusedLoc (from CIRGenFunction::getLoc(SourceRange)).
-  if (auto Fused = mlir::dyn_cast<mlir::FusedLoc>(Loc)) {
-    if (!Fused.getLocations().empty())
-      return mlirLocToClangLoc(Fused.getLocations().front(), SM);
-  }
-  // Unknown location fallback -- return invalid SourceLocation.
-  return clang::SourceLocation();
-}
 
 static BackendAction
 getBackendActionFromOutputType(CIRGenAction::OutputType Action) {
@@ -154,14 +129,17 @@ public:
           LangOpts.CIRBufferOverflowAnalysis;
 
       if (AnyAnalysisEnabled) {
-        // TODO: Dispatch individual analyses here.
-        // Each analysis will:
-        //   1. Check DiagnosticsEngine::isIgnored() for its diagnostics
-        //   2. Walk cir::FuncOp ops in MlirModule
-        //   3. Emit diagnostics via CI.getDiagnostics().Report(
-        //        mlirLocToClangLoc(op.getLoc(), CI.getSourceManager()),
-        //        diagID)
-        (void)&mlirLocToClangLoc; // Used by analysis dispatch.
+        if (LangOpts.CIRSwitchFallthroughAnalysis) {
+          bool FallThroughDiagFull = !CI.getDiagnostics().isIgnored(
+              diag::warn_unannotated_fallthrough, SourceLocation());
+          bool FallThroughDiagPerFunction = !CI.getDiagnostics().isIgnored(
+              diag::warn_unannotated_fallthrough_per_function,
+              SourceLocation());
+          if (FallThroughDiagFull || FallThroughDiagPerFunction)
+            cir::diagnoseSwitchFallthrough(MlirModule, CI.getDiagnostics(),
+                                           CI.getSourceManager(),
+                                           !FallThroughDiagFull);
+        }
       }
     }
 

@@ -1,6 +1,7 @@
 add_clang_library(clangCIRAnalysis
   CIRAnalysis.cpp
   DataFlowVerify.cpp
+  SwitchFallthrough.cpp
 
   DEPENDS
   MLIRCIRPassIncGen
