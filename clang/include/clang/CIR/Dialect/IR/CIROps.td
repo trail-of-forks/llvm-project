@@ -796,15 +796,15 @@ def CIR_ReturnOp : CIR_Op<"return", [
 
   // The return operation takes an optional input operand to return. This
   // value must match the return type of the enclosing function.
-  let arguments = (ins Variadic<CIR_AnyType>:$input);
+  let arguments = (ins Variadic<CIR_AnyType>:$input, UnitAttr:$is_implicit);
 
   // The return operation only emits the input in the format if it is present.
-  let assemblyFormat = "($input^ `:` type($input))? attr-dict ";
+  let assemblyFormat =
+      "($input^ `:` type($input))? (`is_implicit` $is_implicit^)? attr-dict ";
 
   // Allow building a ReturnOp with no return operand.
-  let builders = [
-    OpBuilder<(ins), [{ build($_builder, $_state, {}); }]>
-  ];
+  let builders = [OpBuilder<
+      (ins), [{ build($_builder, $_state, {}, /*is_implicit=*/false); }]>];
 
   // Provide extra utility definitions on the c++ operation class definition.
   let extraClassDeclaration = [{

@@ -414,7 +414,8 @@ void CIRGenFunction::LexicalScope::emitImplicitReturn() {
     }
   }
 
-  (void)emitReturn(localScope->endLoc);
+  if (cir::ReturnOp ret = emitReturn(localScope->endLoc))
+    ret.setIsImplicitAttr(mlir::UnitAttr::get(ret.getContext()));
 }
 
 cir::TryOp CIRGenFunction::LexicalScope::getClosestTryParent() {
