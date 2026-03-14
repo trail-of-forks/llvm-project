@@ -1,6 +1,7 @@
 add_clang_library(clangCIRAnalysis
   CIRAnalysis.cpp
   DataFlowVerify.cpp
+  MissingReturn.cpp
   SwitchFallthrough.cpp
 
   DEPENDS

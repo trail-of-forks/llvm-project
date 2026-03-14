@@ -13,6 +13,7 @@
 #include "clang/Basic/DiagnosticSema.h"
 #include "clang/Basic/LangOptions.h"
 #include "clang/Basic/SourceManager.h"
+#include "clang/CIR/Analysis/MissingReturn.h"
 #include "clang/CIR/Analysis/SwitchFallthrough.h"
 #include "clang/CIR/CIRGenerator.h"
 #include "clang/CIR/CIRToCIRPasses.h"
@@ -139,6 +140,14 @@ public:
             cir::diagnoseSwitchFallthrough(MlirModule, CI.getDiagnostics(),
                                            CI.getSourceManager(),
                                            !FallThroughDiagFull);
+        }
+
+        if (LangOpts.CIRMissingReturnAnalysis) {
+          bool DiagEnabled = !CI.getDiagnostics().isIgnored(
+              diag::warn_falloff_nonvoid, SourceLocation());
+          if (DiagEnabled)
+            cir::diagnoseMissingReturn(MlirModule, CI.getDiagnostics(),
+                                       CI.getSourceManager());
         }
       }
     }
