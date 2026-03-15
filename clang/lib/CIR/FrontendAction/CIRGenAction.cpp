@@ -13,6 +13,7 @@
 #include "clang/Basic/DiagnosticSema.h"
 #include "clang/Basic/LangOptions.h"
 #include "clang/Basic/SourceManager.h"
+#include "clang/CIR/Analysis/LifetimeSafety.h"
 #include "clang/CIR/Analysis/MissingReturn.h"
 #include "clang/CIR/Analysis/SwitchFallthrough.h"
 #include "clang/CIR/Analysis/UninitializedVariables.h"
@@ -160,6 +161,14 @@ public:
           if (DiagEnabled)
             cir::diagnoseUninitializedVariables(MlirModule, CI.getDiagnostics(),
                                                 CI.getSourceManager());
+        }
+
+        if (LangOpts.CIRLifetimeAnalysis) {
+          bool DiagEnabled = !CI.getDiagnostics().isIgnored(
+              diag::warn_ret_stack_addr_ref, SourceLocation());
+          if (DiagEnabled)
+            cir::diagnoseLifetimeSafety(MlirModule, CI.getDiagnostics(),
+                                        CI.getSourceManager());
         }
       }
     }

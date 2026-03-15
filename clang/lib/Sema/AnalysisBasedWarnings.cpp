@@ -3295,11 +3295,10 @@ void clang::sema::AnalysisBasedWarnings::IssueWarnings(
     }
   }
 
-  // TODO: Enable lifetime safety analysis for other languages once it is
-  // stable.
-  // TODO: Add CIRLifetimeAnalysis suppression guard here when
-  // -fclangir-analysis=lifetime is implemented.
-  if (EnableLifetimeSafetyAnalysis && S.getLangOpts().CPlusPlus) {
+  // When CIR lifetime analysis is active, skip the CFG-based analysis
+  // to avoid duplicate diagnostics.
+  if (EnableLifetimeSafetyAnalysis && S.getLangOpts().CPlusPlus &&
+      !S.getLangOpts().CIRLifetimeAnalysis) {
     if (AC.getCFG()) {
       lifetimes::LifetimeSafetySemaHelperImpl LifetimeSafetySemaHelper(S);
       lifetimes::runLifetimeSafetyAnalysis(AC, &LifetimeSafetySemaHelper,

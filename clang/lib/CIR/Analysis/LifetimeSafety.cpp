@@ -201,12 +201,14 @@ public:
           Alloca.getResult(), {PtrState::PointsToLocal, Alloca.getResult()});
     } else if (auto Store = dyn_cast<cir::StoreOp>(Op)) {
       // If storing a pointer-typed value, propagate alias info from the
-      // stored value to the target address.
+      // stored value to the target address. Always update the target --
+      // even Unknown values must overwrite stale PointsToLocal info from
+      // the alloca definition, so that loading the target later doesn't
+      // incorrectly report the alloca itself as returned local memory.
       Value StoredVal = Store.getValue();
       if (mlir::isa<cir::PointerType>(StoredVal.getType())) {
         PointerInfo Info = Before.getPointerInfo(StoredVal);
-        if (Info.State != PtrState::Unknown)
-          Changed |= After->setPointerInfo(Store.getAddr(), Info);
+        Changed |= After->setPointerInfo(Store.getAddr(), Info);
       }
     } else if (auto Load = dyn_cast<cir::LoadOp>(Op)) {
       // If loading from an address that holds pointer alias info, and the
