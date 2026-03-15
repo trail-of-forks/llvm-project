@@ -11,6 +11,14 @@
 // dataflow framework. This is a diagnostic pass used for infrastructure
 // verification, not a user-facing analysis.
 //
+// TODO: cir.break and cir.continue only have the Terminator trait, not
+// RegionBranchTerminatorOpInterface. This causes DataFlowSolver to crash
+// (SIGSEGV in DeadCodeAnalysis) on structured CIR with loops containing
+// break/continue. Currently, analyses must run cir-flatten-cfg on a cloned
+// module before using DataFlowSolver. Adding RegionBranchTerminatorOpInterface
+// to BreakOp and ContinueOp would let the solver operate directly on
+// structured CIR, eliminating the clone-and-flatten workaround.
+//
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Analysis/DataFlow/ConstantPropagationAnalysis.h"

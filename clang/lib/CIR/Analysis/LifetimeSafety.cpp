@@ -96,7 +96,9 @@ public:
         PtrStates[Val] = OtherInfo;
         Changed = ChangeResult::Change;
       } else if (It->second != OtherInfo) {
-        // Merge: if either is Dangling, result is Dangling (conservative).
+        // Safety-conservative join: more dangerous state dominates.
+        // Dangling > PointsToLocal > everything else.
+        // If ANY path returns local memory, we must warn.
         if (It->second.State == PtrState::Dangling ||
             OtherInfo.State == PtrState::Dangling) {
           if (It->second.State != PtrState::Dangling) {
@@ -104,13 +106,16 @@ public:
             Changed = ChangeResult::Change;
           }
         } else if (It->second.State == PtrState::PointsToLocal &&
-                   OtherInfo.State == PtrState::PointsToLocal &&
-                   It->second.TargetAlloca != OtherInfo.TargetAlloca) {
-          // Different local targets -> can't track precisely.
-          It->second = {PtrState::PointsToUnknown, Value()};
+                   OtherInfo.State == PtrState::PointsToLocal) {
+          // Both paths point to locals (possibly different). Keep this
+          // side's target for diagnostics; either variable name is valid.
+        } else if (OtherInfo.State == PtrState::PointsToLocal) {
+          It->second = OtherInfo;
           Changed = ChangeResult::Change;
+        } else if (It->second.State == PtrState::PointsToLocal) {
+          // Already PointsToLocal -- keep it.
         } else {
-          // Mixed states -> unknown.
+          // Neither Dangling nor PointsToLocal on either side.
           It->second = {PtrState::PointsToUnknown, Value()};
           Changed = ChangeResult::Change;
         }
