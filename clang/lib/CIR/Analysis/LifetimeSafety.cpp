@@ -243,8 +243,9 @@ public:
 // Entry point
 //===----------------------------------------------------------------------===//
 
-void cir::diagnoseLifetimeSafety(ModuleOp Module, DiagnosticsEngine &Diags,
-                                 SourceManager &SM) {
+void cir::diagnoseLifetimeSafety(
+    ModuleOp Module, DiagnosticsEngine &Diags, SourceManager &SM,
+    llvm::StringMap<FuncLifetimeSummary> *Summaries) {
   // Clone module to avoid mutating the original (downstream passes need it
   // in structured form).
   OwningOpRef<ModuleOp> ClonedModule = Module.clone();
@@ -269,6 +270,24 @@ void cir::diagnoseLifetimeSafety(ModuleOp Module, DiagnosticsEngine &Diags,
     if (failed(Solver.initializeAndRun(FuncOp)))
       return;
 
+    // Collect parameter allocas: in flattened CIR, parameters are block
+    // arguments stored into allocas at function entry. Identify allocas that
+    // are the target of a store whose value is a block argument.
+    DenseMap<Value, unsigned> ParamAllocas;
+    if (Summaries) {
+      Block &EntryBlock = FuncOp.getBody().front();
+      for (Operation &Op : EntryBlock) {
+        auto Store = dyn_cast<cir::StoreOp>(Op);
+        if (!Store)
+          continue;
+        Value StoredVal = Store.getValue();
+        if (auto BA = dyn_cast<BlockArgument>(StoredVal))
+          ParamAllocas[Store.getAddr()] = BA.getArgNumber();
+      }
+    }
+
+    FuncLifetimeSummary Summary;
+
     // Post-solver walk: check return statements for pointers to local allocas.
     FuncOp.walk([&](cir::ReturnOp Ret) {
       if (!Ret.hasOperand())
@@ -284,8 +303,23 @@ void cir::diagnoseLifetimeSafety(ModuleOp Module, DiagnosticsEngine &Diags,
         return;
 
       PointerInfo Info = State->getPointerInfo(RetVal);
+
+      // Check for parameter-to-return aliasing (for FuncLifetimeSummary).
+      if (Summaries && Info.State == PtrState::PointsToLocal) {
+        auto ParamIt = ParamAllocas.find(Info.TargetAlloca);
+        if (ParamIt != ParamAllocas.end())
+          Summary.ParamAliasesReturn.push_back(ParamIt->second);
+      }
+
       if (Info.State != PtrState::PointsToLocal)
         return;
+
+      // Skip if the target is a parameter alloca (returning a parameter
+      // pointer is safe).
+      if (ParamAllocas.count(Info.TargetAlloca))
+        return;
+
+      Summary.ReturnsLocalAddress = true;
 
       // Get the alloca name for the diagnostic.
       StringRef VarName;
@@ -305,5 +339,8 @@ void cir::diagnoseLifetimeSafety(ModuleOp Module, DiagnosticsEngine &Diags,
           << /*address-of*/ 0 << VarName << /*local variable*/ 0
           << /*returned*/ 0;
     });
+
+    if (Summaries)
+      (*Summaries)[FuncOp.getName()] = std::move(Summary);
   });
 }

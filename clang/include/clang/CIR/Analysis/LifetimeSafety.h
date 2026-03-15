@@ -19,6 +19,7 @@
 
 #include "mlir/IR/BuiltinOps.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/StringMap.h"
 
 namespace clang {
 class DiagnosticsEngine;
@@ -45,12 +46,15 @@ struct FuncLifetimeSummary {
 /// diag::warn_ret_stack_addr_ref for pointers to stack memory that are
 /// returned from functions.
 ///
-/// \param Module  The CIR module to analyze (not modified; a clone is used).
-/// \param Diags   The diagnostics engine for emitting warnings.
-/// \param SM      The source manager for location conversion.
-void diagnoseLifetimeSafety(mlir::ModuleOp Module,
-                            clang::DiagnosticsEngine &Diags,
-                            clang::SourceManager &SM);
+/// \param Module    The CIR module to analyze (not modified; a clone is used).
+/// \param Diags     The diagnostics engine for emitting warnings.
+/// \param SM        The source manager for location conversion.
+/// \param Summaries If non-null, populated with per-function lifetime
+///                  summaries keyed by function name (for Phase 15).
+void diagnoseLifetimeSafety(
+    mlir::ModuleOp Module, clang::DiagnosticsEngine &Diags,
+    clang::SourceManager &SM,
+    llvm::StringMap<FuncLifetimeSummary> *Summaries = nullptr);
 
 } // namespace cir
 
