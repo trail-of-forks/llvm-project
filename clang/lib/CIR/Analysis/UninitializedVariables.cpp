@@ -222,6 +222,137 @@ static bool shouldSkipAlloca(cir::AllocaOp alloca) {
   return false;
 }
 
+//===----------------------------------------------------------------------===//
+// Complementary-condition suppression
+//===----------------------------------------------------------------------===//
+
+/// Return the underlying value of a boolean, stripping a single cir.unary(not).
+/// Sets \p negated to true if a NOT was stripped.
+static Value stripNot(Value boolVal, bool &negated) {
+  negated = false;
+  if (auto unary = boolVal.getDefiningOp<cir::UnaryOp>()) {
+    if (unary.getKind() == cir::UnaryOpKind::Not) {
+      negated = true;
+      return unary.getInput();
+    }
+  }
+  return boolVal;
+}
+
+/// Trace a boolean condition back to the alloca it was loaded from, if any.
+/// Strips cir.cast(int_to_bool) and cir.load to find the underlying alloca.
+/// Returns nullptr if the chain doesn't match the expected pattern.
+static Value getConditionSource(Value cond) {
+  // Strip int_to_bool cast.
+  if (auto cast = cond.getDefiningOp<cir::CastOp>()) {
+    if (cast.getKind() == cir::CastKind::int_to_bool)
+      cond = cast.getSrc();
+  }
+  // Strip load to get the alloca.
+  if (auto load = cond.getDefiningOp<cir::LoadOp>())
+    return load.getAddr();
+  return cond;
+}
+
+/// Return true if \p block contains a cir.store to \p alloca.
+static bool blockStoresTo(Block *block, Value alloca) {
+  for (Operation &op : *block) {
+    if (auto store = dyn_cast<cir::StoreOp>(op)) {
+      if (auto target = store.getAddr().getDefiningOp<cir::AllocaOp>())
+        if (target.getResult() == alloca)
+          return true;
+    }
+  }
+  return false;
+}
+
+/// Collect brcond "diamond" patterns between two blocks. A diamond is a
+/// brcond splitting into a true-branch (which may store to alloca) and a
+/// false-branch, merging at a common successor.
+///
+/// Returns the condition base value and polarity for each diamond found.
+struct DiamondInfo {
+  Value condBase;
+  bool negated;
+  bool trueArmStores;
+};
+
+/// Walk backwards from \p end to \p limit collecting diamonds that branch on
+/// conditions derived from the same loaded value. Stops at \p limit or when
+/// no more single-predecessor blocks remain.
+static void collectDiamonds(Block *end, Block *limit, Value alloca,
+                            SmallVectorImpl<DiamondInfo> &diamonds) {
+  Block *block = end;
+  constexpr int maxSteps = 20; // Bound the walk to avoid pathological cases.
+  for (int step = 0; step < maxSteps && block && block != limit; ++step) {
+    // A diamond merge has exactly 2 predecessors.
+    SmallVector<Block *, 4> preds(block->getPredecessors());
+    if (preds.size() == 2) {
+      // One predecessor should be a "true-arm" block that branches
+      // unconditionally to this merge. The other should be the brcond block
+      // itself (the false edge).
+      for (int i = 0; i < 2; ++i) {
+        Block *trueArm = preds[i];
+        Block *condBlock = preds[1 - i];
+        auto brcond = dyn_cast<cir::BrCondOp>(condBlock->getTerminator());
+        if (!brcond)
+          continue;
+        // Verify the diamond shape: brcond true->trueArm, false->mergeBlock.
+        if (brcond.getDestTrue() != trueArm || brcond.getDestFalse() != block)
+          continue;
+        bool neg;
+        Value stripped = stripNot(brcond.getCond(), neg);
+        Value base = getConditionSource(stripped);
+        bool stores = blockStoresTo(trueArm, alloca);
+        diamonds.push_back({base, neg, stores});
+        // Continue walking from the brcond block.
+        block = condBlock;
+        goto nextStep;
+      }
+    }
+    // Walk through single-predecessor blocks.
+    if (preds.size() == 1) {
+      block = preds[0];
+      continue;
+    }
+    break;
+  nextStep:;
+  }
+}
+
+/// Check if a MayUninitialized result is a false positive caused by
+/// complementary branch conditions that both initialize the variable.
+///
+/// Detects sequential diamond patterns:
+///   if (cond)  x = ...;   // diamond 1: true-arm stores
+///   if (!cond) x = ...;   // diamond 2: true-arm stores
+///   use(x);               // MayUninitialized is a false positive
+///
+/// The algorithm walks backwards from the load collecting brcond diamonds.
+/// If two diamonds branch on complementary conditions (same base value,
+/// opposite polarity) and both true-arms store to the alloca, then the
+/// variable is initialized on all feasible paths.
+static bool isFalsePositiveDueToComplementaryBranches(cir::LoadOp load,
+                                                      Value alloca) {
+  SmallVector<DiamondInfo, 4> diamonds;
+  collectDiamonds(load->getBlock(), nullptr, alloca, diamonds);
+
+  // Look for a complementary pair among collected diamonds.
+  for (size_t i = 0; i < diamonds.size(); ++i) {
+    if (!diamonds[i].trueArmStores)
+      continue;
+    for (size_t j = i + 1; j < diamonds.size(); ++j) {
+      if (!diamonds[j].trueArmStores)
+        continue;
+      // Same base condition, opposite polarity.
+      if (diamonds[i].condBase == diamonds[j].condBase &&
+          diamonds[i].negated != diamonds[j].negated)
+        return true;
+    }
+  }
+  return false;
+}
+
 } // namespace
 
 //===----------------------------------------------------------------------===//
@@ -276,6 +407,14 @@ void cir::diagnoseUninitializedVariables(ModuleOp Module,
 
       VarState varState = state->getState(alloca.getResult());
       if (varState == VarState::Initialized)
+        return;
+
+      // Suppress false positives from complementary branch conditions.
+      // Example: if(cond) x=1; if(!cond) x=1; use(x);
+      // The lattice reports MayUninitialized because it merges the two
+      // if-blocks independently, but the conditions are exhaustive.
+      if (varState == VarState::MayUninitialized &&
+          isFalsePositiveDueToComplementaryBranches(load, alloca.getResult()))
         return;
 
       SourceLocation UseLoc = mlirLocToClangLoc(load.getLoc(), SM);

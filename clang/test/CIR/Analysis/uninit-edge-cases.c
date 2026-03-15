@@ -97,6 +97,32 @@ int test_cir_maybe_uninit_nested(int cond) {
   return x; // expected-warning {{variable x may be uninitialized when used here}}
 }
 
+// CIR path-sensitive advantage: complementary conditions.
+// CFG analysis reports "may be uninitialized" here (documented false positive
+// in clang/test/Sema/uninit-variables.c test24) because it cannot correlate
+// conditions across separate if-statements. CIR detects that the two brcond
+// instructions branch on complementary conditions (a value and its NOT,
+// loaded from the same alloca) and both true-arms store to the variable,
+// proving initialization on all feasible paths.
+int test_complementary_conditions(int flag) {
+  int val;
+  if (flag)
+    val = 1;
+  if (!flag)
+    val = 2;
+  return val; // no warning -- CIR proves complementary conditions are exhaustive
+}
+
+// Non-complementary conditions: different variables, so CIR correctly warns.
+int test_non_complementary(int a, int b) {
+  int x;
+  if (a)
+    x = 1;
+  if (b)
+    x = 2;
+  return x; // expected-warning {{variable x may be uninitialized when used here}}
+}
+
 // Goto over declaration: the variable is never initialized because the goto
 // jumps past the declaration point. CIR resolves cir.goto/cir.label to
 // cir.br via GotoSolver, making the CFG edge visible to DataFlowSolver.
