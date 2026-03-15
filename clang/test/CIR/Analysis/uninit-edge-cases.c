@@ -96,3 +96,31 @@ int test_cir_maybe_uninit_nested(int cond) {
   }
   return x; // expected-warning {{variable x may be uninitialized when used here}}
 }
+
+// Goto over declaration: the variable is never initialized because the goto
+// jumps past the declaration point. CIR resolves cir.goto/cir.label to
+// cir.br via GotoSolver, making the CFG edge visible to DataFlowSolver.
+// Without GotoSolver, the label block appears unreachable and the analysis
+// silently misses this case.
+int test_goto_over_decl(void) {
+  goto skip;
+  int x;
+skip:
+  return x; // expected-warning {{variable x is uninitialized when used here}}
+}
+
+// Goto from inside a scope to outside: variable conditionally initialized
+// before the goto. The conditional goto creates two paths -- one where x
+// is initialized (cond is false, falls through to x=1) and one where it
+// is not (cond is true, jumps to skip). CIR's lattice join at the label
+// block correctly merges these to MayUninitialized.
+int test_goto_conditional_init(int cond) {
+  int x;
+  {
+    if (cond)
+      goto skip;
+    x = 1;
+  }
+skip:
+  return x; // expected-warning {{variable x may be uninitialized when used here}}
+}

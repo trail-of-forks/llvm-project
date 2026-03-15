@@ -235,10 +235,12 @@ void cir::diagnoseUninitializedVariables(ModuleOp Module,
   // in structured form).
   OwningOpRef<ModuleOp> ClonedModule = Module.clone();
 
-  // Flatten CIR: converts structured regions to explicit branches so
-  // DataFlowSolver can operate correctly.
+  // Flatten CIR and resolve gotos: converts structured regions to explicit
+  // branches and replaces symbolic cir.goto/cir.label pairs with cir.br so
+  // DataFlowSolver can see all CFG edges (including goto targets).
   mlir::PassManager PM(ClonedModule->getContext());
   PM.addPass(mlir::createCIRFlattenCFGPass());
+  PM.addPass(mlir::createGotoSolverPass());
   if (failed(PM.run(*ClonedModule)))
     return;
 
