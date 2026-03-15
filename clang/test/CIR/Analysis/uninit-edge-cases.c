@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -triple x86_64-unknown-linux-gnu -fclangir -emit-llvm -fclangir-analysis=uninit -Wuninitialized -verify %s -o /dev/null
+// RUN: %clang_cc1 -triple x86_64-unknown-linux-gnu -fclangir -emit-llvm -fclangir-analysis=uninit -Wuninitialized -Wconditional-uninitialized -verify %s -o /dev/null
 
 // Edge-case tests for CIR uninitialized variable analysis, demonstrating
 // how the CIR approach differs from the CFG approach.
@@ -57,4 +57,42 @@ int test_multi_scope(int cond) {
     y = x; // no warning, x was initialized above
   }
   return y;
+}
+
+// CIR advantage: variable initialized unconditionally in inner scope.
+// CFG-based analysis requires the 77-line DiagUninitUse() terminator switch
+// to classify uses by their branch context when scope blocks introduce
+// extra CFG nodes. CIR's alloca/store/load SSA relationship preserves
+// the initialization directly -- the store to the alloca is visible
+// at the load point regardless of scope nesting, without needing to
+// reason about terminator types or block predecessor chains.
+//
+// This demonstrates the structural advantage described in ANLYS-03: CIR's
+// SSA-based tracking through cir.store/cir.load does not need the
+// DiagUninitUse() terminator switch that CFG requires to classify uses by
+// their branch context.
+int test_cir_advantage_scope_init(int *arr, int n) {
+  int result;
+  {
+    // Variable initialized unconditionally in inner scope.
+    // CFG creates separate blocks for the scope entry/exit,
+    // but CIR tracks the store->load relationship via SSA.
+    result = arr[0];
+  }
+  return result; // no warning -- CIR sees store dominates load via SSA
+}
+
+// CIR correctly identifies maybe-uninit through nested scope boundaries.
+// The variable is conditionally initialized in an inner scope; the CFG
+// analysis requires careful block-predecessor reasoning to determine this
+// is MayUninitialized, while CIR's lattice join at the merge point
+// naturally produces MayUninitialized from the asymmetric paths.
+int test_cir_maybe_uninit_nested(int cond) {
+  int x;
+  {
+    if (cond) {
+      x = 42;
+    }
+  }
+  return x; // expected-warning {{variable x may be uninitialized when used here}}
 }

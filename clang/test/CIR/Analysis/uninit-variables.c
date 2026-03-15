@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -triple x86_64-unknown-linux-gnu -fclangir -emit-llvm -fclangir-analysis=uninit -Wuninitialized -verify %s -o /dev/null
+// RUN: %clang_cc1 -triple x86_64-unknown-linux-gnu -fclangir -emit-llvm -fclangir-analysis=uninit -Wuninitialized -Wconditional-uninitialized -verify %s -o /dev/null
 
 // End-to-end test for CIR uninitialized variable analysis.
 // Verifies that -fclangir-analysis=uninit produces -Wuninitialized
@@ -48,4 +48,12 @@ int test_scope_init(void) {
     x = 42;
   }
   return x;
+}
+
+// 7. Conditionally initialized (if without else) -- maybe uninit.
+int test_maybe_uninit(int cond) {
+  int x;
+  if (cond)
+    x = 1;
+  return x; // expected-warning {{variable x may be uninitialized when used here}}
 }

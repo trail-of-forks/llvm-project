@@ -15,9 +15,9 @@
 //   2. Flatten CIR via cir-flatten-cfg (converts structured regions to explicit
 //      branches so DataFlowSolver can operate without crashing on
 //      cir.break/cir.continue).
-//   3. For each cir::FuncOp, run DataFlowSolver with DeadCodeAnalysis +
-//      UninitAnalysis to compute per-alloca initialization state at each
-//      program point.
+//   3. For each cir::FuncOp, run DataFlowSolver with baseline analyses
+//      (DeadCodeAnalysis + SparseConstantPropagation) and UninitAnalysis to
+//      compute per-alloca initialization state at each program point.
 //   4. Walk cir::LoadOp ops and emit diagnostics for loads from allocas that
 //      are (possibly) uninitialized.
 //
@@ -26,6 +26,7 @@
 #include "clang/CIR/Analysis/UninitializedVariables.h"
 #include "mlir/Analysis/DataFlow/DeadCodeAnalysis.h"
 #include "mlir/Analysis/DataFlow/DenseAnalysis.h"
+#include "mlir/Analysis/DataFlow/Utils.h"
 #include "mlir/Analysis/DataFlowFramework.h"
 #include "mlir/Pass/PassManager.h"
 #include "clang/Basic/DiagnosticSema.h"
@@ -64,6 +65,21 @@ public:
     const auto &other = static_cast<const InitializationLattice &>(rhs);
     ChangeResult changed = ChangeResult::NoChange;
 
+    // If the other lattice is at bottom (entry/reset state), it carries no
+    // information -- joining with bottom is the identity.
+    if (other.atBottom)
+      return ChangeResult::NoChange;
+
+    // If this lattice is at bottom, adopt the other's state entirely.
+    // This ensures the first predecessor's state is copied in, rather
+    // than being spuriously merged with an empty "all Uninitialized" map.
+    if (atBottom) {
+      atBottom = false;
+      varStates = other.varStates;
+      return other.varStates.empty() ? ChangeResult::NoChange
+                                     : ChangeResult::Change;
+    }
+
     for (const auto &[val, otherState] : other.varStates) {
       auto it = varStates.find(val);
       if (it == varStates.end()) {
@@ -80,6 +96,22 @@ public:
           it->second = VarState::MayUninitialized;
           changed = ChangeResult::Change;
         }
+      }
+    }
+
+    // Check keys in this but not in other (other treats absent as
+    // Uninitialized). Without this second loop, the join is asymmetric:
+    // a variable that is Initialized in this lattice but absent
+    // (implicitly Uninitialized) in the other would not be demoted to
+    // MayUninitialized, causing maybe-uninit patterns to go undetected.
+    for (auto &[val, thisState] : varStates) {
+      if (other.varStates.count(val))
+        continue; // Already handled above.
+      // thisState is Init or MayUninit, other is implicitly Uninit.
+      if (thisState != VarState::MayUninitialized &&
+          thisState != VarState::Uninitialized) {
+        thisState = VarState::MayUninitialized;
+        changed = ChangeResult::Change;
       }
     }
 
@@ -115,6 +147,7 @@ public:
   }
 
   ChangeResult setState(Value alloca, VarState state) {
+    atBottom = false;
     auto [it, inserted] = varStates.try_emplace(alloca, state);
     if (!inserted && it->second == state)
       return ChangeResult::NoChange;
@@ -123,14 +156,25 @@ public:
   }
 
   ChangeResult reset() {
-    if (varStates.empty())
-      return ChangeResult::NoChange;
-    varStates.clear();
-    return ChangeResult::Change;
+    ChangeResult changed = ChangeResult::NoChange;
+    if (!varStates.empty()) {
+      varStates.clear();
+      changed = ChangeResult::Change;
+    }
+    if (!atBottom) {
+      atBottom = true;
+      changed = ChangeResult::Change;
+    }
+    return changed;
   }
 
 private:
   DenseMap<Value, VarState> varStates;
+  /// True when this lattice is at "bottom" (the identity element for join).
+  /// A bottom lattice has no information; joining with it copies the other
+  /// side. This distinguishes the initial/reset state from a real state
+  /// where all variables are Uninitialized.
+  bool atBottom = true;
 };
 
 //===----------------------------------------------------------------------===//
@@ -204,7 +248,11 @@ void cir::diagnoseUninitializedVariables(ModuleOp Module,
       return;
 
     DataFlowSolver solver;
-    solver.load<DeadCodeAnalysis>();
+    // Load baseline analyses: DeadCodeAnalysis needs
+    // SparseConstantPropagation to resolve branch conditions and mark
+    // successor blocks as live. Without it, conditional branches cause
+    // successor blocks to remain dead and the analysis misses diagnostics.
+    loadBaselineAnalyses(solver);
     solver.load<UninitAnalysis>();
     if (failed(solver.initializeAndRun(funcOp)))
       return;
