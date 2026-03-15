@@ -3,6 +3,7 @@ add_clang_library(clangCIRAnalysis
   DataFlowVerify.cpp
   MissingReturn.cpp
   SwitchFallthrough.cpp
+  LifetimeSafety.cpp
   UninitializedVariables.cpp
 
   DEPENDS
