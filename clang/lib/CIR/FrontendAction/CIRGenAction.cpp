@@ -15,6 +15,7 @@
 #include "clang/Basic/SourceManager.h"
 #include "clang/CIR/Analysis/MissingReturn.h"
 #include "clang/CIR/Analysis/SwitchFallthrough.h"
+#include "clang/CIR/Analysis/UninitializedVariables.h"
 #include "clang/CIR/CIRGenerator.h"
 #include "clang/CIR/CIRToCIRPasses.h"
 #include "clang/CIR/LowerToLLVM.h"
@@ -120,6 +121,9 @@ public:
 
     // Run CIR analyses before any CIR-to-CIR transformation passes.
     // Analyses must see the original CIR structure, not canonicalized IR.
+    // TODO: Maybe move analysis dispatch to a dedicated CIRAnalysisRunner or
+    // similar, rather than growing this block in CIRGenAction. The LangOpts
+    // checks and diagnostic gating could live in a central dispatch function.
     {
       const LangOptions &LangOpts = CI.getLangOpts();
       bool AnyAnalysisEnabled =
@@ -148,6 +152,14 @@ public:
           if (DiagEnabled)
             cir::diagnoseMissingReturn(MlirModule, CI.getDiagnostics(),
                                        CI.getSourceManager());
+        }
+
+        if (LangOpts.CIRUninitAnalysis) {
+          bool DiagEnabled = !CI.getDiagnostics().isIgnored(
+              diag::warn_uninit_var, SourceLocation());
+          if (DiagEnabled)
+            cir::diagnoseUninitializedVariables(MlirModule, CI.getDiagnostics(),
+                                                CI.getSourceManager());
         }
       }
     }

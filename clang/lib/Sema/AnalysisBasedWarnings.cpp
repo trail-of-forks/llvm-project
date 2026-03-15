@@ -3263,13 +3263,17 @@ void clang::sema::AnalysisBasedWarnings::IssueWarnings(
     Analyzer.run(AC);
   }
 
-  // TODO: Add CIRUninitAnalysis suppression guard here when
-  // -fclangir-analysis=uninit is implemented.
-  if (!Diags.isIgnored(diag::warn_uninit_var, D->getBeginLoc()) ||
-      !Diags.isIgnored(diag::warn_sometimes_uninit_var, D->getBeginLoc()) ||
-      !Diags.isIgnored(diag::warn_maybe_uninit_var, D->getBeginLoc()) ||
-      !Diags.isIgnored(diag::warn_uninit_const_reference, D->getBeginLoc()) ||
-      !Diags.isIgnored(diag::warn_uninit_const_pointer, D->getBeginLoc())) {
+  if (S.getLangOpts().CIRUninitAnalysis) {
+    // CIR analysis handles uninitialized variables when
+    // -fclangir-analysis=uninit is active. Skip CFG path.
+  } else if (!Diags.isIgnored(diag::warn_uninit_var, D->getBeginLoc()) ||
+             !Diags.isIgnored(diag::warn_sometimes_uninit_var,
+                              D->getBeginLoc()) ||
+             !Diags.isIgnored(diag::warn_maybe_uninit_var, D->getBeginLoc()) ||
+             !Diags.isIgnored(diag::warn_uninit_const_reference,
+                              D->getBeginLoc()) ||
+             !Diags.isIgnored(diag::warn_uninit_const_pointer,
+                              D->getBeginLoc())) {
     if (CFG *cfg = AC.getCFG()) {
       UninitValsDiagReporter reporter(S);
       UninitVariablesAnalysisStats stats;
