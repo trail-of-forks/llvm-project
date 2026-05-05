@@ -42,11 +42,11 @@ static CIRGenCXXABI *createCXXABI(CIRGenModule &cgm) {
   switch (cgm.getASTContext().getCXXABIKind()) {
   case TargetCXXABI::GenericItanium:
   case TargetCXXABI::GenericAArch64:
+  case TargetCXXABI::GenericARM:
   case TargetCXXABI::AppleARM64:
     return CreateCIRGenItaniumCXXABI(cgm);
 
   case TargetCXXABI::Fuchsia:
-  case TargetCXXABI::GenericARM:
   case TargetCXXABI::iOS:
   case TargetCXXABI::WatchOS:
   case TargetCXXABI::GenericMIPS:
@@ -242,6 +242,13 @@ const TargetCIRGenInfo &CIRGenModule::getTargetCIRGenInfo() {
       return *theTargetCIRGenInfo;
     }
   }
+
+  case llvm::Triple::arm:
+  case llvm::Triple::armeb:
+  case llvm::Triple::thumb:
+  case llvm::Triple::thumbeb:
+    theTargetCIRGenInfo = createARMTargetCIRGenInfo(genTypes);
+    return *theTargetCIRGenInfo;
   }
 }
 

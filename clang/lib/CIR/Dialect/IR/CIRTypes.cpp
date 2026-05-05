@@ -12,6 +12,7 @@
 
 #include "clang/CIR/Dialect/IR/CIRTypes.h"
 
+#include "mlir/Dialect/LLVMIR/LLVMTypes.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/DialectImplementation.h"
 #include "mlir/IR/MLIRContext.h"
@@ -334,7 +335,11 @@ PointerType::getTypeSizeInBits(const ::mlir::DataLayout &dataLayout,
                                ::mlir::DataLayoutEntryListRef params) const {
   // FIXME: improve this in face of address spaces
   assert(!cir::MissingFeatures::dataLayoutPtrHandlingBasedOnLangAS());
-  return llvm::TypeSize::getFixed(64);
+  // Query the data layout for pointer size. Targets with 32-bit pointers
+  // (e.g. ARM32, RISC-V32) need this to be data-layout-driven rather than
+  // hardcoded.
+  auto llvmPtr = mlir::LLVM::LLVMPointerType::get(getContext(), 0);
+  return dataLayout.getTypeSizeInBits(llvmPtr);
 }
 
 uint64_t

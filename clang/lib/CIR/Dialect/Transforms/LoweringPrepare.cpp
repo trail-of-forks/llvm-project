@@ -136,6 +136,14 @@ struct LoweringPreparePass
       assert(!cir::MissingFeatures::loweringPrepareAArch64XXABI());
       cxxABI.reset(cir::LoweringPrepareCXXABI::createItaniumABI());
       break;
+    case clang::TargetCXXABI::GenericARM:
+      // ARM-specific guard variables / method-pointer ABI quirks will be
+      // handled via flags on the Itanium impl in a later phase. For now
+      // delegate to the generic Itanium lowering-prepare.
+      assert(!cir::MissingFeatures::cxxabiUseARMMethodPtrABI());
+      assert(!cir::MissingFeatures::cxxabiUseARMGuardVarABI());
+      cxxABI.reset(cir::LoweringPrepareCXXABI::createItaniumABI());
+      break;
     default:
       llvm_unreachable("NYI");
     }

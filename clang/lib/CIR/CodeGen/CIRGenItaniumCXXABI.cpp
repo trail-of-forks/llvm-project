@@ -1692,6 +1692,13 @@ CIRGenCXXABI *clang::CIRGen::CreateCIRGenItaniumCXXABI(CIRGenModule &cgm) {
   case TargetCXXABI::GenericAArch64:
     return new CIRGenItaniumCXXABI(cgm);
 
+  case TargetCXXABI::GenericARM:
+    // ARM-specific quirks (UseARMMethodPtrABI, UseARMGuardVarABI, array
+    // cookies) will be handled via constructor flags in a later phase.
+    assert(!cir::MissingFeatures::cxxabiUseARMMethodPtrABI());
+    assert(!cir::MissingFeatures::cxxabiUseARMGuardVarABI());
+    return new CIRGenItaniumCXXABI(cgm);
+
   case TargetCXXABI::AppleARM64:
     // The general Itanium ABI will do until we implement something that
     // requires special handling.

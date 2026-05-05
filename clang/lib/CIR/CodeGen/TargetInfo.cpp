@@ -54,11 +54,27 @@ public:
       : TargetCIRGenInfo(std::make_unique<X8664ABIInfo>(cgt)) {}
 };
 
+class ARMABIInfo : public ABIInfo {
+public:
+  ARMABIInfo(CIRGenTypes &cgt) : ABIInfo(cgt) {}
+};
+
+class ARMTargetCIRGenInfo : public TargetCIRGenInfo {
+public:
+  ARMTargetCIRGenInfo(CIRGenTypes &cgt)
+      : TargetCIRGenInfo(std::make_unique<ARMABIInfo>(cgt)) {}
+};
+
 } // namespace
 
 std::unique_ptr<TargetCIRGenInfo>
 clang::CIRGen::createX8664TargetCIRGenInfo(CIRGenTypes &cgt) {
   return std::make_unique<X8664TargetCIRGenInfo>(cgt);
+}
+
+std::unique_ptr<TargetCIRGenInfo>
+clang::CIRGen::createARMTargetCIRGenInfo(CIRGenTypes &cgt) {
+  return std::make_unique<ARMTargetCIRGenInfo>(cgt);
 }
 
 ABIInfo::~ABIInfo() noexcept = default;
