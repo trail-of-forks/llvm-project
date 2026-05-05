@@ -36,11 +36,23 @@ protected:
   /// All the vtables which have been defined.
   llvm::DenseMap<const CXXRecordDecl *, cir::GlobalOp> vtables;
 
+  /// Generic Itanium-derived CXXABI feature flags. These are set per
+  /// TargetCXXABI::Kind in the factory below; the implementation paths
+  /// that vary across ARM / AppleARM64 / etc. branch on these flags
+  /// rather than living in separate subclasses.
+  bool useARMMethodPtrABI;
+  bool useARMGuardVarABI;
+  bool use32BitVTableOffsetABI;
+
 public:
-  CIRGenItaniumCXXABI(CIRGenModule &cgm) : CIRGenCXXABI(cgm) {
-    assert(!cir::MissingFeatures::cxxabiUseARMMethodPtrABI());
-    assert(!cir::MissingFeatures::cxxabiUseARMGuardVarABI());
-  }
+  CIRGenItaniumCXXABI(CIRGenModule &cgm,
+                      bool useARMMethodPtrABI = false,
+                      bool useARMGuardVarABI = false,
+                      bool use32BitVTableOffsetABI = false)
+      : CIRGenCXXABI(cgm),
+        useARMMethodPtrABI(useARMMethodPtrABI),
+        useARMGuardVarABI(useARMGuardVarABI),
+        use32BitVTableOffsetABI(use32BitVTableOffsetABI) {}
 
   AddedStructorArgs getImplicitConstructorArgs(CIRGenFunction &cgf,
                                                const CXXConstructorDecl *d,
@@ -1690,20 +1702,21 @@ CIRGenCXXABI *clang::CIRGen::CreateCIRGenItaniumCXXABI(CIRGenModule &cgm) {
   switch (cgm.getASTContext().getCXXABIKind()) {
   case TargetCXXABI::GenericItanium:
   case TargetCXXABI::GenericAArch64:
+    // Plain Itanium / AArch64 -- no ARM-specific quirks.
     return new CIRGenItaniumCXXABI(cgm);
 
   case TargetCXXABI::GenericARM:
-    // ARM-specific quirks (UseARMMethodPtrABI, UseARMGuardVarABI, array
-    // cookies) will be handled via constructor flags in a later phase.
-    assert(!cir::MissingFeatures::cxxabiUseARMMethodPtrABI());
-    assert(!cir::MissingFeatures::cxxabiUseARMGuardVarABI());
-    return new CIRGenItaniumCXXABI(cgm);
+    // ARM uses a distinct method-pointer encoding and guard-variable ABI.
+    return new CIRGenItaniumCXXABI(cgm, /*useARMMethodPtrABI=*/true,
+                                   /*useARMGuardVarABI=*/true,
+                                   /*use32BitVTableOffsetABI=*/false);
 
   case TargetCXXABI::AppleARM64:
-    // The general Itanium ABI will do until we implement something that
-    // requires special handling.
-    assert(!cir::MissingFeatures::cxxabiAppleARM64CXXABI());
-    return new CIRGenItaniumCXXABI(cgm);
+    // AppleARM64 inherits ARM's method-pointer/guard-var conventions and
+    // additionally uses 32-bit vtable offsets.
+    return new CIRGenItaniumCXXABI(cgm, /*useARMMethodPtrABI=*/true,
+                                   /*useARMGuardVarABI=*/true,
+                                   /*use32BitVTableOffsetABI=*/true);
 
   default:
     llvm_unreachable("bad or NYI ABI kind");
