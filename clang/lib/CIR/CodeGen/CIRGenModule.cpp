@@ -242,13 +242,6 @@ const TargetCIRGenInfo &CIRGenModule::getTargetCIRGenInfo() {
       return *theTargetCIRGenInfo;
     }
   }
-
-  case llvm::Triple::arm:
-  case llvm::Triple::armeb:
-  case llvm::Triple::thumb:
-  case llvm::Triple::thumbeb:
-    theTargetCIRGenInfo = createARMTargetCIRGenInfo(genTypes);
-    return *theTargetCIRGenInfo;
   }
 }
 
