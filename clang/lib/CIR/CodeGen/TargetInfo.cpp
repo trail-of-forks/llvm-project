@@ -1,6 +1,8 @@
 #include "TargetInfo.h"
 #include "ABIInfo.h"
 #include "CIRGenFunction.h"
+#include "CIRGenFunctionInfo.h"
+#include "clang/CIR/ABIArgInfo.h"
 #include "clang/CIR/Dialect/IR/CIRAttrs.h"
 #include "clang/CIR/Dialect/IR/CIRDialect.h"
 
@@ -78,6 +80,25 @@ clang::CIRGen::createARMTargetCIRGenInfo(CIRGenTypes &cgt) {
 }
 
 ABIInfo::~ABIInfo() noexcept = default;
+
+// Default implementations: classify everything Direct, no coercion.
+// Per-target ABIInfo subclasses override these to apply real rules.
+cir::ABIArgInfo ABIInfo::classifyReturnType(clang::CanQualType /*retTy*/) const {
+  return cir::ABIArgInfo::getDirect();
+}
+
+cir::ABIArgInfo
+ABIInfo::classifyArgumentType(clang::CanQualType /*argTy*/) const {
+  return cir::ABIArgInfo::getDirect();
+}
+
+void ABIInfo::computeInfo(CIRGenFunctionInfo &fi) const {
+  fi.getReturnInfo() = classifyReturnType(fi.getReturnType());
+  unsigned i = 0;
+  for (const clang::CanQualType &argTy : fi.argTypes()) {
+    fi.getArgInfo(i++) = classifyArgumentType(argTy);
+  }
+}
 
 bool TargetCIRGenInfo::isNoProtoCallVariadic(
     const FunctionNoProtoType *fnType) const {

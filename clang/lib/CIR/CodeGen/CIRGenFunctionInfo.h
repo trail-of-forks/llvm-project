@@ -16,6 +16,7 @@
 #define LLVM_CLANG_CIR_CIRGENFUNCTIONINFO_H
 
 #include "clang/AST/CanonicalType.h"
+#include "clang/CIR/ABIArgInfo.h"
 #include "clang/CIR/MissingFeatures.h"
 #include "llvm/ADT/FoldingSet.h"
 #include "llvm/Support/TrailingObjects.h"
@@ -67,17 +68,37 @@ public:
   }
 };
 
-// The TrailingObjects for this class contain the function return type in the
-// first CanQualType slot, followed by the argument types.
+// The TrailingObjects for this class contain two parallel arrays:
+//   - CanQualType[]: function return type in slot 0, then the argument types.
+//   - cir::ABIArgInfo[]: ABI classification for the return value in slot 0,
+//     then per-argument ABIArgInfos. Populated by ABIInfo::computeInfo.
 class CIRGenFunctionInfo final
     : public llvm::FoldingSetNode,
-      private llvm::TrailingObjects<CIRGenFunctionInfo, CanQualType> {
+      private llvm::TrailingObjects<CIRGenFunctionInfo, CanQualType,
+                                    cir::ABIArgInfo> {
   RequiredArgs required;
 
   unsigned numArgs;
 
-  CanQualType *getArgTypes() { return getTrailingObjects(); }
-  const CanQualType *getArgTypes() const { return getTrailingObjects(); }
+  CanQualType *getArgTypes() { return getTrailingObjects<CanQualType>(); }
+  const CanQualType *getArgTypes() const {
+    return getTrailingObjects<CanQualType>();
+  }
+
+  cir::ABIArgInfo *getArgInfos() {
+    return getTrailingObjects<cir::ABIArgInfo>();
+  }
+  const cir::ABIArgInfo *getArgInfos() const {
+    return getTrailingObjects<cir::ABIArgInfo>();
+  }
+
+  // Required by TrailingObjects when there is more than one trailing type.
+  size_t numTrailingObjects(OverloadToken<CanQualType>) const {
+    return numArgs + 1;
+  }
+  size_t numTrailingObjects(OverloadToken<cir::ABIArgInfo>) const {
+    return numArgs + 1;
+  }
 
   CIRGenFunctionInfo() : required(RequiredArgs::All) {}
 
@@ -143,6 +164,27 @@ public:
   unsigned getNumRequiredArgs() const {
     return isVariadic() ? getRequiredArgs().getNumRequiredArgs()
                         : argTypeSize();
+  }
+
+  // Per-argument ABIArgInfo accessors. Populated by ABIInfo::computeInfo;
+  // every entry defaults to Direct() until the target's classifier runs.
+  cir::ABIArgInfo &getReturnInfo() { return getArgInfos()[0]; }
+  const cir::ABIArgInfo &getReturnInfo() const { return getArgInfos()[0]; }
+
+  cir::ABIArgInfo &getArgInfo(unsigned i) {
+    assert(i < numArgs && "argument index out of range");
+    return getArgInfos()[i + 1];
+  }
+  const cir::ABIArgInfo &getArgInfo(unsigned i) const {
+    assert(i < numArgs && "argument index out of range");
+    return getArgInfos()[i + 1];
+  }
+
+  llvm::MutableArrayRef<cir::ABIArgInfo> argInfos() {
+    return {getArgInfos() + 1, numArgs};
+  }
+  llvm::ArrayRef<cir::ABIArgInfo> argInfos() const {
+    return {getArgInfos() + 1, numArgs};
   }
 };
 

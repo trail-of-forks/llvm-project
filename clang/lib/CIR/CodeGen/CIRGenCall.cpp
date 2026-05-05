@@ -24,9 +24,12 @@ CIRGenFunctionInfo *
 CIRGenFunctionInfo::create(CanQualType resultType,
                            llvm::ArrayRef<CanQualType> argTypes,
                            RequiredArgs required) {
-  // The first slot allocated for arg type slot is for the return value.
-  void *buffer = operator new(
-      totalSizeToAlloc<CanQualType>(argTypes.size() + 1));
+  // Slot 0 of each trailing array is for the return value; the remaining N
+  // slots hold the arguments.
+  unsigned numSlots = argTypes.size() + 1;
+  void *buffer =
+      operator new(totalSizeToAlloc<CanQualType, cir::ABIArgInfo>(
+          numSlots, numSlots));
 
   assert(!cir::MissingFeatures::opCallCIRGenFuncInfoParamInfo());
 
@@ -37,6 +40,13 @@ CIRGenFunctionInfo::create(CanQualType resultType,
 
   fi->getArgTypes()[0] = resultType;
   std::copy(argTypes.begin(), argTypes.end(), fi->argTypesBegin());
+
+  // Default-initialize every ABIArgInfo slot to Direct(). ABIInfo::computeInfo
+  // will overwrite per-target as needed.
+  cir::ABIArgInfo *infos = fi->getArgInfos();
+  for (unsigned i = 0; i < numSlots; ++i)
+    new (&infos[i]) cir::ABIArgInfo(cir::ABIArgInfo::Direct);
+
   assert(!cir::MissingFeatures::opCallCIRGenFuncInfoExtParamInfo());
 
   return fi;

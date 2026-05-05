@@ -685,9 +685,14 @@ CIRGenTypes::arrangeCIRFunctionInfo(CanQualType returnType,
 
   assert(!cir::MissingFeatures::opCallCallConv());
 
-  // Construction the function info. We co-allocate the ArgInfos.
+  // Construct the function info. We co-allocate the ArgInfos.
   fi = CIRGenFunctionInfo::create(returnType, argTypes, required);
   functionInfos.InsertNode(fi, insertPos);
+
+  // Run the target's ABI classifier to populate per-arg ABIArgInfo. The base
+  // ABIInfo::computeInfo defaults everything to Direct, so targets without
+  // a real classifier yet behave identically to the pre-Phase-2 state.
+  cgm.getTargetCIRGenInfo().getABIInfo().computeInfo(*fi);
 
   return *fi;
 }
