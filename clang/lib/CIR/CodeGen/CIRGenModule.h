@@ -35,6 +35,8 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/TargetParser/Triple.h"
 
+#define PATCHE_ENABLE 1
+
 namespace clang {
 class ASTContext;
 class CodeGenOptions;

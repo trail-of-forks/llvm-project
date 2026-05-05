@@ -246,8 +246,16 @@ const TargetCIRGenInfo &CIRGenModule::getTargetCIRGenInfo() {
 }
 
 mlir::Location CIRGenModule::getLoc(SourceLocation cLoc) {
+#ifndef PATCHE_ENABLE
   assert(cLoc.isValid() && "expected valid source location");
   const SourceManager &sm = astContext.getSourceManager();
+#else
+  const SourceManager &sm = astContext.getSourceManager();
+  if (cLoc.isInvalid()) {
+    auto mainFile = sm.getMainFileID();
+    cLoc = sm.getLocForStartOfFile(mainFile);
+  }
+#endif
   PresumedLoc pLoc = sm.getPresumedLoc(cLoc);
   StringRef filename = pLoc.getFilename();
   return mlir::FileLineColLoc::get(builder.getStringAttr(filename),
@@ -255,7 +263,9 @@ mlir::Location CIRGenModule::getLoc(SourceLocation cLoc) {
 }
 
 mlir::Location CIRGenModule::getLoc(SourceRange cRange) {
+#ifndef PATCHE_ENABLE
   assert(cRange.isValid() && "expected a valid source range");
+#endif
   mlir::Location begin = getLoc(cRange.getBegin());
   mlir::Location end = getLoc(cRange.getEnd());
   mlir::Attribute metadata;
