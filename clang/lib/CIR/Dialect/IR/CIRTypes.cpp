@@ -814,14 +814,17 @@ DataMemberType::getABIAlignment(const ::mlir::DataLayout &dataLayout,
 llvm::TypeSize
 VPtrType::getTypeSizeInBits(const mlir::DataLayout &dataLayout,
                             mlir::DataLayoutEntryListRef params) const {
-  // FIXME: consider size differences under different ABIs
-  return llvm::TypeSize::getFixed(64);
+  // The vtable pointer is just a pointer; consult the data layout so 32-bit
+  // targets (ARM32, RISC-V32, ...) get a 32-bit vptr rather than the
+  // hardcoded 64.
+  auto llvmPtr = mlir::LLVM::LLVMPointerType::get(getContext(), 0);
+  return dataLayout.getTypeSizeInBits(llvmPtr);
 }
 
 uint64_t VPtrType::getABIAlignment(const mlir::DataLayout &dataLayout,
                                    mlir::DataLayoutEntryListRef params) const {
-  // FIXME: consider alignment differences under different ABIs
-  return 8;
+  auto llvmPtr = mlir::LLVM::LLVMPointerType::get(getContext(), 0);
+  return dataLayout.getTypeABIAlignment(llvmPtr);
 }
 
 //===----------------------------------------------------------------------===//
