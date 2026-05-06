@@ -417,3 +417,51 @@ void CIRGenFunction::popCleanupBlocks(
     popCleanupBlock();
   }
 }
+
+/// Deactivate a cleanup that was created in an active state.
+///
+/// If the cleanup is still at the top of the stack and lives in the current
+/// RunCleanupsScope, pop it directly. Otherwise mark the scope inactive so
+/// it's skipped on cleanup emission. The full active-flag plumbing used in
+/// classic CodeGen for conditionally-reached deactivation IPs is not ported
+/// here — for the deferred-deactivation use case driven by aggregate init,
+/// the dominating IP is sequential and unconditional.
+void CIRGenFunction::deactivateCleanupBlock(
+    EHScopeStack::stable_iterator cleanup, mlir::Operation *dominatingIP) {
+  assert(cleanup != ehStack.stable_end() && "deactivating bottom of stack?");
+  EHCleanupScope &scope = cast<EHCleanupScope>(*ehStack.find(cleanup));
+  assert(scope.isActive() && "double deactivation");
+
+  // If it's at the top of the stack and in the current cleanup scope, just
+  // pop it. Match clangir/classic CodeGen by clearing the insertion point so
+  // that fall-through into the popped cleanup is treated as unreachable.
+  if (cleanup == ehStack.stable_begin() &&
+      currentCleanupStackDepth.strictlyEncloses(cleanup)) {
+    if (!scope.isNormalCleanup() && getLangOpts().EHAsynch) {
+      cgm.errorNYI("deactivateCleanupBlock: EHAsynch top-of-stack");
+      return;
+    }
+    mlir::OpBuilder::InsertionGuard guard(builder);
+    builder.clearInsertionPoint();
+    popCleanupBlock();
+    return;
+  }
+
+  // Otherwise just mark it inactive. Active-flag plumbing for
+  // conditionally-reached deactivation points is not yet implemented; the
+  // dominatingIP argument is unused on this path.
+  (void)dominatingIP;
+  assert(!cir::MissingFeatures::ehCleanupActiveFlag());
+  scope.setActive(false);
+}
+
+void CIRGenFunction::CleanupDeactivationScope::forceDeactivate() {
+  assert(!deactivated && "deactivating already deactivated scope");
+  auto &stack = cgf.deferredDeactivationCleanupStack;
+  for (size_t i = stack.size(); i > oldDeactivateCleanupStackSize; --i) {
+    cgf.deactivateCleanupBlock(stack[i - 1].cleanup, stack[i - 1].dominatingIP);
+    stack[i - 1].dominatingIP->erase();
+  }
+  stack.resize(oldDeactivateCleanupStackSize);
+  deactivated = true;
+}

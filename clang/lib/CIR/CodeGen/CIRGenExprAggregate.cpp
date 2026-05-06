@@ -847,9 +847,10 @@ void AggExprEmitter::visitCXXParenListOrInitListExpr(
   unsigned numInitElements = args.size();
   auto *record = e->getType()->castAsRecordDecl();
 
-  // We'll need to enter cleanup scopes in case any of the element
-  // initializers throws an exception.
-  assert(!cir::MissingFeatures::requiresCleanups());
+  // Enter a deferred-deactivation scope so that destructor cleanups pushed
+  // for partially-initialized subobjects are deactivated once aggregate
+  // initialization completes successfully (but still fire on EH exit).
+  CIRGenFunction::CleanupDeactivationScope deactivateCleanups(cgf);
 
   unsigned curInitIndex = 0;
 
@@ -869,11 +870,10 @@ void AggExprEmitter::visitCXXParenListOrInitListExpr(
           AggValueSlot::IsNotAliased,
           cgf.getOverlapForBaseInit(cxxrd, baseRD, false));
       cgf.emitAggExpr(args[curInitIndex++], aggSlot);
-      if (base.getType().isDestructedType()) {
-        cgf.cgm.errorNYI(e->getSourceRange(),
-                         "push deferred deactivation cleanup");
-        return;
-      }
+      if (QualType::DestructionKind dtorKind =
+              base.getType().isDestructedType())
+        cgf.pushDestroyAndDeferDeactivation(dtorKind, address,
+                                            base.getType());
     }
   }
 
@@ -883,8 +883,31 @@ void AggExprEmitter::visitCXXParenListOrInitListExpr(
   LValue destLV = cgf.makeAddrLValue(dest.getAddress(), e->getType());
 
   if (record->isUnion()) {
-    cgf.cgm.errorNYI(e->getSourceRange(),
-                     "visitCXXParenListOrInitListExpr union type");
+    // Only initialize one field of a union. The field itself is
+    // specified by the initializer list.
+    if (!initializedFieldInUnion) {
+      // Empty union; nothing to do. In a debug build, sanity-check that the
+      // union really is empty (only unnamed bitfields or anonymous
+      // structs/unions); otherwise something has gone wrong in sema.
+#ifndef NDEBUG
+      for (const auto *field : record->fields())
+        assert((field->isUnnamedBitField() ||
+                field->isAnonymousStructOrUnion()) &&
+               "Only unnamed bitfields or anonymous class allowed");
+#endif
+      return;
+    }
+
+    FieldDecl *field = initializedFieldInUnion;
+    LValue fieldLoc =
+        cgf.emitLValueForFieldInitialization(destLV, field, field->getName());
+    if (numInitElements) {
+      // Store the initializer into the field.
+      emitInitializationToLValue(args[0], fieldLoc);
+    } else {
+      // Default-initialize to null.
+      emitNullInitializationToLValue(loc, fieldLoc);
+    }
     return;
   }
 
@@ -923,10 +946,13 @@ void AggExprEmitter::visitCXXParenListOrInitListExpr(
     // Push a destructor if necessary.
     // FIXME: if we have an array of structures, all explicitly
     // initialized, we can end up pushing a linear number of cleanups.
-    if (field->getType().isDestructedType()) {
-      cgf.cgm.errorNYI(e->getSourceRange(),
-                       "visitCXXParenListOrInitListExpr destructor");
-      return;
+    if (QualType::DestructionKind dtorKind =
+            field->getType().isDestructedType()) {
+      assert(lv.isSimple());
+      if (dtorKind)
+        cgf.pushDestroyAndDeferDeactivation(NormalAndEHCleanup, lv.getAddress(),
+                                            field->getType(),
+                                            cgf.getDestroyer(dtorKind));
     }
 
     // From classic codegen, maybe not useful for CIR:

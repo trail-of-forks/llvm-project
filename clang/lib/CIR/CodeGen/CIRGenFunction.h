@@ -1262,6 +1262,49 @@ public:
 
   Destroyer *getDestroyer(clang::QualType::DestructionKind kind);
 
+  /// Deactivate a cleanup that was created in an active state.
+  void deactivateCleanupBlock(EHScopeStack::stable_iterator cleanup,
+                              mlir::Operation *dominatingIP);
+
+  /// Push a cleanup to destroy `addr` and immediately defer its deactivation
+  /// until the enclosing CleanupDeactivationScope exits. Used by aggregate
+  /// initialization paths that must clean up partially-constructed
+  /// subobjects on EH but skip cleanups on normal completion.
+  void pushDestroyAndDeferDeactivation(QualType::DestructionKind dtorKind,
+                                       Address addr, QualType type);
+  void pushDestroyAndDeferDeactivation(CleanupKind cleanupKind, Address addr,
+                                       QualType type, Destroyer *destroyer);
+
+  // A deferred-deactivation entry: a cleanup recorded by
+  // pushDestroyAndDeferDeactivation, paired with a dominating IP placeholder.
+  struct DeferredDeactivateCleanup {
+    EHScopeStack::stable_iterator cleanup;
+    mlir::Operation *dominatingIP;
+  };
+  llvm::SmallVector<DeferredDeactivateCleanup> deferredDeactivationCleanupStack;
+
+  /// Enters a scope that captures cleanups marked for deferred deactivation.
+  /// On scope exit (or ForceDeactivate) all such cleanups recorded since the
+  /// scope was entered are deactivated in reverse order.
+  struct CleanupDeactivationScope {
+    CIRGenFunction &cgf;
+    size_t oldDeactivateCleanupStackSize;
+    bool deactivated;
+
+    CleanupDeactivationScope(CIRGenFunction &cgf)
+        : cgf(cgf),
+          oldDeactivateCleanupStackSize(
+              cgf.deferredDeactivationCleanupStack.size()),
+          deactivated(false) {}
+
+    void forceDeactivate();
+
+    ~CleanupDeactivationScope() {
+      if (!deactivated)
+        forceDeactivate();
+    }
+  };
+
   /// ----------------------
   /// CIR emit functions
   /// ----------------------

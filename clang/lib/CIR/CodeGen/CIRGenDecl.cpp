@@ -915,6 +915,29 @@ void CIRGenFunction::pushDestroy(CleanupKind cleanupKind, Address addr,
   pushFullExprCleanup<DestroyObject>(cleanupKind, addr, type, destroyer);
 }
 
+/// Push a destructor and immediately defer its deactivation until the
+/// enclosing CleanupDeactivationScope exits.
+void CIRGenFunction::pushDestroyAndDeferDeactivation(
+    QualType::DestructionKind dtorKind, Address addr, QualType type) {
+  assert(dtorKind && "cannot push destructor for trivial type");
+
+  CleanupKind cleanupKind = getCleanupKind(dtorKind);
+  pushDestroyAndDeferDeactivation(cleanupKind, addr, type,
+                                  getDestroyer(dtorKind));
+}
+
+void CIRGenFunction::pushDestroyAndDeferDeactivation(CleanupKind cleanupKind,
+                                                     Address addr,
+                                                     QualType type,
+                                                     Destroyer *destroyer) {
+  // Reserve a placeholder operation as the dominating IP for this cleanup.
+  // The placeholder is erased once the deferred deactivation runs.
+  mlir::Operation *flag =
+      cir::UnreachableOp::create(builder, builder.getUnknownLoc());
+  pushDestroy(cleanupKind, addr, type, destroyer);
+  deferredDeactivationCleanupStack.push_back({ehStack.stable_begin(), flag});
+}
+
 /// Destroys all the elements of the given array, beginning from last to first.
 /// The array cannot be zero-length.
 ///
