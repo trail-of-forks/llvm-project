@@ -896,10 +896,19 @@ LValue CIRGenFunction::emitDeclRefLValue(const DeclRefExpr *e) {
     auto iter = localDeclMap.find(vd);
     if (iter != localDeclMap.end()) {
       addr = iter->second;
+    } else if (vd->isStaticLocal()) {
+      // Otherwise, it might be a static local we haven't emitted yet for some
+      // reason; most likely, because it's in an outer function (e.g. referenced
+      // from a lambda's call operator or a local class member). Resolve it to
+      // the global it is emitted as, mirroring classic codegen.
+      cir::GlobalOp var = cgm.getOrCreateStaticVarDecl(
+          *vd, cgm.getCIRLinkageVarDefinition(vd, /*isConstant=*/false));
+      mlir::Value getGlob =
+          builder.createGetGlobal(var, vd->getTLSKind() != VarDecl::TLS_None);
+      addr = Address(getGlob, convertTypeForMem(vd->getType()),
+                     getContext().getDeclAlign(vd));
     } else {
-      // Otherwise, it might be static local we haven't emitted yet for some
-      // reason; most likely, because it's in an outer function.
-      cgm.errorNYI(e->getSourceRange(), "emitDeclRefLValue: static local");
+      llvm_unreachable("DeclRefExpr for Decl not entered in localDeclMap?");
     }
 
     // Drill into reference types.
