@@ -18,6 +18,7 @@ add_clang_library(MLIRCIR
   MLIRDLTIDialect
   MLIRDataLayoutInterfaces
   MLIRFuncDialect
+  MLIRLLVMDialect
   MLIRLoopLikeInterface
   MLIRCIRInterfaces
   clangAST

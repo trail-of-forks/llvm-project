@@ -12,6 +12,7 @@
 
 #include "clang/CIR/Dialect/IR/CIRTypes.h"
 
+#include "mlir/Dialect/LLVMIR/LLVMTypes.h"
 #include "mlir/Dialect/Ptr/IR/MemorySpaceInterfaces.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/DialectImplementation.h"
@@ -585,7 +586,15 @@ PointerType::getTypeSizeInBits(const ::mlir::DataLayout &dataLayout,
                                ::mlir::DataLayoutEntryListRef params) const {
   // FIXME: improve this in face of address spaces
   assert(!cir::MissingFeatures::dataLayoutPtrHandlingBasedOnLangAS());
-  return llvm::TypeSize::getFixed(64);
+  // The module data layout is translated from the target's LLVM data layout and
+  // keys its pointer entries on LLVMPointerType. Querying it through that type
+  // is currently the only way to recover the target pointer width on 32bit
+  // targets rather than a hardcoded 64.
+  // TODO(cir): this is the place where the CIR type system reaches into the
+  // LLVM dialect for getting pointer width. Longer term the pointer width
+  // should come from a CIR-native data dialect.
+  auto llvmPtrTy = mlir::LLVM::LLVMPointerType::get(getContext());
+  return dataLayout.getTypeSizeInBits(llvmPtrTy);
 }
 
 uint64_t
@@ -593,7 +602,8 @@ PointerType::getABIAlignment(const ::mlir::DataLayout &dataLayout,
                              ::mlir::DataLayoutEntryListRef params) const {
   // FIXME: improve this in face of address spaces
   assert(!cir::MissingFeatures::dataLayoutPtrHandlingBasedOnLangAS());
-  return 8;
+  auto llvmPtrTy = mlir::LLVM::LLVMPointerType::get(getContext());
+  return dataLayout.getTypeABIAlignment(llvmPtrTy);
 }
 
 llvm::TypeSize
@@ -1112,14 +1122,16 @@ DataMemberType::getABIAlignment(const ::mlir::DataLayout &dataLayout,
 llvm::TypeSize
 VPtrType::getTypeSizeInBits(const mlir::DataLayout &dataLayout,
                             mlir::DataLayoutEntryListRef params) const {
-  // FIXME: consider size differences under different ABIs
-  return llvm::TypeSize::getFixed(64);
+  // The vtable pointer is an ordinary data pointer; size it like one so that
+  // 32-bit targets get a 32-bit vptr instead of a hardcoded 64.
+  auto llvmPtrTy = mlir::LLVM::LLVMPointerType::get(getContext());
+  return dataLayout.getTypeSizeInBits(llvmPtrTy);
 }
 
 uint64_t VPtrType::getABIAlignment(const mlir::DataLayout &dataLayout,
                                    mlir::DataLayoutEntryListRef params) const {
-  // FIXME: consider alignment differences under different ABIs
-  return 8;
+  auto llvmPtrTy = mlir::LLVM::LLVMPointerType::get(getContext());
+  return dataLayout.getTypeABIAlignment(llvmPtrTy);
 }
 
 //===----------------------------------------------------------------------===//
