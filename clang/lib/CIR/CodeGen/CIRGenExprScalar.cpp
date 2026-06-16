@@ -2781,8 +2781,13 @@ mlir::Value ScalarExprEmitter::VisitUnaryExprOrTypeTraitExpr(
         loc, cir::IntAttr::get(cgf.cgm.uInt64Ty, vecTy.getSize()));
   }
 
+  // The result type of sizeof / __alignof / _Countof is set by the AST
+  // (size_t on most targets, ptrdiff_t for some forms). Use that rather
+  // than a hard-coded 64-bit type — on 32-bit targets size_t is 32-bit
+  // and the APSInt from EvaluateKnownConstInt comes back at that width,
+  // which mismatches a hard-coded u64 and trips IntAttr::get's verifier.
   return builder.getConstant(
-      loc, cir::IntAttr::get(cgf.cgm.uInt64Ty,
+      loc, cir::IntAttr::get(convertType(e->getType()),
                              e->EvaluateKnownConstInt(cgf.getContext())));
 }
 
