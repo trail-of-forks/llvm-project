@@ -24,6 +24,7 @@
 #include "clang/Basic/Builtins.h"
 #include "clang/Basic/DiagnosticFrontend.h"
 #include "clang/Basic/OperatorKinds.h"
+#include "clang/Basic/TargetBuiltins.h"
 #include "clang/CIR/Dialect/IR/CIRTypes.h"
 #include "clang/CIR/MissingFeatures.h"
 #include "llvm/IR/Intrinsics.h"
@@ -2647,6 +2648,40 @@ RValue CIRGenFunction::emitBuiltinExpr(const GlobalDecl &gd, unsigned builtinID,
   return getUndefRValue(e->getType());
 }
 
+std::optional<mlir::Value>
+CIRGenFunction::emitARMBuiltinExpr(unsigned builtinID, const CallExpr *expr,
+                                  ReturnValueSlot returnValue,
+                                  llvm::Triple::ArchType arch) {
+  // Only the NEON lane-read intrinsics are implemented for 32-bit ARM so far;
+  // they lower to a vector element extraction, matching classic CodeGen
+  // (clang/lib/CodeGen/TargetBuiltins/ARM.cpp) and the AArch64 path. Anything
+  // else returns std::nullopt so it still reaches the generic
+  // "unimplemented builtin call" diagnostic in emitBuiltinExpr.
+  switch (builtinID) {
+  default:
+    return std::nullopt;
+  case NEON::BI__builtin_neon_vget_lane_i8:
+  case NEON::BI__builtin_neon_vget_lane_i16:
+  case NEON::BI__builtin_neon_vget_lane_i32:
+  case NEON::BI__builtin_neon_vget_lane_i64:
+  case NEON::BI__builtin_neon_vget_lane_bf16:
+  case NEON::BI__builtin_neon_vget_lane_f32:
+  case NEON::BI__builtin_neon_vgetq_lane_i8:
+  case NEON::BI__builtin_neon_vgetq_lane_i16:
+  case NEON::BI__builtin_neon_vgetq_lane_i32:
+  case NEON::BI__builtin_neon_vgetq_lane_i64:
+  case NEON::BI__builtin_neon_vgetq_lane_bf16:
+  case NEON::BI__builtin_neon_vgetq_lane_f32:
+  case NEON::BI__builtin_neon_vduph_lane_bf16:
+  case NEON::BI__builtin_neon_vduph_laneq_bf16: {
+    mlir::Location loc = getLoc(expr->getExprLoc());
+    mlir::Value vec = emitScalarExpr(expr->getArg(0));
+    mlir::Value index = emitScalarExpr(expr->getArg(1));
+    return cir::VecExtractOp::create(builder, loc, vec, index);
+  }
+  }
+}
+
 static std::optional<mlir::Value>
 emitTargetArchBuiltinExpr(CIRGenFunction *cgf, unsigned builtinID,
                           const CallExpr *e, ReturnValueSlot &returnValue,
@@ -2666,9 +2701,7 @@ emitTargetArchBuiltinExpr(CIRGenFunction *cgf, unsigned builtinID,
   case llvm::Triple::armeb:
   case llvm::Triple::thumb:
   case llvm::Triple::thumbeb:
-    // These are actually NYI, but that will be reported by emitBuiltinExpr.
-    // At this point, we don't even know that the builtin is target-specific.
-    return std::nullopt;
+    return cgf->emitARMBuiltinExpr(builtinID, e, returnValue, arch);
   case llvm::Triple::aarch64:
   case llvm::Triple::aarch64_32:
   case llvm::Triple::aarch64_be:
