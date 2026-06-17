@@ -2654,9 +2654,7 @@ CIRGenFunction::emitARMBuiltinExpr(unsigned builtinID, const CallExpr *expr,
                                   llvm::Triple::ArchType arch) {
   // Only the NEON lane-read intrinsics are implemented for 32-bit ARM so far;
   // they lower to a vector element extraction, matching classic CodeGen
-  // (clang/lib/CodeGen/TargetBuiltins/ARM.cpp) and the AArch64 path. Anything
-  // else returns std::nullopt so it still reaches the generic
-  // "unimplemented builtin call" diagnostic in emitBuiltinExpr.
+  // (clang/lib/CodeGen/TargetBuiltins/ARM.cpp) and the AArch64 path.
   switch (builtinID) {
   default:
     return std::nullopt;

@@ -167,7 +167,7 @@ public:
   mlir::Value loadIncomingCXXThis(CIRGenFunction &cgf);
 
   /// Returns the C++ this pointer as set by setCXXABIThisValue, before any
-  /// adjustment. Valid from emitInstanceFunctionProlog onward.
+  /// adjustment.
   mlir::Value getThisValue(CIRGenFunction &cgf);
 
   virtual CatchTypeInfo

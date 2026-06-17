@@ -179,10 +179,9 @@ static void emitDeclDestroy(CIRGenFunction &cgf, const VarDecl *vd,
     // Build the call against the destructor's actual signature rather than
     // forcing a void result.  Under the ARM C++ ABI structors return `this`,
     // so a void-typed call would have fewer results than the callee and fail
-    // verification ("'cir.call' op incorrect number of results for callee").
-    // The FuncOp overload derives the result type from the destructor itself;
-    // the returned `this` is unused here and is discarded when LoweringPrepare
-    // registers the destructor with __cxa_atexit.
+    // verification. The FuncOp overload derives the result type from the
+    // destructor itself; the returned `this` is unused here and is discarded
+    // when LoweringPrepare registers the destructor with __cxa_atexit.
     builder.createCallOp(cgf.getLoc(vd->getSourceRange()), fnOp,
                          mlir::ValueRange{thisAddr});
     assert(fnOp && "expected cir.func");

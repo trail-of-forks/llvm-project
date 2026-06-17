@@ -1,7 +1,8 @@
-// Smoke test: 32-bit ARM lowers end-to-end through CIR, including the
-// GenericARM CXXABI path (virtual classes / vtables). A record containing a
-// pointer lays out with a 4-byte pointer followed by the next field with no
-// padding, and both records are 4-byte aligned.
+// 32-bit ARM lowers end-to-end through CIR, including the GenericARM CXXABI
+// path (virtual classes / vtables). A record containing a pointer lays out with
+// a 4-byte pointer followed by the next field with no padding, and both records
+// are 4-byte aligned.
+//
 //
 // RUN: %clang_cc1 -std=c++20 -triple arm-linux-gnueabihf -fclangir -emit-cir %s -o %t.cir
 // RUN: FileCheck --check-prefix=CIR --input-file=%t.cir %s

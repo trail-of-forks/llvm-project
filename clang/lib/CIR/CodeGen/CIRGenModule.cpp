@@ -3020,7 +3020,7 @@ void CIRGenModule::setFunctionAttributes(GlobalDecl globalDecl,
   // Add the `returned` attribute for "this" on constructors/destructors that
   // return it (e.g. under the ARM C++ ABI), except for iOS 5 and earlier where
   // substantial code, including the libstdc++ dylib, was compiled with GCC and
-  // does not actually return "this".  Mirrors CodeGenModule::SetFunctionAttributes.
+  // does not actually return "this".
   if (!isThunk && getCXXABI().hasThisReturn(globalDecl) &&
       !(getTriple().isiOS() && getTriple().isOSVersionLT(6))) {
     assert(func.getNumArguments() != 0 && "unexpected this return");
