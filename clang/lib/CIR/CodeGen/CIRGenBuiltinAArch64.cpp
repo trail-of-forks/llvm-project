@@ -1845,6 +1845,44 @@ static const std::pair<unsigned, unsigned> neonEquivalentIntrinsicMap[] = {
 };
 
 std::optional<mlir::Value>
+CIRGenFunction::emitARMBuiltinExpr(unsigned builtinID, const CallExpr *expr,
+                                   ReturnValueSlot returnValue,
+                                   llvm::Triple::ArchType arch) {
+  // Only the NEON lane-read intrinsics are implemented for 32-bit ARM so far;
+  // they lower to a vector element extraction, matching classic CodeGen
+  // (clang/lib/CodeGen/TargetBuiltins/ARM.cpp) and the AArch64 path. Every other
+  // ARM builtin is reported as not-yet-implemented rather than silently ignored.
+  switch (builtinID) {
+  case NEON::BI__builtin_neon_vget_lane_i8:
+  case NEON::BI__builtin_neon_vget_lane_i16:
+  case NEON::BI__builtin_neon_vget_lane_i32:
+  case NEON::BI__builtin_neon_vget_lane_i64:
+  case NEON::BI__builtin_neon_vget_lane_bf16:
+  case NEON::BI__builtin_neon_vget_lane_f32:
+  case NEON::BI__builtin_neon_vgetq_lane_i8:
+  case NEON::BI__builtin_neon_vgetq_lane_i16:
+  case NEON::BI__builtin_neon_vgetq_lane_i32:
+  case NEON::BI__builtin_neon_vgetq_lane_i64:
+  case NEON::BI__builtin_neon_vgetq_lane_bf16:
+  case NEON::BI__builtin_neon_vgetq_lane_f32:
+  case NEON::BI__builtin_neon_vduph_lane_bf16:
+  case NEON::BI__builtin_neon_vduph_laneq_bf16: {
+    mlir::Location loc = getLoc(expr->getExprLoc());
+    mlir::Value vec = emitScalarExpr(expr->getArg(0));
+    mlir::Value index = emitScalarExpr(expr->getArg(1));
+    return cir::VecExtractOp::create(builder, loc, vec, index);
+  }
+  default:
+    break;
+  }
+
+  cgm.errorNYI(expr->getSourceRange(),
+               std::string("unimplemented ARM builtin call: ") +
+                   getContext().BuiltinInfo.getName(builtinID));
+  return mlir::Value{};
+}
+
+std::optional<mlir::Value>
 CIRGenFunction::emitAArch64BuiltinExpr(unsigned builtinID, const CallExpr *expr,
                                        ReturnValueSlot returnValue,
                                        llvm::Triple::ArchType arch) {
