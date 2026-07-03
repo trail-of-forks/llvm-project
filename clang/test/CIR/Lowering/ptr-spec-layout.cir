@@ -1,0 +1,42 @@
+// RUN: cir-opt %s -cir-to-llvm -o %t.mlir
+// RUN: FileCheck --input-file=%t.mlir %s
+
+// !cir.ptr layout queries resolve through the default-address-space
+// #cir.ptr_spec entry (32-bit here) instead of the legacy hardcoded 64-bit
+// layout. Observed through cir.ptr_diff, whose divisor is the byte size of
+// the pointee. Per-address-space entries are not supported yet: pointers in
+// other address spaces also resolve through the default entry.
+
+!s32i = !cir.int<s, 32>
+!s64i = !cir.int<s, 64>
+
+module attributes {
+  cir.triple = "x86_64-unknown-linux-gnu",
+  dlti.dl_spec = #dlti.dl_spec<
+    #dlti.dl_entry<!cir.ptr<!cir.void>,
+                   #cir.ptr_spec<size = 32, abi = 32, preferred = 32, index = 32>>
+  >
+} {
+  // Pointee is a default-address-space pointer: 32-bit -> divisor 4.
+  // CHECK-LABEL: llvm.func @diff_default
+  // CHECK: %[[SUB:.*]] = llvm.sub
+  // CHECK: %[[SIZE:.*]] = llvm.mlir.constant(4 : i64)
+  // CHECK: llvm.sdiv exact %[[SUB]], %[[SIZE]]
+  cir.func @diff_default(%arg0: !cir.ptr<!cir.ptr<!s32i>>,
+                         %arg1: !cir.ptr<!cir.ptr<!s32i>>) -> !s64i {
+    %0 = cir.ptr_diff %arg0, %arg1 : !cir.ptr<!cir.ptr<!s32i>> -> !s64i
+    cir.return %0 : !s64i
+  }
+
+  // A non-default address space resolves through the default entry for now:
+  // 32-bit -> divisor 4.
+  // CHECK-LABEL: llvm.func @diff_as5
+  // CHECK: %[[SUB:.*]] = llvm.sub
+  // CHECK: %[[SIZE:.*]] = llvm.mlir.constant(4 : i64)
+  // CHECK: llvm.sdiv exact %[[SUB]], %[[SIZE]]
+  cir.func @diff_as5(%arg0: !cir.ptr<!cir.ptr<!s32i, target_address_space(5)>>,
+                     %arg1: !cir.ptr<!cir.ptr<!s32i, target_address_space(5)>>) -> !s64i {
+    %0 = cir.ptr_diff %arg0, %arg1 : !cir.ptr<!cir.ptr<!s32i, target_address_space(5)>> -> !s64i
+    cir.return %0 : !s64i
+  }
+}

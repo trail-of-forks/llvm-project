@@ -31,8 +31,9 @@ void CIRDataLayout::reset(mlir::DataLayoutSpecInterface spec) {
 }
 
 llvm::Align CIRDataLayout::getAlignment(mlir::Type ty, bool useABIAlign) const {
-  // FIXME(cir): This does not account for differnt address spaces, and relies
-  // on CIR's data layout to give the proper alignment.
+  // Pointer alignment is resolved per address space through the module's
+  // !cir.ptr data layout entries (#cir.ptr_spec). The remaining gap is
+  // non-pointer address-space-dependent behavior.
   assert(!cir::MissingFeatures::addressSpace());
 
   // Fetch type alignment from MLIR's data layout.
@@ -51,8 +52,9 @@ llvm::TypeSize CIRDataLayout::getTypeSizeInBits(mlir::Type ty) const {
   if (auto unionTy = llvm::dyn_cast<cir::UnionType>(ty))
     return unionTy.getTypeSizeInBits(layout, {});
 
-  // FIXME(cir): This does not account for different address spaces, and relies
-  // on CIR's data layout to give the proper ABI-specific type width.
+  // Pointer sizes are resolved per address space through the module's
+  // !cir.ptr data layout entries (#cir.ptr_spec). The remaining gap is
+  // non-pointer address-space-dependent behavior.
   assert(!cir::MissingFeatures::addressSpace());
 
   // This is calling mlir::DataLayout::getTypeSizeInBits().

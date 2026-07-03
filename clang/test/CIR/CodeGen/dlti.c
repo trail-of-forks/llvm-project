@@ -19,5 +19,6 @@ void foo() {}
 //  LITTLE-DAG:     f128 = dense<128> : vector<2xi64>,
 //  LITTLE-DAG:     f16 = dense<16> : vector<2xi64>,
 //  LITTLE-DAG:     f64 = dense<64> : vector<2xi64>,
+//  LITTLE-DAG:     !cir.ptr<!cir.void> = #cir.ptr_spec<size = 64, abi = 64, preferred = 64, index = 64>
 //  LITTLE-DAG:     "dlti.stack_alignment" = 128 : i64
 //  LITTLE-DAG:     "dlti.endianness" = "little"

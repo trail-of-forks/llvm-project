@@ -1,0 +1,24 @@
+// RUN: cir-translate --cir-to-llvmir --target i686-unknown-linux-gnu --disable-cc-lowering %s -o %t.i686.ll
+// RUN: FileCheck %s -input-file %t.i686.ll -check-prefix=I686
+// RUN: cir-translate --cir-to-llvmir --target x86_64-unknown-linux-gnu --disable-cc-lowering %s -o %t.x86_64.ll
+// RUN: FileCheck %s -input-file %t.x86_64.ll -check-prefix=X8664
+
+// A module without a dlti.dl_spec gets one derived from --target, including
+// the !cir.ptr #cir.ptr_spec entries: the same pointer-to-pointer subtraction
+// divides by 4 on i686 and by 8 on x86_64.
+
+!s32i = !cir.int<s, 32>
+
+module {
+  cir.func @ptr_ptr_diff(%arg0: !cir.ptr<!cir.ptr<!s32i>>,
+                         %arg1: !cir.ptr<!cir.ptr<!s32i>>) -> !s32i {
+    %0 = cir.ptr_diff %arg0, %arg1 : !cir.ptr<!cir.ptr<!s32i>> -> !s32i
+    cir.return %0 : !s32i
+  }
+}
+
+// I686: define i32 @ptr_ptr_diff
+// I686: sdiv exact i32 %{{.*}}, 4
+
+// X8664: define i32 @ptr_ptr_diff
+// X8664: sdiv exact i32 %{{.*}}, 8

@@ -23,6 +23,8 @@
 #include "clang/CIR/Interfaces/ASTAttrInterfaces.h"
 #include "clang/CIR/Interfaces/CIRTypeInterfaces.h"
 
+#include <limits>
+
 //===----------------------------------------------------------------------===//
 // CIR Dialect Attrs
 //===----------------------------------------------------------------------===//

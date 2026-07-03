@@ -1032,6 +1032,57 @@ def CIR_TargetAddressSpaceAttr : CIR_Attr< "TargetAddressSpace",
 }
 
 //===----------------------------------------------------------------------===//
+// PtrSpecAttr
+//===----------------------------------------------------------------------===//
+
+def CIR_PtrSpecAttr : CIR_Attr<"PtrSpec", "ptr_spec"> {
+  let summary = "!cir.ptr data layout spec";
+  let description = [{
+    Defines the data layout of `!cir.ptr`, mirroring `#ptr.spec`. Entries are
+    currently limited to the default address space; per-address-space entries
+    will follow. This attribute has 4 fields:
+     - [Required] size: size of the pointer in bits.
+     - [Required] abi: ABI-required alignment for the pointer in bits.
+     - [Required] preferred: preferred alignment for the pointer in bits.
+     - [Optional] index: bitwidth that should be used when performing index
+       computations for the type. Setting the field to `kOptionalSpecValue`
+       means the index bitwidth follows `size`.
+
+    The attribute verifies that all present values are divisible by 8 (number
+    of bits in a byte), and that `preferred` >= `abi`.
+
+    It is used as the value of a `#dlti.dl_entry` whose key is the canonical
+    `!cir.ptr<!cir.void>` type of the address space it describes, e.g.:
+
+    ```mlir
+    #dlti.dl_entry<!cir.ptr<!cir.void>,
+                   #cir.ptr_spec<size = 64, abi = 64, preferred = 64>>
+    ```
+  }];
+  let parameters = (ins
+    "uint32_t":$size,
+    "uint32_t":$abi,
+    "uint32_t":$preferred,
+    DefaultValuedParameter<"uint32_t", "kOptionalSpecValue">:$index
+  );
+  let skipDefaultBuilders = 1;
+  let builders = [
+    AttrBuilder<(ins "uint32_t":$size, "uint32_t":$abi, "uint32_t":$preferred,
+                     CArg<"uint32_t", "kOptionalSpecValue">:$index), [{
+      return $_get($_ctxt, size, abi, preferred, index);
+    }]>
+  ];
+  let assemblyFormat = "`<` struct(params) `>`";
+  let extraClassDeclaration = [{
+    /// Constant for specifying a spec entry is optional.
+    static constexpr uint32_t kOptionalSpecValue =
+        std::numeric_limits<uint32_t>::max();
+  }];
+  let genVerifyDecl = 1;
+  let canHaveIllegalCXXABIType = 0;
+}
+
+//===----------------------------------------------------------------------===//
 // ConstComplexAttr
 //===----------------------------------------------------------------------===//
 

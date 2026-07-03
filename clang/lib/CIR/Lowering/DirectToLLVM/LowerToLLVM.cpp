@@ -3639,6 +3639,27 @@ void ConvertCIRToLLVMPass::processCIRAttrs(mlir::ModuleOp module) {
                     asmAttr);
 }
 
+/// Drop the !cir.ptr-keyed entries from the module's data layout spec. Must
+/// only run once the conversion is complete (the entries feed the in-pass
+/// !cir.ptr layout queries): no CIR type survives the conversion, and the
+/// LLVM IR datalayout exporter rejects type keys it does not know.
+static void stripCIRDataLayoutEntries(mlir::ModuleOp module) {
+  auto dlSpec = mlir::dyn_cast_if_present<mlir::DataLayoutSpecAttr>(
+      module->getAttr(mlir::DLTIDialect::kDataLayoutAttrName));
+  if (!dlSpec)
+    return;
+  llvm::SmallVector<mlir::DataLayoutEntryInterface> entries;
+  for (mlir::DataLayoutEntryInterface entry : dlSpec.getEntries()) {
+    auto typeKey = llvm::dyn_cast_if_present<mlir::Type>(entry.getKey());
+    if (typeKey && mlir::isa<cir::CIRDialect>(typeKey.getDialect()))
+      continue;
+    entries.push_back(entry);
+  }
+  if (entries.size() != dlSpec.getEntries().size())
+    module->setAttr(mlir::DLTIDialect::kDataLayoutAttrName,
+                    mlir::DataLayoutSpecAttr::get(module.getContext(), entries));
+}
+
 void ConvertCIRToLLVMPass::runOnOperation() {
   llvm::TimeTraceScope scope("Convert CIR to LLVM Pass");
 
@@ -3707,6 +3728,8 @@ void ConvertCIRToLLVMPass::runOnOperation() {
   buildGlobalAnnotationsVar(module);
 
   resolveBlockAddressOp(blockInfoAddr);
+
+  stripCIRDataLayoutEntries(module);
 }
 
 mlir::LogicalResult CIRToLLVMBrOpLowering::matchAndRewrite(
@@ -4967,5 +4990,6 @@ lowerDirectlyFromCIRToLLVMIR(mlir::ModuleOp mlirModule, LLVMContext &llvmCtx,
 
   return llvmModule;
 }
+
 } // namespace direct
 } // namespace cir

@@ -19,6 +19,7 @@
 #include "mlir/Target/LLVMIR/Import.h"
 
 #include "clang/AST/DeclGroup.h"
+#include "clang/CIR/CIRDataLayoutSpec.h"
 #include "clang/CIR/CIRGenerator.h"
 #include "clang/CIR/InitAllDialects.h"
 #include "llvm/IR/DataLayout.h"
@@ -38,13 +39,6 @@ CIRGenerator::~CIRGenerator() {
   assert(deferredInlineMemberFuncDefs.empty() || diags.hasErrorOccurred());
 }
 
-static void setMLIRDataLayout(mlir::ModuleOp &mod, const llvm::DataLayout &dl) {
-  mlir::MLIRContext *mlirContext = mod.getContext();
-  mlir::DataLayoutSpecInterface dlSpec =
-      mlir::translateDataLayout(dl, mlirContext);
-  mod->setAttr(mlir::DLTIDialect::kDataLayoutAttrName, dlSpec);
-}
-
 void CIRGenerator::Initialize(ASTContext &astContext) {
   using namespace llvm;
 
@@ -61,7 +55,7 @@ void CIRGenerator::Initialize(ASTContext &astContext) {
   mlir::ModuleOp mod = cgm->getModule();
   llvm::DataLayout layout =
       llvm::DataLayout(astContext.getTargetInfo().getDataLayoutString());
-  setMLIRDataLayout(mod, layout);
+  cir::setCIRDataLayout(mod, layout);
 }
 
 bool CIRGenerator::verifyModule() const { return cgm->verifyModule(); }
