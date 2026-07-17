@@ -541,7 +541,7 @@ void test_agg_throw_true(bool flag) {
 // CIR:     cir.store{{.*}} %[[ZERO]], %[[EXC]] : !s32i, !cir.ptr<!s32i>
 // CIR:     cir.throw %[[EXC]] : !cir.ptr<!s32i>, @_ZTIi
 // CIR:     cir.unreachable
-// CIR:   } else {
+// CIR-NEXT:   } else {
 // CIR:     %[[X:.*]] = cir.get_member %[[A]][0] {name = "x"} : !cir.ptr<!rec_Agg> -> !cir.ptr<!s32i>
 // CIR:     %[[ONE:.*]] = cir.const #cir.int<1> : !s32i
 // CIR:     cir.store{{.*}} %[[ONE]], %[[X]] : !s32i, !cir.ptr<!s32i>
@@ -610,7 +610,7 @@ void test_agg_throw_false(bool flag) {
 // CIR:     cir.store{{.*}} %[[ZERO]], %[[EXC]] : !s32i, !cir.ptr<!s32i>
 // CIR:     cir.throw %[[EXC]] : !cir.ptr<!s32i>, @_ZTIi
 // CIR:     cir.unreachable
-// CIR:   }
+// CIR-NEXT:   }
 // CIR:   cir.return
 
 // LLVM-LABEL: define{{.*}} void @_Z20test_agg_throw_falseb(
